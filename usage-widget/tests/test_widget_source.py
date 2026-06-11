@@ -24,6 +24,10 @@ class TestWidgetSource(unittest.TestCase):
         self.assertIn("codex-cloud", self.source)
         self.assertNotIn("#19C37D", self.source)
 
+    def test_widget_is_anchored_to_bottom_right(self):
+        self.assertIn("right: 40px; bottom: 40px;", self.source)
+        self.assertNotIn("left: 40px; top: 40px;", self.source)
+
 
 if __name__ == "__main__":
     unittest.main()

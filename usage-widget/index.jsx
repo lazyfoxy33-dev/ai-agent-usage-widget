@@ -6,7 +6,7 @@ const CL = { accent: "#D97757", soft: "#E3A77F", ink: "#26231F", sub: "#9A9286",
 const CX = { accent: "#6676FF", soft: "#A78BFA", ink: "#ECECEC", sub: "#888894", track: "rgba(255,255,255,.10)", gradient: true };
 
 export const className = `
-  left: 40px; top: 40px;
+  right: 40px; bottom: 40px;
   width: 300px;
   border-radius: 22px; overflow: hidden;
   box-shadow: 0 20px 44px -12px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.3);
