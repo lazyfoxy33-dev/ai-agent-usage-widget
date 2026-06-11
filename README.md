@@ -1,12 +1,27 @@
 # AI Agent Usage Widget / AI Agent 用量组件
 
-一个用于 macOS [Übersicht](https://tracesof.net/uebersicht/) 的桌面组件，
-集中显示 Claude、Codex 和 Kimi Code 的用量。
+集中显示 Claude、Codex 和 Kimi Code 用量的 macOS 工具。同一套数据层（`core/`）
+驱动两个前端：[Übersicht](https://tracesof.net/uebersicht/) **桌面组件**与
+**Touch Bar 组件**。
 
-A compact macOS [Übersicht](https://tracesof.net/uebersicht/) widget that shows
-Claude, Codex, and Kimi Code usage in one place.
+A macOS tool that shows Claude, Codex, and Kimi Code usage in one place. One
+shared data layer (`core/`) drives two frontends: an
+[Übersicht](https://tracesof.net/uebersicht/) **desktop widget** and a
+**Touch Bar** readout.
 
 ![组件预览 / Widget preview](docs/widget-preview.svg)
+
+## 项目结构 / Layout
+
+```text
+core/          共享数据层（取数逻辑 + 测试）/ shared data layer (fetchers + tests)
+usage-widget/  Übersicht 桌面组件 / Übersicht desktop widget
+touchbar/      Touch Bar 组件（Swift）/ Touch Bar frontend (Swift)
+```
+
+两个前端都消费 `core/fetch_usage.py` 输出的同一份 JSON；取数只读、不刷新令牌。
+Both frontends consume the same JSON from `core/fetch_usage.py`; fetching is
+read-only and never refreshes tokens.
 
 ## 功能 / Features
 
@@ -95,6 +110,20 @@ location:
 ```text
 ~/Library/Application Support/Übersicht/widgets/usage-widget/
 ```
+
+### Touch Bar 组件 / Touch Bar frontend
+
+需要带 Touch Bar 的 Mac。编译并设为登录项：
+Requires a Mac with a Touch Bar. Build and register as a login item:
+
+```bash
+cd ai-agent-usage-widget/touchbar
+bash install.sh
+```
+
+小格显示用量最高的窗口，点一下展开整条详情。详见 [touchbar/README.md](touchbar/README.md)。
+The tray cell shows the most-used window; tap to expand the full readout. See
+[touchbar/README.md](touchbar/README.md).
 
 ## 首次使用 / First Use
 
