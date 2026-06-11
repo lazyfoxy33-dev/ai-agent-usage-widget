@@ -18,7 +18,10 @@ __pycache__/
 *.pem
 *.p12
 *.jsonl
-!usage-widget/tests/fixtures/*.jsonl
+!core/tests/fixtures/*.jsonl
 
 # macOS
 .DS_Store
+
+# Touch Bar build artifact
+touchbar/QuotaBar.app/
