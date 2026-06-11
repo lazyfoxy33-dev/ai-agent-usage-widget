@@ -163,7 +163,7 @@ const claudeGlyph = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><g stroke="#D97757" strokeWidth="2.1" strokeLinecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" /></g></svg>
 );
 const codexGlyph = (
-  <img src="/usage-widget/assets/codex-app.png" width="27" height="27" alt="Codex" style={{ objectFit: "contain", flex: "none" }} />
+  <img src="/usage-widget/assets/codex-app.png" width="27" height="27" alt="Codex" style={{ objectFit: "contain", borderRadius: 8, overflow: "hidden", WebkitMaskImage: "-webkit-radial-gradient(white, black)", flex: "none" }} />
 );
 const kimiGlyph = (
   <img src="/usage-widget/assets/kimi-code.png" width="27" height="27" alt="Kimi Code" style={{ objectFit: "contain", borderRadius: 7, flex: "none" }} />

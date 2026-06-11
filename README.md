@@ -16,8 +16,10 @@ Claude, Codex, and Kimi Code usage in one place.
 - Providers fail independently, so one error never hides the other panels
 - 旧数据状态提示，避免把缓存或过期快照误认为实时数据
 - Stale-data indicators prevent cached or expired snapshots from appearing live
-- 每 60 秒自动刷新，固定在桌面右下角
-- Automatic 60-second refresh, anchored to the desktop bottom-right corner
+- 每 60 秒检查数据，成功响应最多缓存五分钟
+- Checks data every 60 seconds and caches successful responses for five minutes
+- 固定在桌面右下角
+- Anchored to the desktop bottom-right corner
 
 ## 工作方式 / How It Works
 
@@ -37,10 +39,16 @@ Claude, Codex, and Kimi Code usage in one place.
   official `https://api.kimi.com/coding/v1/usages` endpoint. It never reads
   browser cookies or refreshes OAuth tokens.
 
-Claude 和 Kimi 成功响应缓存五分钟以减少请求；Codex 快照会检查重置时间。
+组件每 60 秒执行一次，但 Claude 和 Kimi 的成功响应会缓存五分钟，因此正常情况
+下最多每五分钟请求一次新用量。缓存过期后会在下一次 60 秒周期请求；若接口失败
+或限流，会继续显示最后一次成功缓存并标记为旧数据。Codex 快照会检查重置时间。
 
-Successful Claude and Kimi responses are cached for five minutes. Codex
-snapshots are checked against their reset times.
+The widget runs every 60 seconds, but successful Claude and Kimi responses are
+cached for five minutes, so fresh usage is normally requested at most once
+every five minutes. After expiry, the next 60-second cycle makes a request. If
+the endpoint fails or rate-limits the request, the last successful cache stays
+visible and is marked stale. Codex snapshots are checked against their reset
+times.
 
 ## 要求 / Requirements
 

@@ -13,11 +13,14 @@ provider setup, and troubleshooting.
 bash install.sh
 ```
 
-启动 Übersicht 并在菜单中启用 `usage-widget`。数据每 60 秒自动刷新；需要立即
-重载时，关闭再启用该组件。
+启动 Übersicht 并在菜单中启用 `usage-widget`。组件每 60 秒运行一次，Claude
+和 Kimi 的成功响应缓存五分钟；接口失败时会显示并标记最后一次成功缓存。需要
+立即重载时，关闭再启用该组件。
 
-Start Übersicht and enable `usage-widget` from its menu. Data refreshes every
-60 seconds; disable and re-enable it for an immediate reload.
+Start Übersicht and enable `usage-widget` from its menu. The widget runs every
+60 seconds; successful Claude and Kimi responses are cached for five minutes.
+If an endpoint fails, the last successful cache remains visible and is marked
+stale. Disable and re-enable it for an immediate reload.
 
 ## 测试 / Test
 

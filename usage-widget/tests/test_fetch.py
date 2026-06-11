@@ -5,6 +5,16 @@ import fetch_usage
 
 
 class TestFetch(unittest.TestCase):
+    def test_provider_success_cache_is_five_minutes(self):
+        with mock.patch.object(fetch_usage.cache, "read", return_value={"ok": True}) as read:
+            fetch_usage.claude_with_cache()
+            read.assert_called_once_with(
+                fetch_usage.CACHE_PATH,
+                ttl=fetch_usage.CACHE_TTL,
+            )
+
+        self.assertEqual(fetch_usage.CACHE_TTL, 300)
+
     def test_combined_json_shape(self):
         codex_res = {"ok": True, "five_h": {"pct": 7, "resets_at": 1},
                      "weekly": {"pct": 22, "resets_at": 2}}

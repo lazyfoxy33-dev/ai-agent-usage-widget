@@ -26,6 +26,14 @@ class TestWidgetSource(unittest.TestCase):
         self.assertNotIn('aria-label="codex-cloud"', self.source)
         self.assertNotIn("#19C37D", self.source)
 
+    def test_codex_icon_uses_apple_style_continuous_corners(self):
+        self.assertIn('borderRadius: 8', self.source)
+        self.assertIn('overflow: "hidden"', self.source)
+        self.assertIn(
+            'WebkitMaskImage: "-webkit-radial-gradient(white, black)"',
+            self.source,
+        )
+
     def test_kimi_uses_official_console_palette_and_logo(self):
         self.assertIn('const KM = { accent: "#1478FF"', self.source)
         self.assertIn('soft: "#252A33"', self.source)
