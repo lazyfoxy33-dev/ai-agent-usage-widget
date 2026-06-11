@@ -6,7 +6,7 @@
 A compact macOS [Übersicht](https://tracesof.net/uebersicht/) widget that shows
 Claude, Codex, and Kimi Code usage in one place.
 
-![组件预览 / Widget preview](docs/widget-preview.jpg)
+![组件预览 / Widget preview](docs/widget-preview.svg)
 
 ## 功能 / Features
 

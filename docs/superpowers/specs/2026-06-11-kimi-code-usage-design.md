@@ -119,8 +119,8 @@ The repository includes local copies of:
 - The complete Codex App cloud icon extracted from the installed Codex App
 
 The installer copies these assets into the installed widget directory. The
-renderer references local relative asset paths, so no network request is
-needed to draw either logo.
+renderer references the widget server's local `/usage-widget/assets/` URLs, so
+no external network request is needed to draw either logo.
 
 The Codex icon uses an image element with proportional sizing and inset space.
 It replaces the hand-drawn SVG that currently exceeds its view box and clips

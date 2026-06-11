@@ -21,7 +21,7 @@ class TestWidgetSource(unittest.TestCase):
         self.assertIn('accent: "#6676FF"', self.source)
         self.assertIn('soft: "#A78BFA"', self.source)
         self.assertIn("codexAccentGradient", self.source)
-        self.assertIn('src="./assets/codex-app.png"', self.source)
+        self.assertIn('src="/usage-widget/assets/codex-app.png"', self.source)
         self.assertIn('objectFit: "contain"', self.source)
         self.assertNotIn('aria-label="codex-cloud"', self.source)
         self.assertNotIn("#19C37D", self.source)
@@ -29,7 +29,7 @@ class TestWidgetSource(unittest.TestCase):
     def test_kimi_uses_official_console_palette_and_logo(self):
         self.assertIn('const KM = { accent: "#1478FF"', self.source)
         self.assertIn('soft: "#252A33"', self.source)
-        self.assertIn('src="./assets/kimi-code.png"', self.source)
+        self.assertIn('src="/usage-widget/assets/kimi-code.png"', self.source)
         self.assertIn('panel("Kimi Code"', self.source)
         self.assertIn("data.kimi", self.source)
 

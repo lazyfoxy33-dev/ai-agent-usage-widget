@@ -19,6 +19,12 @@ class TestInstall(unittest.TestCase):
         self.assertIn('rm -rf "$DEST/assets"', source)
         self.assertIn('cp -R "$SRC/assets" "$DEST/"', source)
 
+    def test_installer_removes_obsolete_refresh_script(self):
+        with open(INSTALL) as f:
+            source = f.read()
+
+        self.assertIn('rm -f "$DEST/codex-refresh.sh"', source)
+
 
 if __name__ == "__main__":
     unittest.main()
