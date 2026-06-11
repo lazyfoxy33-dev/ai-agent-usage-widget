@@ -18,10 +18,13 @@
 
 ```bash
 git clone https://github.com/lazyfoxy33-dev/ai-agent-usage-widget.git
-cd ai-agent-usage-widget/usage-widget
-python3 -m unittest discover -v
+cd ai-agent-usage-widget/core
+python3 -m unittest discover -v   # 数据层测试 / data-layer tests
 python3 fetch_usage.py
 ```
+
+组件测试在 `usage-widget/` 下：`cd usage-widget && python3 -m unittest discover -v`。
+Widget tests live under `usage-widget/`: `cd usage-widget && python3 -m unittest discover -v`.
 
 `fetch_usage.py` 会读取本机提供商状态。分享输出前请检查并清理隐私信息。
 

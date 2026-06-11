@@ -231,7 +231,7 @@ Read [SECURITY.md](SECURITY.md) before reporting a security issue.
 直接检查数据源 / Check the data source directly:
 
 ```bash
-cd usage-widget
+cd core
 python3 fetch_usage.py
 ```
 
@@ -284,8 +284,8 @@ rm -rf "$HOME/.cache/usage-widget"
 ## 开发 / Development
 
 ```bash
-cd usage-widget
-python3 -m unittest discover -v
+cd core && python3 -m unittest discover -v          # 数据层 / data layer
+cd usage-widget && python3 -m unittest discover -v  # 桌面组件 / widget
 ```
 
 贡献说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
