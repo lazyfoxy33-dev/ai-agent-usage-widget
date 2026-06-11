@@ -1,0 +1,26 @@
+name: Feature request
+description: Suggest an improvement or a new provider integration
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What problem would this feature solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Credential and API considerations
+      description: Explain how the feature avoids storing, printing, or refreshing credentials.
+    validations:
+      required: true

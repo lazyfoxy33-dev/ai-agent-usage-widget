@@ -1,0 +1,24 @@
+# Work records (本地工作记录，不入库)
+.work-records/
+
+# Brainstorm visual companion scratch
+.superpowers/
+
+# Python
+__pycache__/
+*.pyc
+
+# Local cache produced by the widget
+.cache/
+
+# Local credentials, sessions, and environment files
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.jsonl
+!usage-widget/tests/fixtures/*.jsonl
+
+# macOS
+.DS_Store
