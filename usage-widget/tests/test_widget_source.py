@@ -21,8 +21,21 @@ class TestWidgetSource(unittest.TestCase):
         self.assertIn('accent: "#6676FF"', self.source)
         self.assertIn('soft: "#A78BFA"', self.source)
         self.assertIn("codexAccentGradient", self.source)
-        self.assertIn("codex-cloud", self.source)
+        self.assertIn('src="./assets/codex-app.png"', self.source)
+        self.assertIn('objectFit: "contain"', self.source)
+        self.assertNotIn('aria-label="codex-cloud"', self.source)
         self.assertNotIn("#19C37D", self.source)
+
+    def test_kimi_uses_official_console_palette_and_logo(self):
+        self.assertIn('const KM = { accent: "#1478FF"', self.source)
+        self.assertIn('soft: "#252A33"', self.source)
+        self.assertIn('src="./assets/kimi-code.png"', self.source)
+        self.assertIn('panel("Kimi Code"', self.source)
+        self.assertIn("data.kimi", self.source)
+
+    def test_cached_provider_data_is_visibly_marked(self):
+        self.assertIn('data.reason === "stale"', self.source)
+        self.assertIn("缓存数据", self.source)
 
     def test_widget_is_anchored_to_bottom_right(self):
         self.assertIn("right: 40px; bottom: 40px;", self.source)

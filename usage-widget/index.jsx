@@ -4,6 +4,7 @@ export const refreshFrequency = 60000;
 
 const CL = { accent: "#D97757", soft: "#E3A77F", ink: "#26231F", sub: "#9A9286", track: "rgba(38,35,31,.09)" };
 const CX = { accent: "#6676FF", soft: "#A78BFA", ink: "#ECECEC", sub: "#888894", track: "rgba(255,255,255,.10)", gradient: true };
+const KM = { accent: "#1478FF", soft: "#252A33", ink: "#17181C", sub: "#737984", track: "rgba(20,24,30,.09)" };
 
 export const className = `
   right: 40px; bottom: 40px;
@@ -62,17 +63,30 @@ function ring(pal, fivePct, weekPct) {
   );
 }
 
+function providerMessage(name, data) {
+  const reason = data && data.reason;
+  if (name === "Kimi Code") {
+    if (reason === "expired") return "登录态过期 · 去 Kimi CLI 重新登录";
+    if (reason === "no_data") return "未登录 · 先在 Kimi CLI 完成登录";
+    return "获取失败 · 可前往 Kimi 控制台查看";
+  }
+  if (reason === "expired") return "登录态过期 · 去 Claude Code 重新登录";
+  return "暂无数据";
+}
+
 function panel(name, glyph, pal, bg, data) {
   if (!data || !data.ok) {
-    const msg = data && data.reason === "expired" ? "登录态过期 · 去 Claude Code 重新登录"
-              : data && data.reason === "stale" ? "数据较旧" : "暂无数据";
+    const msg = providerMessage(name, data);
     return (
       <div style={{ padding: "17px 18px", background: bg, color: pal.sub, fontSize: 12 }}>
-        <strong style={{ color: pal.ink, fontSize: 15 }}>{name}</strong>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {glyph}<strong style={{ color: pal.ink, fontSize: 15 }}>{name}</strong>
+        </div>
         <div style={{ marginTop: 8 }}>{msg}</div>
       </div>
     );
   }
+  const cached = data.reason === "stale";
   const row = (color, label, pct, resetsAt) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
@@ -87,7 +101,10 @@ function panel(name, glyph, pal, bg, data) {
     <div style={{ padding: "17px 18px 16px", display: "flex", alignItems: "center", gap: 17, background: bg, color: pal.ink }}>
       {ring(pal, data.five_h.pct, data.weekly.pct)}
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{glyph}<span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span></div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{glyph}<span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span></div>
+          {cached && <span style={{ fontSize: 9.5, color: pal.sub, marginLeft: 32 }}>缓存数据 · 等待下次刷新</span>}
+        </div>
         {row(pal.accent, "5 小时", data.five_h.pct, data.five_h.resets_at)}
         {row(pal.soft, "本周", data.weekly.pct, data.weekly.resets_at)}
       </div>
@@ -97,11 +114,12 @@ function panel(name, glyph, pal, bg, data) {
 
 function codexPanel(glyph, pal, bg, data) {
   if (!data || !data.ok) {
-    const msg = data && data.reason === "expired" ? "登录态过期 · 去 Claude Code 重新登录"
-              : data && data.reason === "stale" ? "数据较旧" : "暂无数据";
+    const msg = data && data.reason === "stale" ? "数据较旧" : "暂无数据 · 先使用一次 Codex";
     return (
       <div style={{ padding: "17px 18px", background: bg, color: pal.sub, fontSize: 12 }}>
-        <strong style={{ color: pal.ink, fontSize: 15 }}>Codex</strong>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {glyph}<strong style={{ color: pal.ink, fontSize: 15 }}>Codex</strong>
+        </div>
         <div style={{ marginTop: 8 }}>{msg}</div>
       </div>
     );
@@ -145,18 +163,10 @@ const claudeGlyph = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><g stroke="#D97757" strokeWidth="2.1" strokeLinecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" /></g></svg>
 );
 const codexGlyph = (
-  <svg width="27" height="27" viewBox="0 0 32 32" fill="none" aria-label="codex-cloud">
-    <defs>
-      <linearGradient id="codexIconGradient" x1="16" y1="5" x2="16" y2="27" gradientUnits="userSpaceOnUse">
-        <stop offset="0" stopColor="#B79CFF" />
-        <stop offset=".5" stopColor="#6C82FF" />
-        <stop offset="1" stopColor="#3045FF" />
-      </linearGradient>
-    </defs>
-    <rect x="1" y="1" width="30" height="30" rx="8" fill="#F8F8FB" />
-    <path d="M10.3 24.7c-3.2 0-5.8-2.4-5.8-5.4 0-2.2 1.4-4.1 3.4-4.9-.1-.4-.2-.9-.2-1.3 0-3 2.6-5.4 5.8-5.4 1 0 1.9.2 2.7.6A6.6 6.6 0 0 1 21 6.4c3.4 0 6.1 2.5 6.1 5.6 0 .5-.1 1-.2 1.5 1.6 1 2.6 2.7 2.6 4.6 0 3.1-2.7 5.7-6 5.7-.7 1.3-2.2 2.2-3.9 2.2-1.1 0-2.1-.4-2.9-1.1-.8.5-1.8.8-2.8.8-1.4 0-2.6-.4-3.6-1Z" fill="url(#codexIconGradient)" />
-    <path d="m10.8 13 3.4 4.1-3.4 4.1M18.2 21.2h5.1" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
+  <img src="./assets/codex-app.png" width="27" height="27" alt="Codex" style={{ objectFit: "contain", flex: "none" }} />
+);
+const kimiGlyph = (
+  <img src="./assets/kimi-code.png" width="27" height="27" alt="Kimi Code" style={{ objectFit: "contain", borderRadius: 7, flex: "none" }} />
 );
 
 export const render = ({ output }) => {
@@ -167,6 +177,8 @@ export const render = ({ output }) => {
       {panel("Claude", claudeGlyph, CL, "linear-gradient(180deg,#FAF9F5,#F0EEE6)", data.claude)}
       <div style={{ height: 1, background: "rgba(0,0,0,.06)" }} />
       {codexPanel(codexGlyph, CX, "linear-gradient(180deg,#17171A,#0E0E10)", data.codex)}
+      <div style={{ height: 1, background: "rgba(0,0,0,.08)" }} />
+      {panel("Kimi Code", kimiGlyph, KM, "linear-gradient(180deg,#FBFBFC,#F1F3F7)", data.kimi)}
     </div>
   );
 };
