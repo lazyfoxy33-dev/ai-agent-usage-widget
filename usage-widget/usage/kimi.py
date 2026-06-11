@@ -15,17 +15,36 @@ class KimiAuthError(RuntimeError):
 
 
 def credentials_path():
-    share_dir = os.environ.get("KIMI_SHARE_DIR") or os.path.expanduser("~/.kimi")
-    return os.path.join(share_dir, "credentials", "kimi-code.json")
+    return credential_paths()[0]
 
 
-def read_credentials(path=None):
+def credential_paths():
+    current_home = os.environ.get("KIMI_CODE_HOME") or os.path.expanduser("~/.kimi-code")
+    legacy_home = os.environ.get("KIMI_SHARE_DIR") or os.path.expanduser("~/.kimi")
+    paths = [
+        os.path.join(current_home, "credentials", "kimi-code.json"),
+        os.path.join(legacy_home, "credentials", "kimi-code.json"),
+    ]
+    return list(dict.fromkeys(paths))
+
+
+def _read_credentials_file(path):
     try:
-        with open(path or credentials_path()) as f:
+        with open(path) as f:
             data = json.load(f)
         return data if isinstance(data, dict) else None
     except (OSError, ValueError):
         return None
+
+
+def read_credentials(path=None):
+    if path is not None:
+        return _read_credentials_file(path)
+    for candidate in credential_paths():
+        data = _read_credentials_file(candidate)
+        if data is not None:
+            return data
+    return None
 
 
 def is_expired(credentials, now=None):

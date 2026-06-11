@@ -10,20 +10,45 @@ FIXTURE = os.path.join(os.path.dirname(__file__), "fixtures", "kimi_usage.json")
 
 
 class TestKimiCredentials(unittest.TestCase):
-    def test_credentials_path_honors_share_dir(self):
-        with mock.patch.dict(os.environ, {"KIMI_SHARE_DIR": "/tmp/kimi-share"}):
+    def test_credentials_path_honors_kimi_code_home(self):
+        with mock.patch.dict(os.environ, {"KIMI_CODE_HOME": "/tmp/kimi-code"}):
             self.assertEqual(
                 kimi.credentials_path(),
-                "/tmp/kimi-share/credentials/kimi-code.json",
+                "/tmp/kimi-code/credentials/kimi-code.json",
             )
 
-    def test_credentials_path_defaults_to_home_kimi(self):
+    def test_credentials_path_defaults_to_home_kimi_code(self):
         with mock.patch.dict(os.environ, {}, clear=True), \
-             mock.patch.object(kimi.os.path, "expanduser", return_value="/home/me/.kimi"):
+             mock.patch.object(kimi.os.path, "expanduser",
+                               side_effect=lambda path: path.replace("~", "/home/me")):
             self.assertEqual(
                 kimi.credentials_path(),
-                "/home/me/.kimi/credentials/kimi-code.json",
+                "/home/me/.kimi-code/credentials/kimi-code.json",
             )
+
+    def test_credential_paths_include_legacy_kimi_cli_location(self):
+        with mock.patch.dict(os.environ, {"KIMI_SHARE_DIR": "/tmp/legacy"}, clear=True), \
+             mock.patch.object(kimi.os.path, "expanduser",
+                               side_effect=lambda path: path.replace("~", "/home/me")):
+            self.assertEqual(
+                kimi.credential_paths(),
+                [
+                    "/home/me/.kimi-code/credentials/kimi-code.json",
+                    "/tmp/legacy/credentials/kimi-code.json",
+                ],
+            )
+
+    def test_read_credentials_falls_back_to_legacy_location(self):
+        valid = mock.mock_open(read_data='{"access_token":"legacy","expires_at":2000}')
+        with mock.patch.object(
+            kimi,
+            "credential_paths",
+            return_value=["/new/kimi-code.json", "/old/kimi-code.json"],
+        ), mock.patch("builtins.open", valid) as opened:
+            opened.side_effect = [FileNotFoundError, valid.return_value]
+            result = kimi.read_credentials()
+
+        self.assertEqual(result["access_token"], "legacy")
 
     def test_read_credentials_returns_mapping(self):
         with mock.patch("builtins.open", mock.mock_open(
