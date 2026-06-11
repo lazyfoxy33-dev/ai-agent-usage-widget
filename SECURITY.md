@@ -1,30 +1,44 @@
-# Security Policy
+# Security Policy / 安全策略
 
-## Supported Version
+## 支持版本 / Supported Version
+
+安全修复应用于默认分支上的最新版本。
 
 Security fixes are applied to the latest version on the default branch.
 
-## Reporting A Vulnerability
+## 报告漏洞 / Reporting A Vulnerability
 
-Please use GitHub's private vulnerability reporting feature for this
-repository. Do not open a public issue containing credentials, tokens, session
-contents, personal paths, or other sensitive information.
+请使用本仓库的 GitHub 私密漏洞报告功能。不要在公开 Issue 中粘贴凭据、令牌、
+会话内容、个人路径或其他敏感信息。
 
-Include:
+Use GitHub private vulnerability reporting for this repository. Do not put
+credentials, tokens, session contents, personal paths, or other sensitive
+information in a public issue.
 
-- A description of the issue and its impact
-- Reproduction steps
-- The affected files or versions
-- A suggested fix, if available
+请包含 / Include:
 
-## Credential Handling
+- 问题和影响说明 / Description and impact
+- 复现步骤 / Reproduction steps
+- 受影响文件或版本 / Affected files or versions
+- 可行时提供修复建议 / Suggested fix when available
 
-This project must:
+## 凭据处理 / Credential Handling
 
-- Read provider credentials only when required at runtime
-- Never print, cache, transmit to third parties, or commit credentials
-- Never refresh or rotate provider OAuth tokens
-- Keep cached data limited to usage percentages and reset timestamps
+本项目必须 / This project must:
 
-If a token is accidentally exposed, revoke it through the relevant provider
-and remove it from Git history before publishing any replacement.
+- 仅在运行时按需读取提供商凭据。
+- Read provider credentials only when required at runtime.
+- 不打印、缓存、提交凭据，也不发送给第三方。
+- Never print, cache, commit, or transmit credentials to third parties.
+- 不刷新或轮换提供商 OAuth 令牌。
+- Never refresh or rotate provider OAuth tokens.
+- 不读取浏览器 Cookie 或密码存储。
+- Never read browser cookies or password stores.
+- 缓存只包含用量百分比与重置时间。
+- Keep cache files limited to usage percentages and reset timestamps.
+
+如果令牌意外泄露，请通过对应提供商撤销令牌，并在发布替代版本前从 Git 历史中
+彻底移除。
+
+If a token is exposed, revoke it through the provider and remove it from Git
+history before publishing a replacement.

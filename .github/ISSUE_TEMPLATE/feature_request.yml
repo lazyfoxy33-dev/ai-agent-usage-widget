@@ -1,5 +1,5 @@
-name: Feature request
-description: Suggest an improvement or a new provider integration
+name: Feature request / 功能建议
+description: Suggest an improvement or provider integration / 建议改进或新的提供商集成
 title: "[Feature]: "
 labels:
   - enhancement
@@ -7,20 +7,20 @@ body:
   - type: textarea
     id: problem
     attributes:
-      label: Problem
-      description: What problem would this feature solve?
+      label: Problem / 问题
+      description: What problem would this solve? / 这个功能解决什么问题？
     validations:
       required: true
   - type: textarea
     id: proposal
     attributes:
-      label: Proposed solution
+      label: Proposed solution / 建议方案
     validations:
       required: true
   - type: textarea
     id: security
     attributes:
-      label: Credential and API considerations
-      description: Explain how the feature avoids storing, printing, or refreshing credentials.
+      label: Credential and API considerations / 凭据与 API 考量
+      description: Explain how credentials remain unreadable, unprinted, and unrefreshed. / 请说明如何避免存储、打印或刷新凭据。
     validations:
       required: true

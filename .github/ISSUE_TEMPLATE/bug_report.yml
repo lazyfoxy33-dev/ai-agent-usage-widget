@@ -1,5 +1,5 @@
-name: Bug report
-description: Report a reproducible problem with the widget
+name: Bug report / Bug 报告
+description: Report a reproducible widget problem / 报告可复现的组件问题
 title: "[Bug]: "
 labels:
   - bug
@@ -8,17 +8,18 @@ body:
     attributes:
       value: |
         Do not include tokens, Keychain exports, session files, or personal paths.
+        请勿包含令牌、Keychain 导出、会话文件或个人路径。
   - type: textarea
     id: description
     attributes:
-      label: Description
-      description: What happened, and what did you expect?
+      label: Description / 问题描述
+      description: What happened and what did you expect? / 实际发生了什么？预期是什么？
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Reproduction steps
+      label: Reproduction steps / 复现步骤
       placeholder: |
         1. Install...
         2. Run...
@@ -28,38 +29,40 @@ body:
   - type: input
     id: macos
     attributes:
-      label: macOS version
+      label: macOS version / macOS 版本
     validations:
       required: true
   - type: input
     id: ubersicht
     attributes:
-      label: Übersicht version
+      label: Übersicht version / Übersicht 版本
     validations:
       required: true
   - type: dropdown
     id: provider
     attributes:
-      label: Affected provider
+      label: Affected provider / 受影响的提供商
       options:
         - Claude
         - Codex
-        - Both
-        - Widget UI only
+        - Kimi Code
+        - Multiple providers / 多个提供商
+        - Widget UI only / 仅组件界面
     validations:
       required: true
   - type: textarea
     id: output
     attributes:
-      label: Sanitized output
+      label: Sanitized output / 已清理的输出
       description: |
         Optional. Remove tokens, usernames, personal paths, and session contents
         before pasting output from fetch_usage.py.
+        可选。粘贴 fetch_usage.py 输出前，请移除令牌、用户名、个人路径和会话内容。
       render: shell
   - type: checkboxes
     id: safety
     attributes:
-      label: Privacy check
+      label: Privacy check / 隐私检查
       options:
-        - label: I have removed credentials and personal information.
+        - label: I have removed credentials and personal information. / 我已移除凭据和个人信息。
           required: true
