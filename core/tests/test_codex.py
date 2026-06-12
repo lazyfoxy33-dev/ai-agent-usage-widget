@@ -54,6 +54,32 @@ class TestCodex(unittest.TestCase):
         self.assertFalse(result["ok"])
         self.assertEqual(result["reason"], "no_data")
 
+    def test_skips_credits_only_events_with_null_windows(self):
+        """Newer Codex CLIs interleave credits-only events (limit_id
+        "premium") whose primary/secondary are null. A later null event must
+        not mask the real windowed usage from a "codex" event."""
+        windowed = (
+            '{"timestamp":"2026-06-12T11:00:00.000Z","type":"event_msg",'
+            '"payload":{"type":"token_count","rate_limits":{"limit_id":"codex",'
+            '"primary":{"used_percent":82.0,"window_minutes":300,"resets_at":9999},'
+            '"secondary":{"used_percent":50.0,"window_minutes":10080,"resets_at":9999}}}}\n'
+        )
+        credits_only = (
+            '{"timestamp":"2026-06-12T11:57:31.000Z","type":"event_msg",'
+            '"payload":{"type":"token_count","rate_limits":{"limit_id":"premium",'
+            '"primary":null,"secondary":null,'
+            '"credits":{"has_credits":false,"unlimited":false,"balance":"0"}}}}\n'
+        )
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "session.jsonl")
+            with open(path, "w") as f:
+                f.write(windowed)
+                f.write(credits_only)
+            result = codex.parse_codex(session_dirs=[tmpdir], days=3650, now=1000)
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["five_h"]["pct"], 82)
+        self.assertEqual(result["weekly"]["pct"], 50)
+
     # --- Freshness / staleness tests ---
 
     def test_as_of_equals_latest_event_timestamp(self):

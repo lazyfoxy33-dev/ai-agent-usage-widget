@@ -86,15 +86,21 @@ def parse_codex(session_dirs=None, days=14, now=None):
     dirs = session_dirs if session_dirs is not None else DEFAULT_DIRS
     latest = None
     for ts, rl in _iter_rate_limit_events(dirs, days=days):
+        five = _window(rl, 300)
+        week = _window(rl, 10080)
+        # Newer Codex CLIs interleave credits-only rate_limit events
+        # (e.g. limit_id "premium") whose primary/secondary are null. Skip any
+        # event that lacks both time-windowed limits so a later null event does
+        # not mask the real windowed usage from a "codex" event.
+        if not five or not week:
+            continue
+        if five.get("used_percent") is None or week.get("used_percent") is None:
+            continue
         if latest is None or ts > latest[0]:
-            latest = (ts, rl)
+            latest = (ts, five, week)
     if latest is None:
         return {"ok": False, "reason": "no_data"}
-    latest_ts, rl = latest
-    five = _window(rl, 300)
-    week = _window(rl, 10080)
-    if not five or not week:
-        return {"ok": False, "reason": "no_data"}
+    latest_ts, five, week = latest
     # as_of: unix timestamp of the latest event's datetime
     as_of = int(latest_ts.timestamp())
     return {
