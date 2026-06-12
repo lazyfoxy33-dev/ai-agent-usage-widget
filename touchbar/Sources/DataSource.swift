@@ -2,8 +2,8 @@ import Foundation
 
 // The Touch Bar app shares ONE data layer with the Übersicht widget: the Python
 // package under `core/` (fetch_usage.py + usage/). We never re-implement provider
-// fetching in Swift — we run the exact same script and read its JSON. Credentials
-// stay read-only and there is no token refresh, matching the project's policy.
+// fetching in Swift — we run the exact same script and read its JSON. Credential
+// lifecycle policy remains centralized in the shared Python layer.
 //
 // `core/` is copied into the app bundle at build time (Contents/Resources/core).
 
@@ -19,10 +19,12 @@ struct Window {
 /// One provider's snapshot, mirroring fetch_usage.py's JSON.
 struct Provider {
     var ok: Bool
-    var reason: String?      // "expired" | "error" | "no_data" | "stale" | nil
+    var reason: String?      // "expired" | "error" | "no_data" | "stale" | "rate_limited" | nil
     var fiveH: Window?
     var weekly: Window?
     var asOf: Date?          // Codex: timestamp of the latest event used
+    var live: Bool?          // nil keeps compatibility with older payloads
+    var fetchedAt: Date?
 }
 
 struct Usage {
@@ -95,6 +97,10 @@ enum UsageSource {
         p.fiveH  = window(from: o["five_h"])
         p.weekly = window(from: o["weekly"])
         if let a = o["as_of"] as? Double { p.asOf = Date(timeIntervalSince1970: a) }
+        p.live = o["live"] as? Bool
+        if let f = o["fetched_at"] as? Double {
+            p.fetchedAt = Date(timeIntervalSince1970: f)
+        }
         return p
     }
 

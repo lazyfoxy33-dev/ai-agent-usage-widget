@@ -8,10 +8,17 @@
 - Open an issue before significant behavior or UI changes.
 - 保持提供商相互独立，单个失败不得破坏整个组件。
 - Keep providers independent so one failure cannot break the whole widget.
-- OAuth 续期仅在**续期后把新令牌原子写回**凭证（Keychain/凭证文件）时才允许，避免作废官方客户端登录；续期失败必须回退到过期态，绝不沿用旧值。
-- OAuth refresh is allowed only when the rotated token is **atomically written back**
-  to its store (Keychain/credential file), so the official client's login is never
-  invalidated; on refresh failure, fall back to an expired state and never reuse stale values.
+- Claude 与旧版 Kimi 凭据必须保持只读；当前 Kimi 续期必须复用官方锁、锁后重读
+  和原子写入协议。
+- Claude and legacy Kimi credentials must stay read-only. Current Kimi refresh
+  must reuse the official lock, post-lock re-read, and atomic-write protocol.
+- 其他 OAuth 续期只有在存在可共享的并发协议且轮换后的令牌能原子写回时才允许；
+  失败必须回退到过期态。
+- Other OAuth refresh is allowed only with a shared concurrency protocol and
+  atomic persistence of rotated tokens; failures must fall back to expired.
+- 任何主动模型请求必须默认关闭，并要求用户显式选择。
+- Any active model request must be disabled by default and require explicit
+  user opt-in.
 - 不得提交真实凭据、Keychain 导出、会话、缓存或机器专属路径。
 - Never commit real credentials, Keychain exports, sessions, caches, or
   machine-specific paths.
@@ -25,8 +32,9 @@ python3 -m unittest discover -v   # 数据层测试 / data-layer tests
 python3 fetch_usage.py
 ```
 
-组件测试在 `usage-widget/` 下：`cd usage-widget && python3 -m unittest discover -v`。
-Widget tests live under `usage-widget/`: `cd usage-widget && python3 -m unittest discover -v`.
+前端测试位于 `usage-widget/` 与 `touchbar/`，Touch Bar 改动还需运行 `./build.sh`。
+Frontend tests live under `usage-widget/` and `touchbar/`; Touch Bar changes
+must also run `./build.sh`.
 
 `fetch_usage.py` 会读取本机提供商状态。分享输出前请检查并清理隐私信息。
 

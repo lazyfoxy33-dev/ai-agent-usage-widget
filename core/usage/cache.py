@@ -23,16 +23,34 @@ def _load(path):
 
 def read(path, ttl, now=None):
     """Return cached data if younger than ttl seconds, else None."""
+    entry = read_entry(path, ttl, now=now)
+    return entry.get("data") if entry else None
+
+
+def read_entry(path, ttl, now=None):
+    """Return a fresh cache entry including its timestamp, else None."""
     now = time.time() if now is None else now
     blob = _load(path)
-    if not blob:
+    if not isinstance(blob, dict) or "data" not in blob:
         return None
-    if now - blob.get("ts", 0) > ttl:
+    try:
+        ts = float(blob["ts"])
+    except (KeyError, TypeError, ValueError):
         return None
-    return blob.get("data")
+    if now - ts > ttl:
+        return None
+    return {"ts": blob["ts"], "data": blob["data"]}
 
 
 def read_stale(path):
     """Return cached data regardless of age, else None."""
+    entry = read_stale_entry(path)
+    return entry.get("data") if entry else None
+
+
+def read_stale_entry(path):
+    """Return a cache entry including its timestamp regardless of age."""
     blob = _load(path)
-    return blob.get("data") if blob else None
+    if not isinstance(blob, dict) or "ts" not in blob or "data" not in blob:
+        return None
+    return {"ts": blob["ts"], "data": blob["data"]}

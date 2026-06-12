@@ -19,9 +19,10 @@ usage-widget/  Übersicht 桌面组件 / Übersicht desktop widget
 touchbar/      Touch Bar 组件（Swift）/ Touch Bar frontend (Swift)
 ```
 
-两个前端都消费 `core/fetch_usage.py` 输出的同一份 JSON；取数只读、不刷新令牌。
-Both frontends consume the same JSON from `core/fetch_usage.py`; fetching is
-read-only and never refreshes tokens.
+两个前端都消费 `core/fetch_usage.py` 输出的同一份 JSON，并共享相同的新鲜度与
+凭据处理策略。
+Both frontends consume the same JSON from `core/fetch_usage.py` and share the
+same freshness and credential-handling policy.
 
 ## 功能 / Features
 
@@ -44,15 +45,17 @@ read-only and never refreshes tokens.
   and calls Anthropic's usage endpoint. It never refreshes, stores, or prints
   the token.
 - **Codex：**读取本地 Codex 会话 JSONL 中最近一次模型响应附带的限额快照，
-  不访问凭据，也不发送模型请求。
+  默认不访问凭据或发送模型请求。用户可显式开启节流后的主动探测。
 - **Codex:** reads the latest rate-limit snapshot from local Codex session
-  JSONL files. It does not access credentials or make model requests.
+  JSONL files. By default it does not access credentials or make model
+  requests. Users may explicitly enable a throttled active probe.
 - **Kimi Code：**读取 Kimi Code CLI 的本地 OAuth 访问令牌，并调用官方
-  `https://api.kimi.com/coding/v1/usages` 接口。不会读取浏览器 Cookie，也不会
-  刷新 OAuth 令牌。
+  `https://api.kimi.com/coding/v1/usages` 接口。当前 CLI 凭据过期或被拒绝时，
+  组件使用 Kimi Code 官方锁与原子存储协议安全续期；旧版凭据保持只读。
 - **Kimi Code:** reads the local Kimi Code CLI OAuth access token and calls the
-  official `https://api.kimi.com/coding/v1/usages` endpoint. It never reads
-  browser cookies or refreshes OAuth tokens.
+  official `https://api.kimi.com/coding/v1/usages` endpoint. When current CLI
+  credentials expire or are rejected, it refreshes them under Kimi Code's
+  official lock and atomic-storage protocol. Legacy credentials stay read-only.
 
 组件每 60 秒执行一次，但 Claude 和 Kimi 的成功响应会缓存五分钟，因此正常情况
 下最多每五分钟请求一次新用量。缓存过期后会在下一次 60 秒周期请求；若接口失败
@@ -163,6 +166,28 @@ Use Codex at least once so it writes a session containing rate-limit data. The
 panel shows the latest local model-response snapshot and marks it stale after
 its reset time.
 
+可选：若希望长时间未使用 Codex 时也自动获取较新的快照，创建：
+
+Optional: to request a newer snapshot after Codex has been idle, create:
+
+```text
+~/.config/ai-agent-usage-widget/config.json
+```
+
+```json
+{
+  "codex_active_refresh": true,
+  "codex_refresh_interval_seconds": 1800
+}
+```
+
+这会按节流周期运行真实的 `codex exec` 请求，产生一条本地 session 并消耗少量
+额度。默认值为 `false`；最短间隔为 300 秒。
+
+This runs a real throttled `codex exec` request, creates a local session, and
+uses a small amount of quota. The default is `false`; the minimum interval is
+300 seconds.
+
 ### Kimi Code
 
 安装当前官方 [Kimi Code CLI](https://github.com/MoonshotAI/kimi-code)：
@@ -190,6 +215,14 @@ store credentials at `$KIMI_CODE_HOME/credentials/kimi-code.json` (default
 legacy Kimi CLI location under `$KIMI_SHARE_DIR` or
 `~/.kimi/credentials/kimi-code.json`.
 
+当前 `~/.kimi-code` 凭据需要续期时，组件与官方 CLI 共用
+`~/.kimi-code/oauth/kimi-code.lock`，锁后重读并原子写回。旧版 `~/.kimi`
+凭据不会被修改。
+
+When current `~/.kimi-code` credentials need refresh, the widget shares
+`~/.kimi-code/oauth/kimi-code.lock` with the official CLI, re-reads after
+locking, and writes atomically. Legacy `~/.kimi` credentials are never changed.
+
 若没有可用登录，组件只显示提示。可在
 [Kimi Code 控制台 / Kimi Code console](https://www.kimi.com/code/console?from=kfc_overview_topbar)
 手动查看，但组件不会抓取该网页或读取浏览器 Cookie。
@@ -202,17 +235,22 @@ browser cookies.
 ## 网络与代理 / Network And Proxy
 
 Claude 和 Kimi 请求遵循 `HTTPS_PROXY` 或 `https_proxy`。如果未设置，脚本会探测
-常见本地代理端口 `7897` 和 `7890`，否则由 `curl` 直连。Codex 只读本地文件，
-不使用网络。
+常见本地代理端口 `7897` 和 `7890`，否则由 `curl` 直连。Codex 默认只读本地
+文件；只有显式开启主动探测后才使用网络。
 
 Claude and Kimi requests honor `HTTPS_PROXY` or `https_proxy`. If neither is
 set, the script probes local ports `7897` and `7890`, then lets `curl` connect
-directly. Codex is local-only and uses no network.
+directly. Codex is local-only by default and uses the network only when active
+probing is explicitly enabled.
 
 ## 隐私与安全 / Privacy And Security
 
-- 凭据只在运行时从官方客户端存储位置读取。
-- Credentials are read only at runtime from official-client storage.
+- 凭据只在运行时从官方客户端存储位置读取；Claude 与旧版 Kimi 凭据保持只读。
+- Credentials are read at runtime from official-client storage; Claude and
+  legacy Kimi credentials stay read-only.
+- 当前 Kimi 凭据仅在官方锁内续期，并以 `0600` 权限原子写回。
+- Current Kimi credentials refresh only under the official lock and are
+  atomically written with `0600` permissions.
 - 令牌不会写入仓库、缓存、日志或命令行参数。
 - Tokens are never written to the repository, cache, logs, or process arguments.
 - Claude 用量只发送到 Anthropic；Kimi 用量只发送到 Kimi 官方 API。
@@ -251,6 +289,9 @@ fields. Review and sanitize it before posting publicly.
 - `kimi.reason = "expired"`: sign in again inside Kimi Code CLI.
 - `reason = "error"`：检查网络、`curl` 和代理设置。
 - `reason = "error"`: check network access, `curl`, and proxy settings.
+- `reason = "rate_limited"`：上游返回 HTTP 429，等待下一次自动刷新。
+- `reason = "rate_limited"`: the provider returned HTTP 429; wait for the next
+  automatic refresh.
 - `reason = "stale"`：正在显示上次缓存，等待下一次自动刷新。
 - `reason = "stale"`: cached data is displayed until a later refresh succeeds.
 
@@ -286,6 +327,7 @@ rm -rf "$HOME/.cache/usage-widget"
 ```bash
 cd core && python3 -m unittest discover -v          # 数据层 / data layer
 cd usage-widget && python3 -m unittest discover -v  # 桌面组件 / widget
+cd touchbar && python3 -m unittest discover -v && ./build.sh
 ```
 
 贡献说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
@@ -298,6 +340,8 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
 - The Claude OAuth usage endpoint is undocumented and may change.
 - Codex 依赖最近的本地会话快照，不是独立实时 API。
 - Codex depends on the latest local session snapshot, not a separate live API.
+- Codex 主动探测是可选真实请求，会消耗额度。
+- Codex active probing is an optional real request that consumes quota.
 - Kimi 接口和凭据格式由 Kimi Code CLI 管理，未来版本可能变化。
 - Kimi's endpoint and credential format are managed by Kimi Code CLI and may
   change.

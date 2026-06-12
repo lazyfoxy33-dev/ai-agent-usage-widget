@@ -94,3 +94,25 @@ class TestClaudeHttp(unittest.TestCase):
         self.assertEqual(cmd[:4], ["curl", "-q", "--config", "-"])
         self.assertIn("Authorization: Bearer " + token, run.call_args.kwargs["input"])
         self.assertEqual(result, {"ok": True})
+
+    def test_http_429_raises_rate_limit_error(self):
+        completed = mock.Mock(stdout='{"error":"limited"}\n__HTTP__429')
+        with mock.patch.object(claude, "_proxy", return_value=None), \
+             mock.patch.object(claude.subprocess, "run", return_value=completed):
+            with self.assertRaises(claude.ClaudeRateLimitError):
+                claude._http_get_usage("token")
+
+
+class TestClaudeFetch(unittest.TestCase):
+    def test_fetch_maps_rate_limit_separately(self):
+        creds = {"accessToken": "token", "expiresAt": 2_000_000}
+        with mock.patch.object(claude, "read_keychain_blob",
+                               return_value='{"claudeAiOauth":{}}'), \
+             mock.patch.object(claude, "parse_creds", return_value=creds), \
+             mock.patch.object(claude.time, "time", return_value=1000), \
+             mock.patch.object(claude, "_http_get_usage",
+                               side_effect=claude.ClaudeRateLimitError):
+            self.assertEqual(
+                claude.fetch_claude(),
+                {"ok": False, "reason": "rate_limited"},
+            )

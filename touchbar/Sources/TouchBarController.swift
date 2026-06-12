@@ -135,8 +135,14 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         var out: [(String, Window)] = []
         func add(_ tag: String, _ p: Provider) {
             guard p.ok else { return }
-            if let w = p.fiveH  { out.append((tag, w)) }
-            if let w = p.weekly { out.append((tag, w)) }
+            if var w = p.fiveH {
+                w.stale = w.stale || p.live == false
+                out.append((tag, w))
+            }
+            if var w = p.weekly {
+                w.stale = w.stale || p.live == false
+                out.append((tag, w))
+            }
         }
         add("C", usage.claude); add("X", usage.codex); add("K", usage.kimi)
         return out
@@ -186,7 +192,9 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         }
         s.append(seg("5h ", detailFont, dim));  s.append(pct(p.fiveH, accent(tag)))
         s.append(seg(" 7d ", detailFont, dim)); s.append(pct(p.weekly, soft(tag)))
-        if p.reason == "stale" { s.append(seg(" ·缓存", detailFont, dim)) }
+        if p.reason == "stale" || p.live == false {
+            s.append(seg(" ·缓存", detailFont, dim))
+        }
     }
 
     private func pct(_ w: Window?, _ base: NSColor) -> NSAttributedString {
@@ -205,6 +213,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     private func status(_ p: Provider) -> String {
         switch p.reason {
         case "expired": return "登录过期"
+        case "rate_limited": return "请求受限"
         case "no_data": return "无数据"
         case "loading": return "…"
         default:        return "获取失败"

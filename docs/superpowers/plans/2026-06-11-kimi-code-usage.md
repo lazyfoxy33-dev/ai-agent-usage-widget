@@ -1,5 +1,8 @@
 # Kimi Code Usage Implementation Plan / Kimi Code 用量实施计划
 
+> 已被 2026-06-12 数据源及时性计划取代；本文仅保留为历史记录。
+> Superseded by the 2026-06-12 data-source timeliness plan; retained for history.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use
 > superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use

@@ -1,6 +1,7 @@
 import os
 import tempfile
 import unittest
+from unittest import mock
 from usage import codex
 
 FIX = os.path.join(os.path.dirname(__file__), "fixtures")
@@ -74,3 +75,95 @@ class TestCodex(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertFalse(result["five_h"]["stale"])
         self.assertFalse(result["weekly"]["stale"])
+
+
+class TestCodexActiveRefresh(unittest.TestCase):
+    def test_default_config_never_starts_a_model_request(self):
+        with mock.patch.object(codex.subprocess, "Popen") as popen:
+            started = codex.maybe_active_refresh(
+                as_of=None,
+                settings={
+                    "codex_active_refresh": False,
+                    "codex_refresh_interval_seconds": 1800,
+                },
+            )
+
+        self.assertFalse(started)
+        popen.assert_not_called()
+
+    def test_explicit_opt_in_starts_read_only_background_probe(self):
+        with tempfile.TemporaryDirectory() as tmp, \
+             mock.patch.object(codex, "_codex_executable",
+                               return_value="codex"), \
+             mock.patch.object(codex.subprocess, "Popen") as popen:
+            started = codex.maybe_active_refresh(
+                as_of=1000,
+                now=3000,
+                settings={
+                    "codex_active_refresh": True,
+                    "codex_refresh_interval_seconds": 1800,
+                },
+                throttle_path=os.path.join(tmp, "refresh.json"),
+            )
+
+        self.assertTrue(started)
+        command = popen.call_args.args[0]
+        self.assertEqual(command[:2], ["codex", "exec"])
+        self.assertIn("read-only", command)
+        self.assertEqual(
+            popen.call_args.kwargs["stdout"],
+            codex.subprocess.DEVNULL,
+        )
+
+    def test_recent_session_skips_probe(self):
+        with mock.patch.object(codex.subprocess, "Popen") as popen:
+            started = codex.maybe_active_refresh(
+                as_of=2500,
+                now=3000,
+                settings={
+                    "codex_active_refresh": True,
+                    "codex_refresh_interval_seconds": 1800,
+                },
+            )
+
+        self.assertFalse(started)
+        popen.assert_not_called()
+
+    def test_throttle_prevents_duplicate_probe(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "refresh.json")
+            settings = {
+                "codex_active_refresh": True,
+                "codex_refresh_interval_seconds": 1800,
+            }
+            with mock.patch.object(codex.subprocess, "Popen") as popen:
+                first = codex.maybe_active_refresh(
+                    None, now=3000, settings=settings, throttle_path=path
+                )
+                second = codex.maybe_active_refresh(
+                    None, now=3001, settings=settings, throttle_path=path
+                )
+
+        self.assertTrue(first)
+        self.assertFalse(second)
+        self.assertEqual(popen.call_count, 1)
+
+    def test_missing_codex_binary_skips_without_claiming_throttle(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path = os.path.join(tmp, "refresh.json")
+            with mock.patch.object(codex, "_codex_executable",
+                                   return_value=None), \
+                 mock.patch.object(codex.subprocess, "Popen") as popen:
+                started = codex.maybe_active_refresh(
+                    None,
+                    now=3000,
+                    settings={
+                        "codex_active_refresh": True,
+                        "codex_refresh_interval_seconds": 1800,
+                    },
+                    throttle_path=path,
+                )
+
+        self.assertFalse(started)
+        self.assertFalse(os.path.exists(path))
+        popen.assert_not_called()

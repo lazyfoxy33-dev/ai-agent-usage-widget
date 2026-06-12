@@ -1,0 +1,73 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/blob/main/core/contract.schema.json",
+  "title": "AI Agent Usage Widget payload",
+  "type": "object",
+  "required": ["schema_version", "claude", "codex", "kimi"],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "claude": {
+      "$ref": "#/$defs/provider"
+    },
+    "codex": {
+      "$ref": "#/$defs/provider"
+    },
+    "kimi": {
+      "$ref": "#/$defs/provider"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "provider": {
+      "type": "object",
+      "required": ["ok", "fetched_at", "live"],
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "fetched_at": {
+          "type": ["integer", "null"]
+        },
+        "live": {
+          "type": "boolean"
+        },
+        "reason": {
+          "enum": ["expired", "error", "no_data", "stale", "rate_limited"]
+        },
+        "upstream_reason": {
+          "enum": ["expired", "error", "no_data", "rate_limited"]
+        },
+        "as_of": {
+          "type": "integer"
+        },
+        "five_h": {
+          "$ref": "#/$defs/window"
+        },
+        "weekly": {
+          "$ref": "#/$defs/window"
+        }
+      },
+      "additionalProperties": true
+    },
+    "window": {
+      "type": "object",
+      "required": ["pct", "resets_at"],
+      "properties": {
+        "pct": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "resets_at": {
+          "type": "integer"
+        },
+        "stale": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

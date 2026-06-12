@@ -11,6 +11,10 @@ USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 _PROXY_CANDIDATES = [("127.0.0.1", 7897), ("127.0.0.1", 7890)]
 
 
+class ClaudeRateLimitError(RuntimeError):
+    """The Anthropic usage API returned HTTP 429."""
+
+
 def read_keychain_blob():
     """Return raw JSON string from Keychain, or None."""
     try:
@@ -130,6 +134,8 @@ def _http_get_usage(token):
     else:
         raise RuntimeError(f"Unexpected curl output: {raw!r}")
     code = code.strip()
+    if code == "429":
+        raise ClaudeRateLimitError("HTTP 429")
     if code != "200":
         raise RuntimeError(f"HTTP {code}: {body[:200]}")
     return json.loads(body)
@@ -149,5 +155,7 @@ def fetch_claude():
     try:
         data = _http_get_usage(creds["accessToken"])
         return parse_claude_usage(data)
+    except ClaudeRateLimitError:
+        return {"ok": False, "reason": "rate_limited"}
     except Exception:
         return {"ok": False, "reason": "error"}
