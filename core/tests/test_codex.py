@@ -1,4 +1,5 @@
 import os
+import pathlib
 import tempfile
 import unittest
 from unittest import mock
@@ -78,6 +79,10 @@ class TestCodex(unittest.TestCase):
 
 
 class TestCodexActiveRefresh(unittest.TestCase):
+    def test_module_does_not_require_posix_fcntl(self):
+        source = pathlib.Path(codex.__file__).read_text()
+        self.assertNotIn("import fcntl", source)
+
     def test_default_config_never_starts_a_model_request(self):
         with mock.patch.object(codex.subprocess, "Popen") as popen:
             started = codex.maybe_active_refresh(

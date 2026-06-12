@@ -1,0 +1,68 @@
+name: QuotaWidget
+options:
+  bundleIdPrefix: dev.lazyfoxy
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    APP_GROUP_ID: group.dev.lazyfoxy.QuotaWidget
+    CODE_SIGN_STYLE: Automatic
+targets:
+  QuotaWidgetApp:
+    type: application
+    platform: macOS
+    sources:
+      - App
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.lazyfoxy.QuotaWidget
+        INFOPLIST_FILE: App/Info.plist
+        CODE_SIGN_ENTITLEMENTS: App/QuotaWidgetApp.entitlements
+    dependencies:
+      - target: QuotaWidgetExtension
+        embed: true
+    preBuildScripts:
+      - name: Bundle shared Python core
+        script: |
+          set -eu
+          DESTINATION="${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/core"
+          rm -rf "$DESTINATION"
+          mkdir -p "$DESTINATION"
+          ditto "${SRCROOT}/../core" "$DESTINATION"
+          find "$DESTINATION" -type d -name __pycache__ -prune -exec rm -rf {} +
+          find "$DESTINATION" -type f -name '*.pyc' -delete
+        basedOnDependencyAnalysis: false
+  QuotaWidgetExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - Widget
+      - Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.lazyfoxy.QuotaWidget.extension
+        INFOPLIST_FILE: Widget/Info.plist
+        CODE_SIGN_ENTITLEMENTS: Widget/QuotaWidgetExtension.entitlements
+        SKIP_INSTALL: true
+  QuotaWidgetTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests
+    dependencies:
+      - target: QuotaWidgetApp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.lazyfoxy.QuotaWidget.tests
+schemes:
+  QuotaWidget:
+    build:
+      targets:
+        QuotaWidgetApp: all
+        QuotaWidgetExtension: all
+        QuotaWidgetTests: [test]
+    test:
+      targets:
+        - QuotaWidgetTests

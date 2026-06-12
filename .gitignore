@@ -25,3 +25,17 @@ __pycache__/
 
 # Touch Bar build artifact
 touchbar/QuotaBar.app/
+
+# Native macOS widget build and local Xcode state
+macwidget/build/
+macwidget/DerivedData/
+macwidget/**/*.xcuserstate
+macwidget/**/xcuserdata/
+
+# Tauri/Rust build output and generated local schemas
+windows-widget/src-tauri/target/
+windows-widget/src-tauri/gen/
+
+# Runtime usage snapshots
+usage.json
+*.usage.json

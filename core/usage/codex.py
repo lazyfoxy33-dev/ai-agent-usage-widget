@@ -1,11 +1,12 @@
 """Parse Codex CLI session files into 5h / weekly usage."""
 import glob
-import fcntl
 import json
 import os
 import shutil
 import subprocess
+import tempfile
 import time
+from contextlib import contextmanager
 from datetime import datetime
 
 from . import config as usage_config
@@ -17,6 +18,8 @@ DEFAULT_DIRS = [
 REFRESH_THROTTLE_PATH = os.path.expanduser(
     "~/.cache/usage-widget/codex-refresh.json"
 )
+_LOCK_STALE_SECONDS = 10
+_LOCK_WAIT_SECONDS = 2
 
 
 def _parse_ts(s):
@@ -110,24 +113,74 @@ def parse_codex(session_dirs=None, days=14, now=None):
     }
 
 
+@contextmanager
+def _portable_lock(path):
+    lock_dir = path + ".lock"
+    deadline = time.monotonic() + _LOCK_WAIT_SECONDS
+    while True:
+        try:
+            os.mkdir(lock_dir)
+            break
+        except FileExistsError:
+            try:
+                if time.time() - os.path.getmtime(lock_dir) > _LOCK_STALE_SECONDS:
+                    os.rmdir(lock_dir)
+                    continue
+            except OSError:
+                pass
+            if time.monotonic() >= deadline:
+                raise TimeoutError("Timed out waiting for Codex refresh lock")
+            time.sleep(0.05)
+    try:
+        yield
+    finally:
+        try:
+            os.rmdir(lock_dir)
+        except OSError:
+            pass
+
+
+def _write_json_atomic(path, data):
+    directory = os.path.dirname(path)
+    fd, temporary = tempfile.mkstemp(
+        prefix=os.path.basename(path) + ".tmp.",
+        dir=directory,
+        text=True,
+    )
+    try:
+        with os.fdopen(fd, "w") as handle:
+            json.dump(data, handle)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.unlink(temporary)
+        except OSError:
+            pass
+        raise
+
+
 def _claim_refresh_slot(path, now, interval):
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "a+") as f:
-        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
-        f.seek(0)
-        try:
-            data = json.load(f)
-            last_refresh = float(data.get("started_at", 0))
-        except (ValueError, TypeError, AttributeError):
-            last_refresh = 0
-        if now - last_refresh < interval:
-            return False
-        f.seek(0)
-        f.truncate()
-        json.dump({"started_at": int(now)}, f)
-        f.flush()
-        os.fsync(f.fileno())
-        return True
+    try:
+        with _portable_lock(path):
+            try:
+                with open(path) as handle:
+                    data = json.load(handle)
+                last_refresh = float(data.get("started_at", 0))
+            except (OSError, ValueError, TypeError, AttributeError):
+                last_refresh = 0
+            if now - last_refresh < interval:
+                return False
+            _write_json_atomic(path, {"started_at": int(now)})
+            return True
+    except TimeoutError:
+        return False
 
 
 def _codex_executable():
