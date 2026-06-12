@@ -31,6 +31,23 @@ Widget tests live under `usage-widget/`: `cd usage-widget && python3 -m unittest
 `fetch_usage.py` reads local provider state. Inspect and sanitize its output
 before sharing it.
 
+## 隐私强制 / Privacy Enforcement
+
+仓库为公开仓库。**任何提交都不得泄露本机或个人信息**（用户名、home 绝对路径、个人邮箱、账号/设备 id、令牌、个人用量数字）。
+
+This repo is public. **No commit may leak machine-local or personal info.**
+
+- 提交身份用 GitHub noreply 邮箱（非个人邮箱）。Commit identity uses the GitHub noreply email.
+- 路径用 `~`/`$HOME`，用户名用 `$USER`。Use `~`/`$HOME` and `$USER`, never literal values.
+- 仓库内 `.githooks/pre-commit` 会机械拦截违规提交。克隆后激活一次：
+  A `.githooks/pre-commit` hook enforces this. Activate once per clone:
+
+  ```bash
+  git config core.hooksPath .githooks
+  ```
+
+  AI agent 另见根目录 `AGENTS.md`。AI agents: see `AGENTS.md`.
+
 ## Pull Request
 
 1. 数据层改动必须添加或更新测试。

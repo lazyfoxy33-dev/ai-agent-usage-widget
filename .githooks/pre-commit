@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Pre-commit guard: keep machine-local / personal info out of git history.
+# Activate once per clone:  git config core.hooksPath .githooks
+# Bypass in emergencies:    git commit --no-verify   (avoid)
+set -uo pipefail
+
+fail=0
+user="$(id -un)"
+
+# 1) Commit identity must be a GitHub noreply address (not a personal email).
+email="$(git config user.email || true)"
+case "$email" in
+  *@users.noreply.github.com) : ;;
+  "") echo "x git user.email is unset."; fail=1 ;;
+  *) echo "x commit email '$email' is not a GitHub noreply address (would expose a personal email)."
+     echo "  Fix: git config user.email '<id>+<username>@users.noreply.github.com'"
+     fail=1 ;;
+esac
+
+# 2) Staged content must not contain machine-local / personal identifiers.
+#    Self (.githooks/) is excluded so this file's own example patterns don't trip it.
+#    Patterns derived dynamically so the hook stays generic.
+added="$(git diff --cached -U0 --no-color -- . ':(exclude).githooks/' | grep '^+' | grep -v '^+++' || true)"
+personal_mail='[A-Za-z0-9._%+-]+@(gmail|qq|163|126|outlook|hotmail|yahoo|foxmail)\.com'
+viol="$(printf '%s\n' "$added" | grep -nE "/Users/${user}|(^|[^A-Za-z0-9_])${user}([^A-Za-z0-9_]|\$)|${personal_mail}" 2>/dev/null || true)"
+if [ -n "$viol" ]; then
+  echo "x staged changes contain machine-local / personal info (username, home path, or a personal email):"
+  printf '%s\n' "$viol" | head -10
+  echo "  Use \$USER / ~ / \$HOME instead, and remove personal emails. Then re-stage."
+  fail=1
+fi
+
+[ "$fail" -eq 0 ] || echo "Commit blocked by .githooks/pre-commit (see CONTRIBUTING.md)."
+exit "$fail"
