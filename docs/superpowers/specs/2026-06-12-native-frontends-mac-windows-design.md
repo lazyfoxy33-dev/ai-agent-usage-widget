@@ -33,12 +33,12 @@
 
 **问题**：`core/usage/claude.py` 仅支持 macOS——靠 `security find-generic-password` 读 Keychain。Windows/Linux 上 Claude Code 把凭证存为**文件** `~/.claude/.credentials.json`（结构同 `{"claudeAiOauth":{accessToken,refreshToken,expiresAt,...}}`，权限随用户目录）。Codex/Kimi 本就是文件凭证，`os.path.expanduser` 跨平台可用。
 
-**设计**：抽象 Claude 的**凭证存取**为平台感知的读+写，其余不变。
+**设计**：抽象 Claude 的**凭证读取**为平台感知（**只读**——合并版决定 Claude 凭证保持只读，不自动续期，故无写回）。
 
 - 新增 `core/usage/credential_store.py`：
-  - `read_claude_blob() -> str|None`：`sys.platform == "darwin"` → `security ... -w`；否则读 `os.path.expanduser(os.environ.get("CLAUDE_CONFIG_DIR","~/.claude")+"/.credentials.json")`。
-  - `write_claude_blob(blob: str)`：macOS → `security add-generic-password -U -a <whoami> -s "Claude Code-credentials" -w`；否则**原子写**该文件（临时文件 + `os.replace`，`chmod 0600`，保留其余字段）。
-- `claude.py` 改为调用 `credential_store`，删除内联的 keychain-only 逻辑；续期写回（refresh+persist）走同一抽象。
+  - `read_claude_blob() -> str|None`：`sys.platform == "darwin"` → `security find-generic-password -s "Claude Code-credentials" -w`；否则读 `os.path.expanduser((os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude") + "/.credentials.json")`。
+- `claude.py` 的 `read_keychain_blob()` 改为转调 `credential_store.read_claude_blob()`，删除内联 keychain-only 逻辑。`fetch_claude` 其余不变（仍只读、过期即 `expired`）。
+- **Claude 不写回**（只读）。Kimi 的原子写本就是跨平台文件 IO（`~/.kimi-code/credentials/kimi-code.json`，`os.replace` + 权限收紧），在 Windows 用 `expanduser` 即可——仅需 Windows 实测确认目录一致。
 - `_proxy()` 已是 env + 本地端口探测，跨平台可用；确认 Windows 下 `socket.create_connection` 与 curl(`curl.exe`，Win10+ 自带)正常。`subprocess` 调 curl 时不要写死 `/usr/bin/python3` 等 POSIX 路径。
 - Codex/Kimi：路径用 `expanduser` 已 OK；`codex`/`kimi` 可执行定位用 `shutil.which`（Windows 找 `codex.exe`），**在 Windows 实测一次**确认 session/凭证目录结构一致。
 
@@ -114,4 +114,4 @@
 
 - 沿用 `AGENTS.md`：noreply 身份、无本机信息入库、token 走 curl `--config` stdin。
 - App Group `usage.json` 与 Tauri 取数结果都是**运行时产物**，必须在各自 `.gitignore` 忽略，绝不入库。
-- Windows 写回 `.credentials.json` 用原子替换 + `0600`（或 Windows ACL 等价：仅当前用户可读写）。
+- Claude 凭证**只读**，不写回；Kimi 现有原子写（`os.replace` + 权限收紧）在 Windows 上等价为仅当前用户可读写。
