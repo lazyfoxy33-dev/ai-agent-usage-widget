@@ -22,6 +22,13 @@ Start Übersicht and enable `usage-widget` from its menu. The widget runs every
 If an endpoint fails, the last successful cache remains visible and is marked
 stale. Disable and re-enable it for an immediate reload.
 
+Claude 凭据保持只读。当前 Kimi Code 凭据可在官方跨进程锁内安全续期；Codex
+主动探测默认关闭，配置方法见项目 README。
+
+Claude credentials stay read-only. Current Kimi Code credentials may refresh
+under the official cross-process lock. Codex active probing is disabled by
+default; see the project README for opt-in configuration.
+
 ## 测试 / Test
 
 ```bash

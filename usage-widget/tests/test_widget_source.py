@@ -43,6 +43,7 @@ class TestWidgetSource(unittest.TestCase):
 
     def test_cached_provider_data_is_visibly_marked(self):
         self.assertIn('data.reason === "stale"', self.source)
+        self.assertIn("data.live === false", self.source)
         self.assertIn("缓存数据", self.source)
 
     def test_widget_is_anchored_to_bottom_right(self):

@@ -1,5 +1,8 @@
 # Kimi Code Usage Panel Design / Kimi Code 用量面板设计
 
+> 已被 2026-06-12 数据源及时性方案取代；本文仅保留为历史记录。
+> Superseded by the 2026-06-12 data-source timeliness design; retained for history.
+
 ## Goal / 目标
 
 Add Kimi Code usage to the Übersicht widget while preserving the existing

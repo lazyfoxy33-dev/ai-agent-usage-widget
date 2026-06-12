@@ -1,14 +1,22 @@
 """Parse Codex CLI session files into 5h / weekly usage."""
 import glob
+import fcntl
 import json
 import os
+import shutil
+import subprocess
 import time
 from datetime import datetime
+
+from . import config as usage_config
 
 DEFAULT_DIRS = [
     os.path.expanduser("~/.codex/sessions"),
     os.path.expanduser("~/.codex/archived_sessions"),
 ]
+REFRESH_THROTTLE_PATH = os.path.expanduser(
+    "~/.cache/usage-widget/codex-refresh.json"
+)
 
 
 def _parse_ts(s):
@@ -100,3 +108,88 @@ def parse_codex(session_dirs=None, days=14, now=None):
             "stale": week["resets_at"] < now,
         },
     }
+
+
+def _claim_refresh_slot(path, now, interval):
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a+") as f:
+        fcntl.flock(f.fileno(), fcntl.LOCK_EX)
+        f.seek(0)
+        try:
+            data = json.load(f)
+            last_refresh = float(data.get("started_at", 0))
+        except (ValueError, TypeError, AttributeError):
+            last_refresh = 0
+        if now - last_refresh < interval:
+            return False
+        f.seek(0)
+        f.truncate()
+        json.dump({"started_at": int(now)}, f)
+        f.flush()
+        os.fsync(f.fileno())
+        return True
+
+
+def _codex_executable():
+    found = shutil.which("codex")
+    if found:
+        return found
+    candidates = [
+        os.path.expanduser("~/.local/bin/codex"),
+        "/Applications/Codex.app/Contents/Resources/codex",
+    ]
+    for candidate in candidates:
+        if os.path.isfile(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    return None
+
+
+def maybe_active_refresh(
+    as_of,
+    now=None,
+    settings=None,
+    throttle_path=None,
+):
+    """Start an opt-in background Codex probe when data is old."""
+    settings = settings or usage_config.load_config()
+    if settings.get("codex_active_refresh") is not True:
+        return False
+
+    now = time.time() if now is None else now
+    interval = max(
+        usage_config.MIN_CODEX_REFRESH_INTERVAL,
+        int(settings.get(
+            "codex_refresh_interval_seconds",
+            usage_config.DEFAULT_CODEX_REFRESH_INTERVAL,
+        )),
+    )
+    if as_of is not None and now - float(as_of) < interval:
+        return False
+
+    executable = _codex_executable()
+    if executable is None:
+        return False
+
+    throttle_path = throttle_path or REFRESH_THROTTLE_PATH
+    if not _claim_refresh_slot(throttle_path, now, interval):
+        return False
+
+    command = [
+        executable, "exec",
+        "--skip-git-repo-check",
+        "--sandbox", "read-only",
+        "--color", "never",
+        "Reply with exactly: ok",
+    ]
+    try:
+        subprocess.Popen(
+            command,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            start_new_session=True,
+        )
+    except OSError:
+        return False
+    return True

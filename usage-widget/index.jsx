@@ -65,6 +65,7 @@ function ring(pal, fivePct, weekPct) {
 
 function providerMessage(name, data) {
   const reason = data && data.reason;
+  if (reason === "rate_limited") return "请求受限 · 稍后自动重试";
   if (name === "Kimi Code") {
     if (reason === "expired") return "登录态过期 · 去 Kimi CLI 重新登录";
     if (reason === "no_data") return "未登录 · 先在 Kimi CLI 完成登录";
@@ -86,7 +87,7 @@ function panel(name, glyph, pal, bg, data) {
       </div>
     );
   }
-  const cached = data.reason === "stale";
+  const cached = data.reason === "stale" || data.live === false;
   const row = (color, label, pct, resetsAt) => (
     <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
@@ -99,7 +100,7 @@ function panel(name, glyph, pal, bg, data) {
   );
   return (
     <div style={{ padding: "17px 18px 16px", display: "flex", alignItems: "center", gap: 17, background: bg, color: pal.ink }}>
-      {ring(pal, data.five_h.pct, data.weekly.pct)}
+      <div style={{ opacity: cached ? .55 : 1 }}>{ring(pal, data.five_h.pct, data.weekly.pct)}</div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{glyph}<span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span></div>
@@ -124,12 +125,16 @@ function codexPanel(glyph, pal, bg, data) {
       </div>
     );
   }
-  const anyStale = (data.five_h && data.five_h.stale) || (data.weekly && data.weekly.stale);
+  const anyStale = data.live === false
+    || (data.five_h && data.five_h.stale)
+    || (data.weekly && data.weekly.stale);
   const asOfStr = anyStale && data.as_of
     ? (() => { const d = new Date(data.as_of * 1000); return `${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; })()
     : null;
   const row = (baseColor, label, win) => {
-    const pctColor = win.stale ? pal.sub : (baseColor === pal.accent ? pal.accent : pal.ink);
+    const pctColor = (data.live === false || win.stale)
+      ? pal.sub
+      : (baseColor === pal.accent ? pal.accent : pal.ink);
     const dotFill = baseColor === pal.accent
       ? "linear-gradient(135deg,#A98CFF,#394DFF)"
       : "linear-gradient(135deg,#C4B5FD,#7C86E8)";
@@ -146,7 +151,7 @@ function codexPanel(glyph, pal, bg, data) {
   };
   return (
     <div style={{ padding: "17px 18px 16px", display: "flex", alignItems: "center", gap: 17, background: bg, color: pal.ink }}>
-      {ring(pal, data.five_h.pct, data.weekly.pct)}
+      <div style={{ opacity: anyStale ? .55 : 1 }}>{ring(pal, data.five_h.pct, data.weekly.pct)}</div>
       <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11 }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{glyph}<span style={{ fontSize: 15, fontWeight: 650 }}>Codex</span></div>

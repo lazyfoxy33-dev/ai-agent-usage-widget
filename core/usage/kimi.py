@@ -3,15 +3,27 @@ import json
 import os
 import socket
 import subprocess
+import tempfile
+import threading
 import time
+import urllib.parse
+from contextlib import contextmanager
 from datetime import datetime
 
 USAGE_URL = "https://api.kimi.com/coding/v1/usages"
+OAUTH_URL = "https://auth.kimi.com/api/oauth/token"
+CLIENT_ID = "17e5f671-d194-4dfb-9706-5516cb48c098"
 _PROXY_CANDIDATES = [("127.0.0.1", 7897), ("127.0.0.1", 7890)]
+_LOCK_STALE_SECONDS = 5
+_LOCK_HEARTBEAT_SECONDS = 2
 
 
 class KimiAuthError(RuntimeError):
     """The Kimi API rejected the local OAuth access token."""
+
+
+class KimiRefreshUnauthorized(RuntimeError):
+    """The Kimi OAuth endpoint rejected the refresh token."""
 
 
 def credentials_path():
@@ -47,10 +59,19 @@ def read_credentials(path=None):
     return None
 
 
+def read_credentials_with_path():
+    for candidate in credential_paths():
+        data = _read_credentials_file(candidate)
+        if data is not None:
+            return data, candidate
+    return None, None
+
+
 def is_expired(credentials, now=None):
     now = time.time() if now is None else now
     try:
-        return float(credentials.get("expires_at", 0)) <= now
+        expires_at = float(credentials.get("expires_at", 0))
+        return expires_at != 0 and expires_at <= now
     except (TypeError, ValueError):
         return True
 
@@ -185,16 +206,226 @@ def _http_get_usage(token):
     return json.loads(body)
 
 
+def _http_refresh(refresh_token):
+    if "\n" in refresh_token or "\r" in refresh_token:
+        raise ValueError("Invalid refresh token")
+    body = urllib.parse.urlencode({
+        "client_id": CLIENT_ID,
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+    })
+    cmd = [
+        "curl", "-q",
+        "-sS", "--max-time", "20",
+        "-H", "Accept: application/json",
+        "-H", "Content-Type: application/x-www-form-urlencoded",
+        "--data-binary", "@-",
+        OAUTH_URL,
+        "-w", "\n__HTTP__%{http_code}",
+    ]
+    env = os.environ.copy()
+    proxy = _proxy()
+    if proxy:
+        env["HTTPS_PROXY"] = proxy
+    result = subprocess.run(
+        cmd,
+        input=body,
+        capture_output=True,
+        text=True,
+        timeout=25,
+        env=env,
+    )
+    if "\n__HTTP__" not in result.stdout:
+        raise RuntimeError("Unexpected curl output")
+    response_body, code = result.stdout.rsplit("\n__HTTP__", 1)
+    code = code.strip()
+    try:
+        data = json.loads(response_body)
+    except ValueError:
+        data = {}
+    if code in ("401", "403") or data.get("error") == "invalid_grant":
+        raise KimiRefreshUnauthorized(f"HTTP {code}")
+    if code != "200":
+        raise RuntimeError(f"HTTP {code}: {response_body[:200]}")
+    if not all(data.get(key) for key in ("access_token", "refresh_token")):
+        raise RuntimeError("Kimi refresh response is missing tokens")
+    return data
+
+
+def _refresh_lock_target(path):
+    kimi_home = os.path.dirname(os.path.dirname(path))
+    return os.path.join(kimi_home, "oauth", "kimi-code")
+
+
+def _touch_lock(lock_dir, stop):
+    while not stop.wait(_LOCK_HEARTBEAT_SECONDS):
+        try:
+            os.utime(lock_dir, None)
+        except OSError:
+            return
+
+
+@contextmanager
+def _refresh_lock(path, timeout=60):
+    target = _refresh_lock_target(path)
+    lock_dir = target + ".lock"
+    parent = os.path.dirname(target)
+    os.makedirs(parent, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(parent, 0o700)
+    except OSError:
+        pass
+    with open(target, "a"):
+        pass
+
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            os.mkdir(lock_dir, 0o700)
+            break
+        except FileExistsError:
+            try:
+                stale = time.time() - os.path.getmtime(lock_dir)
+                if stale > _LOCK_STALE_SECONDS:
+                    os.rmdir(lock_dir)
+                    continue
+            except (FileNotFoundError, OSError):
+                pass
+            if time.monotonic() >= deadline:
+                raise RuntimeError("Timed out waiting for Kimi OAuth lock")
+            time.sleep(0.5)
+
+    stop = threading.Event()
+    heartbeat = threading.Thread(
+        target=_touch_lock,
+        args=(lock_dir, stop),
+        daemon=True,
+    )
+    heartbeat.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        heartbeat.join(timeout=1)
+        try:
+            os.rmdir(lock_dir)
+        except OSError:
+            pass
+
+
+def _write_credentials_atomic(path, credentials):
+    directory = os.path.dirname(path)
+    os.makedirs(directory, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(directory, 0o700)
+    except OSError:
+        pass
+
+    fd, tmp = tempfile.mkstemp(
+        prefix=os.path.basename(path) + ".tmp.",
+        dir=directory,
+        text=True,
+    )
+    try:
+        os.chmod(tmp, 0o600)
+        with os.fdopen(fd, "w") as f:
+            json.dump(credentials, f, indent=2)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+        os.chmod(path, 0o600)
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def _credentials_changed(before, after):
+    return any(
+        before.get(key) != after.get(key)
+        for key in ("access_token", "refresh_token", "expires_at", "expires_in")
+    )
+
+
+def _refresh_credentials(path, initial, force=False):
+    with _refresh_lock(path):
+        stored = _read_credentials_file(path)
+        active = stored if stored is not None else initial
+        if stored is not None and _credentials_changed(initial, stored):
+            if stored.get("access_token"):
+                return stored
+        if not force and not is_expired(active):
+            return active
+
+        refresh_token = active.get("refresh_token")
+        if not refresh_token:
+            raise KimiRefreshUnauthorized("Missing refresh token")
+        try:
+            refreshed = _http_refresh(refresh_token)
+        except KimiRefreshUnauthorized:
+            time.sleep(0.1)
+            recovery = _read_credentials_file(path)
+            if (
+                recovery
+                and recovery.get("access_token")
+                and recovery.get("refresh_token") != refresh_token
+            ):
+                return recovery
+            raise
+
+        expires_in = int(refreshed.get("expires_in", 0))
+        updated = dict(active)
+        updated.update({
+            "access_token": refreshed["access_token"],
+            "refresh_token": refreshed["refresh_token"],
+            "expires_in": expires_in,
+            "expires_at": int(time.time()) + expires_in,
+        })
+        for key in ("scope", "token_type"):
+            if refreshed.get(key) is not None:
+                updated[key] = refreshed[key]
+        _write_credentials_atomic(path, updated)
+        return updated
+
+
 def fetch_kimi():
-    credentials = read_credentials()
+    credentials, path = read_credentials_with_path()
     if not credentials:
         return {"ok": False, "reason": "no_data"}
+    current_credentials = path == credentials_path()
     token = credentials.get("access_token")
     if not token or is_expired(credentials):
-        return {"ok": False, "reason": "expired"}
+        if not current_credentials:
+            return {"ok": False, "reason": "expired"}
+        try:
+            credentials = _refresh_credentials(path, credentials, force=False)
+            token = credentials.get("access_token")
+        except KimiRefreshUnauthorized:
+            return {"ok": False, "reason": "expired"}
+        except Exception:
+            return {"ok": False, "reason": "error"}
+        if not token:
+            return {"ok": False, "reason": "expired"}
     try:
         return parse_kimi_usage(_http_get_usage(token))
     except KimiAuthError:
-        return {"ok": False, "reason": "expired"}
+        if not current_credentials:
+            return {"ok": False, "reason": "expired"}
+        try:
+            refreshed = _refresh_credentials(path, credentials, force=True)
+            return parse_kimi_usage(
+                _http_get_usage(refreshed["access_token"])
+            )
+        except (KimiAuthError, KimiRefreshUnauthorized, KeyError):
+            return {"ok": False, "reason": "expired"}
+        except Exception:
+            return {"ok": False, "reason": "error"}
     except Exception:
         return {"ok": False, "reason": "error"}

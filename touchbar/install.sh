@@ -16,6 +16,8 @@ launchctl load "$PLIST"
 
 echo "✓ installed & launched."
 echo "  A Keychain prompt may appear once (Claude reads its login read-only) —"
-echo "  click “Always Allow”. Tokens are never refreshed or written."
+echo "  click “Always Allow”. Claude is never written; current Kimi credentials"
+echo "  refresh only under the official lock."
+echo "  已安装并启动。Claude 凭据只读；当前 Kimi 凭据仅在官方锁内安全续期。"
 echo
 echo "  uninstall:  launchctl unload \"$PLIST\" && rm \"$PLIST\""
