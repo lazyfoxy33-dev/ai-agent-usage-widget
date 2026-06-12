@@ -32,9 +32,36 @@ python3 -m unittest discover -v   # 数据层测试 / data-layer tests
 python3 fetch_usage.py
 ```
 
-前端测试位于 `usage-widget/` 与 `touchbar/`，Touch Bar 改动还需运行 `./build.sh`。
-Frontend tests live under `usage-widget/` and `touchbar/`; Touch Bar changes
-must also run `./build.sh`.
+前端验证命令 / Frontend verification commands:
+
+```bash
+# Übersicht
+cd usage-widget && python3 -m unittest discover -v
+
+# Touch Bar
+cd touchbar
+python3 -m unittest discover -v
+./build.sh
+
+# macOS WidgetKit（无需签名的本地验证 / unsigned local verification）
+cd macwidget
+xcodebuild test -project QuotaWidget.xcodeproj -scheme QuotaWidget \
+  -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
+QUOTAWIDGET_UNSIGNED=1 ./build.sh
+
+# Windows Tauri（在 Windows 上运行 / run on Windows）
+cd windows-widget
+node --test src/render.test.mjs
+cargo fmt --manifest-path src-tauri/Cargo.toml --check
+cargo test --manifest-path src-tauri/Cargo.toml
+cargo build --release --manifest-path src-tauri/Cargo.toml
+```
+
+macOS App Group 签名流程必须使用有效 Apple Team 验证；Windows 安装包、托盘与
+开机自启必须在 Windows 10/11 上验证。
+
+Validate the signed macOS App Group flow with a real Apple Team. Validate the
+Windows installer, tray, and autostart behavior on Windows 10/11.
 
 `fetch_usage.py` 会读取本机提供商状态。分享输出前请检查并清理隐私信息。
 
@@ -62,8 +89,8 @@ This repo is public. **No commit may leak machine-local or personal info.**
 
 1. 数据层改动必须添加或更新测试。
 2. Add or update tests for data-layer changes.
-3. 运行完整测试套件，并在 Übersicht 中检查 UI 改动。
-4. Run the full test suite and check UI changes in Übersicht.
+3. 运行相关完整测试套件，并在对应平台检查 UI 改动。
+4. Run the relevant full test suite and inspect UI changes on the target platform.
 5. 说明提供商/API 假设，保持改动聚焦。
 6. Explain provider/API assumptions and keep the change focused.
 7. 确认 diff 不包含令牌、个人路径、会话或缓存。

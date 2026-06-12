@@ -1,5 +1,8 @@
 # 组件 1：数据层跨平台移植 — Implementation Plan
 
+> 状态 / Status：已实现并通过本机测试；Windows 三家 CLI 真机核验待完成。
+> Implemented and covered by local tests; real Windows CLI validation remains.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development 或 executing-plans。步骤用 `- [ ]` 跟踪。
 > 配套 spec：`docs/superpowers/specs/2026-06-12-native-frontends-mac-windows-design.md` §3。
 

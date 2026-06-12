@@ -1,0 +1,589 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		05FAA991A1472BF40CDE5650 /* UsageContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB8541A0C552866932C346F /* UsageContractTests.swift */; };
+		161768EE7688BF587E93623E /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */; };
+		276472E028BA4ED17D37301C /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */; };
+		3FDA6A06400A345CEC17A77C /* UsageContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */; };
+		572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4396386870ACF13B0387F84A /* UsageFetcher.swift */; };
+		5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */; };
+		6F452D2E46ADD0D6463835E4 /* codex-app.png in Resources */ = {isa = PBXBuildFile; fileRef = E6DD29948C08249FDE990314 /* codex-app.png */; };
+		7F29DEE2E20A48DBBE0CF80C /* kimi-code.png in Resources */ = {isa = PBXBuildFile; fileRef = 8060F7384E94F23C12BAF56E /* kimi-code.png */; };
+		9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10993021F1557349A9B061FA /* UsageStoreTests.swift */; };
+		C325E7E78EF71C2B5C9522EA /* QuotaWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 356B98571E684BBF6525EB00 /* QuotaWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		E1A9D102642B838CEC5E0AC2 /* UsageContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */; };
+		F908CF41E410AF049131EE37 /* QuotaWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5555B59E6BC13C01742BF87E /* QuotaWidget.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0A6358959A4237F9B9DF7280 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E0A403E7AF6C1CE32CD0A6E5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 4CDE28D233A85177166D4AEB;
+			remoteInfo = QuotaWidgetExtension;
+		};
+		377395E94211AD1DD26ED6C6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E0A403E7AF6C1CE32CD0A6E5 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C99AE31F58827A8EE8B9C345;
+			remoteInfo = QuotaWidgetApp;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		EA6E295663E25C374F7B9AE4 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				C325E7E78EF71C2B5C9522EA /* QuotaWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		10993021F1557349A9B061FA /* UsageStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStoreTests.swift; sourceTree = "<group>"; };
+		229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaWidgetApp.swift; sourceTree = "<group>"; };
+		356B98571E684BBF6525EB00 /* QuotaWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuotaWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4396386870ACF13B0387F84A /* UsageFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageFetcher.swift; sourceTree = "<group>"; };
+		5555B59E6BC13C01742BF87E /* QuotaWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaWidget.swift; sourceTree = "<group>"; };
+		624505EF7B507DA6493E915F /* QuotaWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuotaWidgetExtension.entitlements; sourceTree = "<group>"; };
+		6AC74E158F9E7CF5C7A45A26 /* QuotaWidgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QuotaWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		7FB8541A0C552866932C346F /* UsageContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageContractTests.swift; sourceTree = "<group>"; };
+		8060F7384E94F23C12BAF56E /* kimi-code.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "kimi-code.png"; sourceTree = "<group>"; };
+		84083F78F49E30915AB023A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageContract.swift; sourceTree = "<group>"; };
+		9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStore.swift; sourceTree = "<group>"; };
+		96C53A22270DB9251D0B7127 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuotaWidgetApp.entitlements; sourceTree = "<group>"; };
+		E6DD29948C08249FDE990314 /* codex-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "codex-app.png"; sourceTree = "<group>"; };
+		E928D1CB72EE1ED85B404C9C /* QuotaWidgetApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		188B21B878136247204D3C41 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				84083F78F49E30915AB023A6 /* Info.plist */,
+				B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */,
+				229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */,
+				4396386870ACF13B0387F84A /* UsageFetcher.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		999EAC01D44EC8CDA4333603 = {
+			isa = PBXGroup;
+			children = (
+				188B21B878136247204D3C41 /* App */,
+				A8D2EC21817300E127FA90D8 /* Shared */,
+				FB813D97305F2AA3159C7FC0 /* Tests */,
+				DCF44CADAA62FFC546DAF220 /* Widget */,
+				B4F0467DCAB9B8F00D13233B /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A392B10FF47E44FBED2AA8A8 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				E6DD29948C08249FDE990314 /* codex-app.png */,
+				8060F7384E94F23C12BAF56E /* kimi-code.png */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		A8D2EC21817300E127FA90D8 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */,
+				9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		B4F0467DCAB9B8F00D13233B /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E928D1CB72EE1ED85B404C9C /* QuotaWidgetApp.app */,
+				356B98571E684BBF6525EB00 /* QuotaWidgetExtension.appex */,
+				6AC74E158F9E7CF5C7A45A26 /* QuotaWidgetTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		DCF44CADAA62FFC546DAF220 /* Widget */ = {
+			isa = PBXGroup;
+			children = (
+				96C53A22270DB9251D0B7127 /* Info.plist */,
+				5555B59E6BC13C01742BF87E /* QuotaWidget.swift */,
+				624505EF7B507DA6493E915F /* QuotaWidgetExtension.entitlements */,
+				A392B10FF47E44FBED2AA8A8 /* Resources */,
+			);
+			path = Widget;
+			sourceTree = "<group>";
+		};
+		FB813D97305F2AA3159C7FC0 /* Tests */ = {
+			isa = PBXGroup;
+			children = (
+				7FB8541A0C552866932C346F /* UsageContractTests.swift */,
+				10993021F1557349A9B061FA /* UsageStoreTests.swift */,
+			);
+			path = Tests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		337581018E781BBCF05A673C /* QuotaWidgetTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 674EA32C07795D476C4C75A3 /* Build configuration list for PBXNativeTarget "QuotaWidgetTests" */;
+			buildPhases = (
+				CF8C22E265BDD2FF99E38D32 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CCD05AB54665019E9C75E297 /* PBXTargetDependency */,
+			);
+			name = QuotaWidgetTests;
+			packageProductDependencies = (
+			);
+			productName = QuotaWidgetTests;
+			productReference = 6AC74E158F9E7CF5C7A45A26 /* QuotaWidgetTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		4CDE28D233A85177166D4AEB /* QuotaWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 168D727BFDF2020D6E02FFCA /* Build configuration list for PBXNativeTarget "QuotaWidgetExtension" */;
+			buildPhases = (
+				006FDE06B55223E71D7DFB41 /* Sources */,
+				DAF04ECAA6DC15F1B0406E9B /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = QuotaWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = QuotaWidgetExtension;
+			productReference = 356B98571E684BBF6525EB00 /* QuotaWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		C99AE31F58827A8EE8B9C345 /* QuotaWidgetApp */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DE95DFC9566661B4DA446DBA /* Build configuration list for PBXNativeTarget "QuotaWidgetApp" */;
+			buildPhases = (
+				36893CAD1322C5810D2654EC /* Bundle shared Python core */,
+				851324600138BA9D2C4032E4 /* Sources */,
+				EA6E295663E25C374F7B9AE4 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				54F532A3BCD99AEBBC073CBA /* PBXTargetDependency */,
+			);
+			name = QuotaWidgetApp;
+			packageProductDependencies = (
+			);
+			productName = QuotaWidgetApp;
+			productReference = E928D1CB72EE1ED85B404C9C /* QuotaWidgetApp.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E0A403E7AF6C1CE32CD0A6E5 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					337581018E781BBCF05A673C = {
+						ProvisioningStyle = Automatic;
+					};
+					4CDE28D233A85177166D4AEB = {
+						ProvisioningStyle = Automatic;
+					};
+					C99AE31F58827A8EE8B9C345 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 78C17B66A2F234A36AF1088F /* Build configuration list for PBXProject "QuotaWidget" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 999EAC01D44EC8CDA4333603;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = B4F0467DCAB9B8F00D13233B /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C99AE31F58827A8EE8B9C345 /* QuotaWidgetApp */,
+				4CDE28D233A85177166D4AEB /* QuotaWidgetExtension */,
+				337581018E781BBCF05A673C /* QuotaWidgetTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DAF04ECAA6DC15F1B0406E9B /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6F452D2E46ADD0D6463835E4 /* codex-app.png in Resources */,
+				7F29DEE2E20A48DBBE0CF80C /* kimi-code.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		36893CAD1322C5810D2654EC /* Bundle shared Python core */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle shared Python core";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\nDESTINATION=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/core\"\nrm -rf \"$DESTINATION\"\nmkdir -p \"$DESTINATION\"\nditto \"${SRCROOT}/../core\" \"$DESTINATION\"\nfind \"$DESTINATION\" -type d -name __pycache__ -prune -exec rm -rf {} +\nfind \"$DESTINATION\" -type f -name '*.pyc' -delete\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		006FDE06B55223E71D7DFB41 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F908CF41E410AF049131EE37 /* QuotaWidget.swift in Sources */,
+				3FDA6A06400A345CEC17A77C /* UsageContract.swift in Sources */,
+				276472E028BA4ED17D37301C /* UsageStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		851324600138BA9D2C4032E4 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */,
+				E1A9D102642B838CEC5E0AC2 /* UsageContract.swift in Sources */,
+				572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */,
+				161768EE7688BF587E93623E /* UsageStore.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CF8C22E265BDD2FF99E38D32 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				05FAA991A1472BF40CDE5650 /* UsageContractTests.swift in Sources */,
+				9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		54F532A3BCD99AEBBC073CBA /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 4CDE28D233A85177166D4AEB /* QuotaWidgetExtension */;
+			targetProxy = 0A6358959A4237F9B9DF7280 /* PBXContainerItemProxy */;
+		};
+		CCD05AB54665019E9C75E297 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C99AE31F58827A8EE8B9C345 /* QuotaWidgetApp */;
+			targetProxy = 377395E94211AD1DD26ED6C6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0C02F9D284ED0DE8F90549E7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widget/QuotaWidgetExtension.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Widget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lazyfoxy.QuotaWidget.extension;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Debug;
+		};
+		0FBF60049E4697A8AEECF6C0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lazyfoxy.QuotaWidget.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QuotaWidgetApp.app/Contents/MacOS/QuotaWidgetApp";
+			};
+			name = Debug;
+		};
+		397B8660472249E6191330BC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/QuotaWidgetApp.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lazyfoxy.QuotaWidget;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		68AA101132DD0B157FE3A53F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APP_GROUP_ID = group.dev.lazyfoxy.QuotaWidget;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		7C0865D4D36579887B01B892 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = Widget/QuotaWidgetExtension.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Widget/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lazyfoxy.QuotaWidget.extension;
+				SDKROOT = macosx;
+				SKIP_INSTALL = YES;
+			};
+			name = Release;
+		};
+		9F98FF49EABE6C634C7E81EE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				APP_GROUP_ID = group.dev.lazyfoxy.QuotaWidget;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		CD73593965B25D7B6F77C85C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = App/QuotaWidgetApp.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = App/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lazyfoxy.QuotaWidget;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		ED520D37163E286E659D785C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = dev.lazyfoxy.QuotaWidget.tests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/QuotaWidgetApp.app/Contents/MacOS/QuotaWidgetApp";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		168D727BFDF2020D6E02FFCA /* Build configuration list for PBXNativeTarget "QuotaWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0C02F9D284ED0DE8F90549E7 /* Debug */,
+				7C0865D4D36579887B01B892 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		674EA32C07795D476C4C75A3 /* Build configuration list for PBXNativeTarget "QuotaWidgetTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0FBF60049E4697A8AEECF6C0 /* Debug */,
+				ED520D37163E286E659D785C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		78C17B66A2F234A36AF1088F /* Build configuration list for PBXProject "QuotaWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				9F98FF49EABE6C634C7E81EE /* Debug */,
+				68AA101132DD0B157FE3A53F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		DE95DFC9566661B4DA446DBA /* Build configuration list for PBXNativeTarget "QuotaWidgetApp" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CD73593965B25D7B6F77C85C /* Debug */,
+				397B8660472249E6191330BC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E0A403E7AF6C1CE32CD0A6E5 /* Project object */;
+}

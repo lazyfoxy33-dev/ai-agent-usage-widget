@@ -1,0 +1,9 @@
+{
+  "name": "ai-agent-usage-windows-widget",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test src/render.test.mjs",
+    "tauri": "cargo tauri"
+  }
+}

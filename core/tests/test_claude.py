@@ -104,6 +104,14 @@ class TestClaudeHttp(unittest.TestCase):
 
 
 class TestClaudeFetch(unittest.TestCase):
+    def test_credential_read_is_delegated_to_platform_store(self):
+        blob = '{"claudeAiOauth":{"accessToken":"token"}}'
+        with mock.patch(
+            "usage.credential_store.read_claude_blob", return_value=blob
+        ) as read:
+            self.assertEqual(claude.read_keychain_blob(), blob)
+        read.assert_called_once_with()
+
     def test_fetch_maps_rate_limit_separately(self):
         creds = {"accessToken": "token", "expiresAt": 2_000_000}
         with mock.patch.object(claude, "read_keychain_blob",

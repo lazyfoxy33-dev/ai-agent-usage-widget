@@ -1,0 +1,19 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <title>AI Agent Usage</title>
+  </head>
+  <body>
+    <div class="shell">
+      <div class="toolbar" data-tauri-drag-region>
+        <span id="status">正在启动…</span>
+        <button id="refresh" title="立即刷新 / Refresh now">↻</button>
+      </div>
+      <main id="providers"></main>
+    </div>
+    <script type="module" src="main.mjs"></script>
+  </body>
+</html>

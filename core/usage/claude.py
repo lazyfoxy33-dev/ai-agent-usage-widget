@@ -1,4 +1,4 @@
-"""Claude usage via Keychain OAuth token + /api/oauth/usage (read-only token)."""
+"""Claude usage via the local OAuth token + /api/oauth/usage (read-only)."""
 import json
 import os
 import socket
@@ -6,7 +6,8 @@ import subprocess
 import time
 from datetime import datetime
 
-KEYCHAIN_SERVICE = "Claude Code-credentials"
+from . import credential_store
+
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 _PROXY_CANDIDATES = [("127.0.0.1", 7897), ("127.0.0.1", 7890)]
 
@@ -16,19 +17,12 @@ class ClaudeRateLimitError(RuntimeError):
 
 
 def read_keychain_blob():
-    """Return raw JSON string from Keychain, or None."""
-    try:
-        out = subprocess.run(
-            ["security", "find-generic-password", "-s", KEYCHAIN_SERVICE, "-w"],
-            capture_output=True, text=True, timeout=10,
-        )
-        return out.stdout.strip() or None
-    except (OSError, subprocess.SubprocessError):
-        return None
+    """Return raw Claude credential JSON from the platform store, or None."""
+    return credential_store.read_claude_blob()
 
 
 def parse_creds(blob):
-    """Extract claudeAiOauth object from Keychain blob."""
+    """Extract the claudeAiOauth object from a credential blob."""
     return json.loads(blob)["claudeAiOauth"]
 
 

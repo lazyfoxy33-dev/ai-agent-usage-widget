@@ -1,5 +1,9 @@
 # 组件 2：macOS WidgetKit 系统小组件 — Implementation Plan
 
+> 状态 / Status：工程与无签名单测/构建已完成；用户 Apple Team 的 App Group
+> 签名直通待真机验收。Source, unsigned tests, and builds are complete; signed
+> App Group validation with the user's Apple Team remains.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development 或 executing-plans。
 > 配套 spec：`docs/superpowers/specs/2026-06-12-native-frontends-mac-windows-design.md` §4。
 > 独立于组件 1/3（数据层在 mac 已可用）。

@@ -1,6 +1,6 @@
 # 原生前端：macOS WidgetKit + Windows Tauri — 设计文档
 
-> 日期：2026-06-12 · 层：①数据层移植 + ③新前端 · 状态：待实现（交由 Codex，分 3 份计划）
+> 日期：2026-06-12 · 层：①数据层移植 + ③新前端 · 状态：代码已落地，真机验收见 §10
 > 上位框架：三层骨架（数据/设计/组件）。本文件设计两个**新前端**及其所需的**数据层跨平台移植**。
 
 ## 1. 目标 / Goal
@@ -38,13 +38,14 @@
 - 新增 `core/usage/credential_store.py`：
   - `read_claude_blob() -> str|None`：`sys.platform == "darwin"` → `security find-generic-password -s "Claude Code-credentials" -w`；否则读 `os.path.expanduser((os.environ.get("CLAUDE_CONFIG_DIR") or "~/.claude") + "/.credentials.json")`。
 - `claude.py` 的 `read_keychain_blob()` 改为转调 `credential_store.read_claude_blob()`，删除内联 keychain-only 逻辑。`fetch_claude` 其余不变（仍只读、过期即 `expired`）。
+- `codex.py` 不得顶层依赖 POSIX-only 的 `fcntl`；主动刷新节流锁改为跨平台原子目录锁。
 - **Claude 不写回**（只读）。Kimi 的原子写本就是跨平台文件 IO（`~/.kimi-code/credentials/kimi-code.json`，`os.replace` + 权限收紧），在 Windows 用 `expanduser` 即可——仅需 Windows 实测确认目录一致。
 - `_proxy()` 已是 env + 本地端口探测，跨平台可用；确认 Windows 下 `socket.create_connection` 与 curl(`curl.exe`，Win10+ 自带)正常。`subprocess` 调 curl 时不要写死 `/usr/bin/python3` 等 POSIX 路径。
 - Codex/Kimi：路径用 `expanduser` 已 OK；`codex`/`kimi` 可执行定位用 `shutil.which`（Windows 找 `codex.exe`），**在 Windows 实测一次**确认 session/凭证目录结构一致。
 
 **测试**（`core/tests/`，mock 平台 + IO，不碰真 keychain/文件/网络）：
 - `read_claude_blob`：monkeypatch `sys.platform="darwin"` → 走 security（mock subprocess）；`="win32"` → 读临时文件。
-- `write_claude_blob`：win32 分支写临时文件后原子替换、权限 0600、保留未知字段；darwin 分支调 security（mock）。
+- Claude 凭证只读，不存在 `write_claude_blob`；测试必须确认重构没有引入任何写回入口。
 - 既有 `test_claude.py` 全绿（重构不改外部行为）。
 
 ---
@@ -115,3 +116,14 @@
 - 沿用 `AGENTS.md`：noreply 身份、无本机信息入库、token 走 curl `--config` stdin。
 - App Group `usage.json` 与 Tauri 取数结果都是**运行时产物**，必须在各自 `.gitignore` 忽略，绝不入库。
 - Claude 凭证**只读**，不写回；Kimi 现有原子写（`os.replace` + 权限收紧）在 Windows 上等价为仅当前用户可读写。
+
+## 10. 落地状态 / Implementation Status
+
+- 已完成 / Completed：跨平台 Claude 凭证读取、Codex 跨平台节流锁、macOS
+  WidgetKit 工程、App Group 存储、菜单栏刷新、Windows Tauri 前端、托盘、自启、
+  位置记忆、前后端单测和本机无签名构建。
+- 仍需真机 / Requires target hardware：使用用户 Apple Team 完成 App Group
+  签名直通；在 Windows 10/11 验证三家 CLI 的真实凭证目录、`curl.exe`、安装包
+  与开机自启。
+- 完整中英双语验收记录见 / See the bilingual implementation and validation
+  record: `docs/native-frontends-implementation.md`.

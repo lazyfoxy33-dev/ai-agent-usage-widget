@@ -1,5 +1,9 @@
 # 组件 3：Windows Tauri 桌面窗 — Implementation Plan
 
+> 状态 / Status：前端、Rust 后端、托盘、自启和位置记忆已实现并在 macOS
+> 主机编译测试；Windows 安装包与真实 CLI 登录态待真机验收。Implemented and
+> host-tested; Windows packaging and real CLI sessions require a Windows host.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development 或 executing-plans。
 > 配套 spec：`docs/superpowers/specs/2026-06-12-native-frontends-mac-windows-design.md` §5。
 > **依赖：组件 1（数据层移植）必须先完成**（Windows 才能读 Claude 凭证）。

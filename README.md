@@ -1,13 +1,12 @@
 # AI Agent Usage Widget / AI Agent 用量组件
 
-集中显示 Claude、Codex 和 Kimi Code 用量的 macOS 工具。同一套数据层（`core/`）
-驱动两个前端：[Übersicht](https://tracesof.net/uebersicht/) **桌面组件**与
-**Touch Bar 组件**。
+集中显示 Claude、Codex 和 Kimi Code 用量的跨平台工具。同一套数据层
+（`core/`）驱动 Übersicht、Touch Bar、macOS WidgetKit 和 Windows Tauri
+四个前端。
 
-A macOS tool that shows Claude, Codex, and Kimi Code usage in one place. One
-shared data layer (`core/`) drives two frontends: an
-[Übersicht](https://tracesof.net/uebersicht/) **desktop widget** and a
-**Touch Bar** readout.
+A cross-platform tool that shows Claude, Codex, and Kimi Code usage in one
+place. One shared data layer (`core/`) drives four frontends: Übersicht,
+Touch Bar, native macOS WidgetKit, and Windows Tauri.
 
 ![组件预览 / Widget preview](docs/widget-preview.svg)
 
@@ -17,11 +16,14 @@ shared data layer (`core/`) drives two frontends: an
 core/          共享数据层（取数逻辑 + 测试）/ shared data layer (fetchers + tests)
 usage-widget/  Übersicht 桌面组件 / Übersicht desktop widget
 touchbar/      Touch Bar 组件（Swift）/ Touch Bar frontend (Swift)
+macwidget/     macOS WidgetKit 小组件 + 菜单栏伴侣 app
+               macOS WidgetKit extension + menu bar companion
+windows-widget/ Windows Tauri 无边框桌面组件 / Windows Tauri desktop widget
 ```
 
-两个前端都消费 `core/fetch_usage.py` 输出的同一份 JSON，并共享相同的新鲜度与
+所有前端都消费 `core/fetch_usage.py` 输出的同一份 JSON，并共享相同的新鲜度与
 凭据处理策略。
-Both frontends consume the same JSON from `core/fetch_usage.py` and share the
+All frontends consume the same JSON from `core/fetch_usage.py` and share the
 same freshness and credential-handling policy.
 
 ## 功能 / Features
@@ -36,14 +38,17 @@ same freshness and credential-handling policy.
 - Checks data every 60 seconds and caches successful responses for five minutes
 - 固定在桌面右下角
 - Anchored to the desktop bottom-right corner
+- macOS 原生 WidgetKit 小组件与 Windows 无边框桌面窗
+- Native macOS WidgetKit and a frameless Windows desktop window
 
 ## 工作方式 / How It Works
 
-- **Claude：**只读访问 macOS Keychain 中 Claude Code 已有的 OAuth 令牌，并
-  调用 Anthropic 用量接口。组件不会刷新、保存或打印令牌。
-- **Claude:** reads the existing Claude Code OAuth token from macOS Keychain
-  and calls Anthropic's usage endpoint. It never refreshes, stores, or prints
-  the token.
+- **Claude：**macOS 只读访问 Keychain；Windows/Linux 只读访问
+  `~/.claude/.credentials.json`。随后调用 Anthropic 用量接口。组件不会刷新、
+  保存或打印 Claude 令牌。
+- **Claude:** reads macOS Keychain or, on Windows/Linux,
+  `~/.claude/.credentials.json`, then calls Anthropic's usage endpoint. Claude
+  credentials are never refreshed, saved, or printed by this project.
 - **Codex：**读取本地 Codex 会话 JSONL 中最近一次模型响应附带的限额快照，
   默认不访问凭据或发送模型请求。用户可显式开启节流后的主动探测。
 - **Codex:** reads the latest rate-limit snapshot from local Codex session
@@ -70,12 +75,19 @@ times.
 
 ## 要求 / Requirements
 
-- macOS
-- [Übersicht](https://tracesof.net/uebersicht/)
 - Python 3
 - `curl`
 - 至少使用过 Claude Code、Codex 或 Kimi Code CLI 中的一项
 - At least one of Claude Code, Codex, or Kimi Code CLI used once
+
+各前端的额外要求 / Frontend-specific requirements:
+
+- Übersicht：macOS + [Übersicht](https://tracesof.net/uebersicht/)
+- Touch Bar：带 Touch Bar 的 Mac / a Mac with Touch Bar
+- WidgetKit：macOS 14+、Xcode 与可注册 App Group 的 Apple Developer Team
+- WidgetKit: macOS 14+, Xcode, and an Apple Developer Team for App Groups
+- Windows：Windows 10/11 + WebView2；源码构建需 Rust/Tauri
+- Windows: Windows 10/11 + WebView2; source builds require Rust/Tauri
 
 ```bash
 python3 --version
@@ -127,6 +139,24 @@ bash install.sh
 小格显示用量最高的窗口，点一下展开整条详情。详见 [touchbar/README.md](touchbar/README.md)。
 The tray cell shows the most-used window; tap to expand the full readout. See
 [touchbar/README.md](touchbar/README.md).
+
+### macOS WidgetKit / macOS 原生小组件
+
+WidgetKit 扩展必须通过用户自己的 Apple Team 与 App Group 签名。安装、签名与
+排错见 [macwidget/README.md](macwidget/README.md)。
+
+The WidgetKit extension must be signed with the user's own Apple Team and App
+Group. See [macwidget/README.md](macwidget/README.md) for signing, installation,
+and troubleshooting.
+
+### Windows Tauri / Windows 桌面组件
+
+Windows 组件是可拖动、置顶、记忆位置的无边框窗口，并带系统托盘与开机自启。
+构建和使用见 [windows-widget/README.md](windows-widget/README.md)。
+
+The Windows frontend is a draggable, always-on-top frameless window with a
+tray menu, saved position, and autostart. See
+[windows-widget/README.md](windows-widget/README.md).
 
 ## 首次使用 / First Use
 
