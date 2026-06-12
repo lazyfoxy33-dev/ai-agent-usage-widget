@@ -8,8 +8,10 @@
 - Open an issue before significant behavior or UI changes.
 - 保持提供商相互独立，单个失败不得破坏整个组件。
 - Keep providers independent so one failure cannot break the whole widget.
-- 不得新增 OAuth 刷新行为；所有提供商凭据必须保持只读。
-- Do not add OAuth refresh behavior; provider credentials must remain read-only.
+- OAuth 续期仅在**续期后把新令牌原子写回**凭证（Keychain/凭证文件）时才允许，避免作废官方客户端登录；续期失败必须回退到过期态，绝不沿用旧值。
+- OAuth refresh is allowed only when the rotated token is **atomically written back**
+  to its store (Keychain/credential file), so the official client's login is never
+  invalidated; on refresh failure, fall back to an expired state and never reuse stale values.
 - 不得提交真实凭据、Keychain 导出、会话、缓存或机器专属路径。
 - Never commit real credentials, Keychain exports, sessions, caches, or
   machine-specific paths.
