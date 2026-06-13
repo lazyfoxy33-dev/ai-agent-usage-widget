@@ -48,9 +48,11 @@ class TestClaudeCredentialStore(unittest.TestCase):
 
 
 class TestClaudeCredentialWrite(unittest.TestCase):
-    def test_darwin_updates_keychain_in_place(self):
+    def test_darwin_updates_existing_item_reusing_its_account(self):
         completed = mock.Mock(returncode=0)
         with mock.patch.object(
+            credential_store, "_claude_keychain_account", return_value="unknown"
+        ), mock.patch.object(
             credential_store.subprocess, "run", return_value=completed
         ) as run:
             credential_store.write_claude_blob('{"claudeAiOauth":{}}', platform="darwin")
@@ -60,10 +62,28 @@ class TestClaudeCredentialWrite(unittest.TestCase):
         self.assertIn("add-generic-password", argv)
         self.assertIn("-U", argv)
         self.assertIn(credential_store.CLAUDE_KEYCHAIN_SERVICE, argv)
+        # The existing item's account is reused so no duplicate entry is forked.
+        self.assertEqual(argv[argv.index("-a") + 1], "unknown")
+
+    def test_account_is_parsed_from_find_generic_password(self):
+        completed = mock.Mock(
+            returncode=0,
+            stdout=(
+                'keychain: "login"\n'
+                '    "acct"<blob>="unknown"\n'
+                '    "svce"<blob>="Claude Code-credentials"\n'
+            ),
+        )
+        with mock.patch.object(
+            credential_store.subprocess, "run", return_value=completed
+        ):
+            self.assertEqual(credential_store._claude_keychain_account(), "unknown")
 
     def test_darwin_failure_raises_without_leaking_argv(self):
         completed = mock.Mock(returncode=1)
         with mock.patch.object(
+            credential_store, "_claude_keychain_account", return_value="unknown"
+        ), mock.patch.object(
             credential_store.subprocess, "run", return_value=completed
         ):
             with self.assertRaises(RuntimeError) as ctx:
