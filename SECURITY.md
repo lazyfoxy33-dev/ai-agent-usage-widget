@@ -30,11 +30,11 @@ information in a public issue.
 - Read provider credentials only when required at runtime.
 - 不打印、缓存、提交凭据，也不发送给第三方。
 - Never print, cache, commit, or transmit credentials to third parties.
-- Claude 与旧版 Kimi 凭据保持只读。
-- Keep Claude and legacy Kimi credentials read-only.
-- 当前 Kimi 凭据仅在官方跨进程锁内续期，锁后重读并原子写回。
-- Refresh current Kimi credentials only under the official cross-process lock,
-  with a post-lock re-read and atomic replacement.
+- 旧版 Kimi 凭据保持只读。
+- Keep legacy Kimi credentials read-only.
+- Claude 与当前 Kimi 凭据仅在官方跨进程锁内续期，锁后重读并原子写回。
+- Refresh Claude and current Kimi credentials only under the official
+  cross-process lock, with a post-lock re-read and atomic replacement.
 - 不默认发起 Codex 模型请求。
 - Never make Codex model requests by default.
 - 不读取浏览器 Cookie 或密码存储。

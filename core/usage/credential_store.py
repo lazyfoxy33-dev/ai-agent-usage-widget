@@ -1,8 +1,16 @@
-"""Platform-aware, read-only credential source for Claude Code."""
+"""Platform-aware credential store for Claude Code (read + write).
 
+Reading is always safe. Writing is used to persist a refreshed OAuth token so a
+desktop-app-only user (whose token nothing else rotates) keeps live usage; it
+updates the keychain item in place on macOS and atomically rewrites the
+credential file elsewhere. See the Kimi refresh protocol in ``usage/kimi.py``.
+"""
+
+import getpass
 import os
 import subprocess
 import sys
+import tempfile
 
 
 CLAUDE_KEYCHAIN_SERVICE = "Claude Code-credentials"
@@ -39,3 +47,91 @@ def read_claude_blob(platform=None):
             return handle.read().strip() or None
     except OSError:
         return None
+
+
+def _claude_keychain_account():
+    """Account (``-a``) attribute of the existing Claude keychain item.
+
+    ``add-generic-password -U`` only updates the item matching *both* service
+    and account; targeting a different account would silently create a second
+    entry that the official client never reads, and refreshing there would
+    rotate the shared token out from under it. So we reuse whatever account the
+    official client already set (commonly the literal ``"unknown"``). Returns
+    None when it cannot be determined.
+    """
+    try:
+        completed = subprocess.run(
+            ["security", "find-generic-password", "-s", CLAUDE_KEYCHAIN_SERVICE],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if completed.returncode != 0:
+        return None
+    for line in completed.stdout.splitlines():
+        line = line.strip()
+        if line.startswith('"acct"') and '="' in line:
+            return line.split('="', 1)[1].rstrip('"') or None
+    return None
+
+
+def write_claude_blob(blob, platform=None):
+    """Persist the raw Claude credential JSON string to the platform store.
+
+    macOS updates the existing keychain item in place (``security
+    add-generic-password -U``), reusing its account attribute so it never
+    forks a duplicate; the password is passed as ``-w`` because the keychain
+    CLI offers no stdin path for it. Other platforms atomically rewrite the
+    credential file with owner-only permissions. Raises on failure so callers
+    can fall back without corrupting the existing credential.
+    """
+    active_platform = sys.platform if platform is None else platform
+    if active_platform == "darwin":
+        account = _claude_keychain_account() or getpass.getuser()
+        completed = subprocess.run(
+            [
+                "security",
+                "add-generic-password",
+                "-U",
+                "-a",
+                account,
+                "-s",
+                CLAUDE_KEYCHAIN_SERVICE,
+                "-w",
+                blob,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        # Avoid surfacing argv (which carries the blob) in any exception.
+        if completed.returncode != 0:
+            raise RuntimeError("Keychain write failed")
+        return
+
+    path = _claude_file_path()
+    directory = os.path.dirname(path)
+    os.makedirs(directory, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(
+        prefix=".credentials.json.tmp.", dir=directory, text=True
+    )
+    try:
+        os.chmod(tmp, 0o600)
+        with os.fdopen(fd, "w") as handle:
+            handle.write(blob)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp, path)
+        os.chmod(path, 0o600)
+    except Exception:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise

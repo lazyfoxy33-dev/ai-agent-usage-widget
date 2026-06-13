@@ -1,19 +1,47 @@
-"""Claude usage via the local OAuth token + /api/oauth/usage (read-only)."""
+"""Claude usage via the local OAuth token + /api/oauth/usage.
+
+When the access token has expired we refresh it with the stored refresh token
+and persist the result, mirroring the concurrency-safe protocol already proven
+in ``usage/kimi.py`` (directory lock + post-lock re-read peer short-circuit +
+form-body refresh kept out of argv + atomic write-back). This keeps a
+desktop-app-only user — whose token nothing else rotates — continuously live.
+"""
 import json
 import os
 import socket
 import subprocess
+import threading
 import time
+import urllib.parse
+from contextlib import contextmanager
 from datetime import datetime
 
 from . import credential_store
 
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
+OAUTH_TOKEN_URL = "https://platform.claude.com/v1/oauth/token"
+CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
+REFRESH_LOCK_PATH = os.path.expanduser("~/.cache/usage-widget/claude-oauth")
+REFRESH_THROTTLE_PATH = os.path.expanduser("~/.cache/usage-widget/claude-refresh.json")
+# A successful refresh yields an ~8h token, so it is self-limiting. This backoff
+# only governs *failing* attempts so an expired token (refreshed on every cache
+# miss, ~once a minute across widgets) cannot hammer the OAuth endpoint into 429.
+MIN_REFRESH_INTERVAL = 600
 _PROXY_CANDIDATES = [("127.0.0.1", 7897), ("127.0.0.1", 7890)]
+_LOCK_STALE_SECONDS = 5
+_LOCK_HEARTBEAT_SECONDS = 2
 
 
 class ClaudeRateLimitError(RuntimeError):
     """The Anthropic usage API returned HTTP 429."""
+
+
+class ClaudeRefreshUnauthorized(RuntimeError):
+    """The Claude OAuth endpoint rejected the refresh token."""
+
+
+class ClaudeRefreshThrottled(RuntimeError):
+    """A refresh was attempted too recently; backing off before retrying."""
 
 
 def read_keychain_blob():
@@ -135,8 +163,179 @@ def _http_get_usage(token):
     return json.loads(body)
 
 
+def _http_refresh(refresh_token):
+    """Exchange a refresh token for a fresh OAuth token set.
+
+    The body is form-encoded (JSON is rejected by the gateway) and passed via
+    stdin so the secret never lands in argv. Returns the parsed token JSON.
+    """
+    if "\n" in refresh_token or "\r" in refresh_token:
+        raise ValueError("Invalid refresh token")
+    body = urllib.parse.urlencode({
+        "grant_type": "refresh_token",
+        "refresh_token": refresh_token,
+        "client_id": CLIENT_ID,
+    })
+    cmd = [
+        "curl", "-q",
+        "-sS", "--max-time", "20",
+        "-H", "Accept: application/json",
+        "-H", "Content-Type: application/x-www-form-urlencoded",
+        "--data-binary", "@-",
+        OAUTH_TOKEN_URL,
+        "-w", "\n__HTTP__%{http_code}",
+    ]
+    env = os.environ.copy()
+    proxy = _proxy()
+    if proxy:
+        env["HTTPS_PROXY"] = proxy
+    result = subprocess.run(
+        cmd, input=body, capture_output=True, text=True, timeout=25, env=env
+    )
+    if "\n__HTTP__" not in result.stdout:
+        raise RuntimeError("Unexpected curl output")
+    response_body, code = result.stdout.rsplit("\n__HTTP__", 1)
+    code = code.strip()
+    try:
+        data = json.loads(response_body)
+    except ValueError:
+        data = {}
+    if code in ("400", "401", "403") or data.get("error") == "invalid_grant":
+        raise ClaudeRefreshUnauthorized(f"HTTP {code}")
+    if code != "200":
+        raise RuntimeError(f"HTTP {code}: {response_body[:200]}")
+    if not all(data.get(key) for key in ("access_token", "refresh_token")):
+        raise RuntimeError("Claude refresh response is missing tokens")
+    return data
+
+
+def _touch_lock(lock_dir, stop):
+    while not stop.wait(_LOCK_HEARTBEAT_SECONDS):
+        try:
+            os.utime(lock_dir, None)
+        except OSError:
+            return
+
+
+@contextmanager
+def _refresh_lock(timeout=60):
+    """Official directory lock (mkdir + heartbeat + stale recovery).
+
+    Verbatim copy of the Kimi protocol so the working provider is untouched.
+    """
+    target = REFRESH_LOCK_PATH
+    lock_dir = target + ".lock"
+    parent = os.path.dirname(target)
+    os.makedirs(parent, mode=0o700, exist_ok=True)
+    try:
+        os.chmod(parent, 0o700)
+    except OSError:
+        pass
+    with open(target, "a"):
+        pass
+
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            os.mkdir(lock_dir, 0o700)
+            break
+        except FileExistsError:
+            try:
+                stale = time.time() - os.path.getmtime(lock_dir)
+                if stale > _LOCK_STALE_SECONDS:
+                    os.rmdir(lock_dir)
+                    continue
+            except (FileNotFoundError, OSError):
+                pass
+            if time.monotonic() >= deadline:
+                raise RuntimeError("Timed out waiting for Claude OAuth lock")
+            time.sleep(0.5)
+
+    stop = threading.Event()
+    heartbeat = threading.Thread(target=_touch_lock, args=(lock_dir, stop), daemon=True)
+    heartbeat.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        heartbeat.join(timeout=1)
+        try:
+            os.rmdir(lock_dir)
+        except OSError:
+            pass
+
+
+def _refresh_throttled(now):
+    """True when the last refresh attempt was within MIN_REFRESH_INTERVAL."""
+    try:
+        with open(REFRESH_THROTTLE_PATH) as handle:
+            last = float(json.load(handle).get("attempted_at", 0))
+    except (OSError, ValueError, TypeError, AttributeError):
+        last = 0
+    return (now - last) < MIN_REFRESH_INTERVAL
+
+
+def _mark_refresh_attempt(now):
+    """Record an attempt timestamp (best effort) to drive the backoff."""
+    try:
+        os.makedirs(os.path.dirname(REFRESH_THROTTLE_PATH), exist_ok=True)
+        tmp = REFRESH_THROTTLE_PATH + ".tmp"
+        with open(tmp, "w") as handle:
+            json.dump({"attempted_at": int(now)}, handle)
+        os.replace(tmp, REFRESH_THROTTLE_PATH)
+    except OSError:
+        pass
+
+
+def _refresh_creds(creds, now=None):
+    """Refresh + persist the Claude OAuth token under the lock.
+
+    Re-reads the stored blob after acquiring the lock: if a peer already
+    refreshed it, use that and skip the network. Otherwise exchange the refresh
+    token, merge only the three token fields back into the blob (preserving all
+    others), and write it atomically. Returns the fresh ``claudeAiOauth`` dict.
+    """
+    now = time.time() if now is None else now
+    with _refresh_lock():
+        blob = read_keychain_blob()
+        active = creds
+        if blob:
+            try:
+                stored = parse_creds(blob)
+            except (ValueError, KeyError):
+                stored = None
+            if stored is not None:
+                if not is_expired(stored, now=now):
+                    return stored          # peer already refreshed
+                active = stored
+
+        refresh_token = active.get("refreshToken")
+        if not refresh_token:
+            raise ClaudeRefreshUnauthorized("Missing refresh token")
+        if _refresh_throttled(now):
+            raise ClaudeRefreshThrottled("Recent refresh attempt; backing off")
+        _mark_refresh_attempt(now)
+        refreshed = _http_refresh(refresh_token)
+
+        expires_in = int(refreshed.get("expires_in", 0))
+        updated = dict(active)
+        updated["accessToken"] = refreshed["access_token"]
+        updated["refreshToken"] = refreshed["refresh_token"]
+        updated["expiresAt"] = int((now + expires_in) * 1000)
+
+        try:
+            full = json.loads(blob) if blob else {}
+            if not isinstance(full, dict):
+                full = {}
+        except ValueError:
+            full = {}
+        full["claudeAiOauth"] = updated
+        credential_store.write_claude_blob(json.dumps(full))
+        return updated
+
+
 def fetch_claude():
-    """Full pipeline: keychain -> expiry -> API -> parse. Returns result dict."""
+    """Full pipeline: keychain -> expiry (refresh if needed) -> API -> parse."""
     blob = read_keychain_blob()
     if not blob:
         return {"ok": False, "reason": "expired"}
@@ -145,7 +344,14 @@ def fetch_claude():
     except (ValueError, KeyError):
         return {"ok": False, "reason": "expired"}
     if is_expired(creds):
-        return {"ok": False, "reason": "expired"}
+        try:
+            creds = _refresh_creds(creds)
+        except (ClaudeRefreshUnauthorized, ClaudeRefreshThrottled):
+            return {"ok": False, "reason": "expired"}
+        except Exception:
+            return {"ok": False, "reason": "error"}
+        if is_expired(creds):
+            return {"ok": False, "reason": "expired"}
     try:
         data = _http_get_usage(creds["accessToken"])
         return parse_claude_usage(data)

@@ -8,10 +8,11 @@
 - Open an issue before significant behavior or UI changes.
 - 保持提供商相互独立，单个失败不得破坏整个组件。
 - Keep providers independent so one failure cannot break the whole widget.
-- Claude 与旧版 Kimi 凭据必须保持只读；当前 Kimi 续期必须复用官方锁、锁后重读
-  和原子写入协议。
-- Claude and legacy Kimi credentials must stay read-only. Current Kimi refresh
-  must reuse the official lock, post-lock re-read, and atomic-write protocol.
+- 旧版 Kimi 凭据保持只读；Claude 与当前 Kimi 续期必须复用官方锁、锁后重读
+  和原子写回协议，续期失败回退到过期态。
+- Legacy Kimi credentials stay read-only. Claude and current Kimi refresh must
+  reuse the official lock, post-lock re-read, and atomic write-back protocol,
+  falling back to the expired state on failure.
 - 其他 OAuth 续期只有在存在可共享的并发协议且轮换后的令牌能原子写回时才允许；
   失败必须回退到过期态。
 - Other OAuth refresh is allowed only with a shared concurrency protocol and

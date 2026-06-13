@@ -15,8 +15,10 @@
 
 ## Provider Safety / 提供商安全
 
-- [ ] Credentials remain read-only. / 凭据保持只读。
-- [ ] No OAuth refresh or token persistence was added. /
-      未新增 OAuth 刷新或令牌持久化。
+- [ ] Any OAuth refresh runs under the official lock with a post-lock re-read,
+      atomic write-back, and a fall-back to expired on failure. /
+      任何 OAuth 续期都在官方锁内、锁后重读、原子写回，失败回退过期态。
+- [ ] Tokens never appear in process arguments, logs, the repo, or caches. /
+      令牌不出现在进程参数、日志、仓库或缓存中。
 - [ ] A provider failure does not break other providers. /
       单个提供商失败不会影响其他提供商。
