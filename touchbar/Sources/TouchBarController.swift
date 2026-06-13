@@ -13,6 +13,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     private let detailID = NSTouchBarItem.Identifier("com.quotabar.detail")
     private let closeID  = NSTouchBarItem.Identifier("com.quotabar.close")
     private let detailField = NSTextField(labelWithString: "")
+    private var detailWidthConstraint: NSLayoutConstraint?
     private var modalBar: NSTouchBar?
     private var modalVisible = false
 
@@ -84,6 +85,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         let bar = NSTouchBar()
         bar.delegate = self
         bar.defaultItemIdentifiers = [closeID, .fixedSpaceSmall, detailID]
+        bar.principalItemIdentifier = detailID
         modalBar = bar
         renderDetail()
         ControlStrip.presentModal(bar)
@@ -106,7 +108,16 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         case detailID:
             let it = NSCustomTouchBarItem(identifier: id)
             detailField.font = detailFont
+            detailField.lineBreakMode = .byClipping
+            detailField.maximumNumberOfLines = 1
+            detailField.translatesAutoresizingMaskIntoConstraints = false
+            detailWidthConstraint?.isActive = false
+            detailWidthConstraint = detailField.widthAnchor.constraint(
+                greaterThanOrEqualToConstant: 900
+            )
+            detailWidthConstraint?.isActive = true
             it.view = detailField
+            it.visibilityPriority = .high
             return it
         default:
             return nil
@@ -181,7 +192,6 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
             s.append(seg(countdown(reset), detailFont, bright))
         }
         detailField.attributedStringValue = s
-        detailField.sizeToFit()
     }
 
     private func append(_ s: NSMutableAttributedString, _ name: String, _ tag: String, _ p: Provider) {

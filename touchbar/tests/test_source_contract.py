@@ -21,6 +21,20 @@ class TestTouchBarFreshnessSource(unittest.TestCase):
         self.assertIn("p.live == false", source)
         self.assertIn("·缓存", source)
 
+    def test_modal_marks_detail_as_the_principal_item(self):
+        with open(os.path.join(ROOT, "Sources", "TouchBarController.swift")) as f:
+            source = f.read()
+
+        self.assertIn("bar.principalItemIdentifier = detailID", source)
+        self.assertIn("it.visibilityPriority = .high", source)
+
+    def test_modal_detail_has_an_explicit_visible_width(self):
+        with open(os.path.join(ROOT, "Sources", "TouchBarController.swift")) as f:
+            source = f.read()
+
+        self.assertIn("detailField.widthAnchor.constraint", source)
+        self.assertIn("detailWidthConstraint", source)
+
 
 if __name__ == "__main__":
     unittest.main()
