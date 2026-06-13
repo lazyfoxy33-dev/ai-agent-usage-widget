@@ -48,6 +48,13 @@ and [core contract](../core/CONTRACT.md).
 ./install.sh          # 编译 + 开机自启（LaunchAgent）
 ```
 
+安装脚本把稳定副本放到 `~/Applications/QuotaBar.app`，登录项只运行这个副本；
+仓库内的 `QuotaBar.app` 仅是可重新生成的构建产物。
+
+The installer puts the stable app at `~/Applications/QuotaBar.app`. The login
+agent runs only that installed copy; the bundle inside the repository remains
+a disposable build artifact.
+
 首次可能弹一次 Keychain 授权（Claude 只读登录态）——点“始终允许”。Claude 不
 写回；当前 Kimi 凭据只在官方锁内安全续期。
 
@@ -58,7 +65,8 @@ only under the official lock.
 卸载 / Uninstall:
 
 ```bash
-launchctl unload ~/Library/LaunchAgents/com.quotabar.app.plist
+launchctl bootout "gui/$(id -u)/com.quotabar.app"
+rm -rf ~/Applications/QuotaBar.app
 rm ~/Library/LaunchAgents/com.quotabar.app.plist
 ```
 
