@@ -10,6 +10,7 @@ RES="$APP/Contents/Resources"
 CORE="../core"
 
 echo "› compiling…"
+rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$RES"
 swiftc -swift-version 5 -O \
     -framework AppKit \
@@ -43,7 +44,7 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 
 echo "› ad-hoc signing…"
-codesign --force --sign - "$APP" >/dev/null 2>&1 || true
+./sign_bundle.sh "$APP"
 
 echo "✓ built $APP"
 echo "  run:   open $APP    (or ./$BIN --once to print usage)"
