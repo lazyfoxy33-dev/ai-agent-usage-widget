@@ -1,8 +1,10 @@
 import AppKit
 
 /// Touch Bar presence:
-///   * a small persistent tray cell showing the single most-used quota (glance);
-///   * a full-width modal bar with Claude / Codex / Kimi detail, presented on tap.
+///   * a small persistent tray cell that glances the AI app you're using —
+///     it follows the frontmost Claude / Codex / Kimi app (else the most recent),
+///     and falls back to the most-drained window when none has data;
+///   * a full-width modal bar with one compact gauge per provider, presented on tap.
 /// Percentages are **used %**, matching the Übersicht widget. Data comes from the
 /// shared `core/fetch_usage.py` via `UsageSource`.
 final class TouchBarController: NSObject, NSTouchBarDelegate {
@@ -10,17 +12,32 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     private let trayItem = NSCustomTouchBarItem(identifier: NSTouchBarItem.Identifier(ControlStrip.identifier))
     private let trayButton = NSButton()
 
-    private let detailID = NSTouchBarItem.Identifier("com.quotabar.detail")
     private let closeID  = NSTouchBarItem.Identifier("com.quotabar.close")
-    private let detailField = NSTextField(labelWithString: "")
-    private var detailWidthConstraint: NSLayoutConstraint?
+    private let claudeID = NSTouchBarItem.Identifier("com.quotabar.claude")
+    private let codexID  = NSTouchBarItem.Identifier("com.quotabar.codex")
+    private let kimiID   = NSTouchBarItem.Identifier("com.quotabar.kimi")
+    private let resetID  = NSTouchBarItem.Identifier("com.quotabar.reset")
+    private let resetField = NSTextField(labelWithString: "")
     private var modalBar: NSTouchBar?
     private var modalVisible = false
+
+    // Per-provider gauges hold their own brand palette; built once and reused.
+    private lazy var claudeGauge = ProviderGauge(letter: "C", accent: accent("C"), soft: soft("C"))
+    private lazy var codexGauge  = ProviderGauge(letter: "X", accent: accent("X"), soft: soft("X"))
+    private lazy var kimiGauge   = ProviderGauge(letter: "K", accent: accent("K"), soft: soft("K"))
 
     private var usage = Usage()
     private let work = DispatchQueue(label: "com.quotabar.fetch")
     private var timer: Timer?
     private let refreshEvery: TimeInterval = 60   // shared layer caches Claude/Kimi 5 min
+
+    // Foreground-aware glance: the collapsed cell tracks whichever AI app is
+    // frontmost (Claude / Codex / Kimi desktop apps); when none is, it falls back
+    // to the most recently active one (persisted across launches).
+    private var foregroundTag: String?
+    private var lastUsedTag: String? {
+        didSet { UserDefaults.standard.set(lastUsedTag, forKey: "lastUsedTag") }
+    }
 
     // Visual tuning
     private let trayFont   = NSFont.monospacedDigitSystemFont(ofSize: 16, weight: .semibold)
@@ -65,6 +82,13 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         if !ControlStrip.install(trayItem) {
             NSLog("QuotaBar: control strip hooks unavailable on this system")
         }
+
+        lastUsedTag = UserDefaults.standard.string(forKey: "lastUsedTag")
+        foregroundTag = providerTag(forFrontmost: NSWorkspace.shared.frontmostApplication)
+        if let t = foregroundTag { lastUsedTag = t }
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(activeAppChanged),
+            name: NSWorkspace.didActivateApplicationNotification, object: nil)
         renderTray()
 
         timer = Timer.scheduledTimer(withTimeInterval: refreshEvery, repeats: true) { [weak self] _ in
@@ -81,11 +105,33 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
 
     @objc private func closeTapped() { minimizeModal() }
 
+    // MARK: Foreground tracking
+
+    @objc private func activeAppChanged() {
+        foregroundTag = providerTag(forFrontmost: NSWorkspace.shared.frontmostApplication)
+        if let t = foregroundTag { lastUsedTag = t }
+        renderTray()
+    }
+
+    /// Maps the frontmost desktop app to a provider tag by matching brand keywords
+    /// in its bundle id / name. Returns nil for anything that isn't an AI app.
+    private func providerTag(forFrontmost app: NSRunningApplication?) -> String? {
+        guard let app = app else { return nil }
+        let s = ((app.bundleIdentifier ?? "") + " " + (app.localizedName ?? "")).lowercased()
+        if s.contains("claude") { return "C" }
+        if s.contains("kimi") || s.contains("moonshot") { return "K" }
+        if s.contains("codex") || s.contains("openai") || s.contains("chatgpt") { return "X" }
+        return nil
+    }
+
     private func presentModal() {
         let bar = NSTouchBar()
         bar.delegate = self
-        bar.defaultItemIdentifiers = [closeID, .fixedSpaceSmall, detailID]
-        bar.principalItemIdentifier = detailID
+        bar.defaultItemIdentifiers = [
+            closeID, .fixedSpaceLarge,
+            claudeID, .fixedSpaceSmall, codexID, .fixedSpaceSmall, kimiID,
+            .flexibleSpace, resetID,
+        ]
         modalBar = bar
         renderDetail()
         ControlStrip.presentModal(bar)
@@ -105,23 +151,26 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
             let it = NSCustomTouchBarItem(identifier: id)
             it.view = b
             return it
-        case detailID:
+        case claudeID: return gaugeItem(id, claudeGauge)
+        case codexID:  return gaugeItem(id, codexGauge)
+        case kimiID:   return gaugeItem(id, kimiGauge)
+        case resetID:
             let it = NSCustomTouchBarItem(identifier: id)
-            detailField.font = detailFont
-            detailField.lineBreakMode = .byClipping
-            detailField.maximumNumberOfLines = 1
-            detailField.translatesAutoresizingMaskIntoConstraints = false
-            detailWidthConstraint?.isActive = false
-            detailWidthConstraint = detailField.widthAnchor.constraint(
-                greaterThanOrEqualToConstant: 900
-            )
-            detailWidthConstraint?.isActive = true
-            it.view = detailField
-            it.visibilityPriority = .high
+            resetField.font = detailFont
+            resetField.lineBreakMode = .byClipping
+            resetField.maximumNumberOfLines = 1
+            it.view = resetField
             return it
         default:
             return nil
         }
+    }
+
+    private func gaugeItem(_ id: NSTouchBarItem.Identifier, _ view: ProviderGauge) -> NSTouchBarItem {
+        let it = NSCustomTouchBarItem(identifier: id)
+        it.view = view
+        it.visibilityPriority = .high
+        return it
     }
 
     // MARK: Refresh
@@ -160,11 +209,12 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     }
 
     private func renderTray() {
-        let wins = liveWindows()
         let s = NSMutableAttributedString()
-        // Tightest = highest used %. Prefer non-stale data for a trustworthy glance.
-        let pick = wins.filter { !$0.1.stale }.max(by: { $0.1.usedPct < $1.1.usedPct })
-                ?? wins.max(by: { $0.1.usedPct < $1.1.usedPct })
+        // Prefer the AI app you're using (foreground, else most-recent). When that
+        // provider has no usable window, fall back to the most-drained one overall.
+        let pick = (foregroundTag ?? lastUsedTag).flatMap { tag in
+            tightest(forTag: tag).map { (tag, $0) }
+        } ?? tightestOverall()
         if let (tag, w) = pick {
             let pct = Int(w.usedPct.rounded())
             s.append(seg(tag, trayFont, w.stale ? dim : accent(tag)))
@@ -177,40 +227,47 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         trayButton.frame = NSRect(x: 0, y: 0, width: max(width, 40), height: 30)
     }
 
+    /// Most-drained live window for one provider. Prefers non-stale figures.
+    private func tightest(forTag tag: String) -> Window? {
+        let wins = liveWindows().filter { $0.0 == tag }
+        return (wins.filter { !$0.1.stale }.max(by: { $0.1.usedPct < $1.1.usedPct })
+             ?? wins.max(by: { $0.1.usedPct < $1.1.usedPct }))?.1
+    }
+
+    /// Most-drained live window across all providers.
+    private func tightestOverall() -> (String, Window)? {
+        let wins = liveWindows()
+        return wins.filter { !$0.1.stale }.max(by: { $0.1.usedPct < $1.1.usedPct })
+            ?? wins.max(by: { $0.1.usedPct < $1.1.usedPct })
+    }
+
     // MARK: Rendering — detail (modal, full width)
 
     private func renderDetail() {
-        let s = NSMutableAttributedString()
-        append(s, "Claude", "C", usage.claude)
-        s.append(seg("    ", detailFont, dim))
-        append(s, "Codex", "X", usage.codex)
-        s.append(seg("    ", detailFont, dim))
-        append(s, "Kimi", "K", usage.kimi)
+        feed(claudeGauge, usage.claude)
+        feed(codexGauge,  usage.codex)
+        feed(kimiGauge,   usage.kimi)
 
         if let reset = soonestReset() {
-            s.append(seg("   ⟳ ", detailFont, dim))
+            let s = NSMutableAttributedString()
+            s.append(seg("⟳ ", detailFont, dim))
             s.append(seg(countdown(reset), detailFont, bright))
+            resetField.attributedStringValue = s
+        } else {
+            resetField.attributedStringValue = NSAttributedString(string: "")
         }
-        detailField.attributedStringValue = s
     }
 
-    private func append(_ s: NSMutableAttributedString, _ name: String, _ tag: String, _ p: Provider) {
-        s.append(seg(name + " ", detailFont, accent(tag)))
+    private func feed(_ gauge: ProviderGauge, _ p: Provider) {
         guard p.ok, (p.fiveH != nil || p.weekly != nil) else {
-            s.append(seg(status(p), detailFont, dim))
+            gauge.update(ok: false, status: status(p), fiveH: nil, weekly: nil, cached: false)
             return
         }
-        s.append(seg("5h ", detailFont, dim));  s.append(pct(p.fiveH, accent(tag)))
-        s.append(seg(" 7d ", detailFont, dim)); s.append(pct(p.weekly, soft(tag)))
-        if p.reason == "stale" || p.live == false {
-            s.append(seg(" ·缓存", detailFont, dim))
-        }
-    }
-
-    private func pct(_ w: Window?, _ base: NSColor) -> NSAttributedString {
-        guard let w = w else { return seg("–", detailFont, dim) }
-        let v = "\(Int(w.usedPct.rounded()))%"
-        return seg(v, detailFont, w.stale ? dim : base)
+        let cached = p.reason == "stale" || p.live == false
+        gauge.update(ok: true, status: "",
+                     fiveH:  p.fiveH.map  { ($0.usedPct, $0.stale) },
+                     weekly: p.weekly.map { ($0.usedPct, $0.stale) },
+                     cached: cached)
     }
 
     private func soonestReset() -> Date? {

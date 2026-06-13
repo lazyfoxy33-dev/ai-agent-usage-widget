@@ -11,25 +11,26 @@ safe freshness and credential policy.
 
 macOS（含 26 Tahoe）给单个 app 在控制条只有**一格、宽约 6 字符、不能加宽**，所以分两段：
 
-- **常驻小格（瞄一眼）** —— 只显示用量最高（最该注意）的那个窗口，颜色编码：
-  绿 <60% · 黄 60–85% · 红 ≥85%（按**已用** %）。`C`=Claude `X`=Codex `K`=Kimi。
-  数据过期（窗口已重置）时置灰。
-- **点一下 → 整条详情**（系统模态触控栏，全宽）：
-
-  ```
-  Claude 5h 12% 7d 40%   Codex 5h 1% 7d 93%   Kimi 5h 8% 7d 22%   ⟳ 1h13m
-  ```
-
-  `5h`/`7d` 为已用百分比，`⟳` 为最近一个窗口的重置倒计时。左侧 `✕`（或再点小格）收回。
+- **常驻小格（瞄一眼）** —— 跟随**你正在用的 AI 应用**：前台是 Claude / Codex / Kimi 时显示
+  对应额度；前台不是 AI 应用时回退到**最近用过的那个**（持久化，重启仍记得）；都无数据时
+  再回退到用量最高的窗口。`C`=Claude `X`=Codex `K`=Kimi，用各自品牌色（按**已用** %）；
+  数据过期/非实时时置灰。
+- **点一下 → 整条详情**（系统模态触控栏，全宽）：每个 provider 一张紧凑「仪表卡」——
+  品牌徽章 + 两条迷你进度条（`5H` 主色 / `7D` 柔色）+ 百分比，右侧 `⟳` 为最近一个窗口的
+  重置倒计时。固定卡宽让整条长度收敛、不溢出。左侧 `✕`（或再点小格）收回。
 
 macOS, including 26 Tahoe, gives each app only one narrow Control Strip slot,
 so the UI has two levels:
 
-- The persistent tray cell shows the most-used quota window. `C`, `X`, and `K`
-  identify Claude, Codex, and Kimi. Stale data is dimmed.
-- Tapping the cell opens a full-width modal Touch Bar with every provider's
-  5-hour and 7-day usage plus the nearest reset countdown. Tap `✕` or the tray
-  cell again to close it.
+- The persistent tray cell follows the AI app you're using: it shows the
+  quota of whichever Claude / Codex / Kimi app is frontmost, falls back to the
+  most recently used one (persisted across launches), and finally to the
+  most-drained window when none has data. `C`, `X`, and `K` identify the
+  providers in their brand colors; stale / non-live data is dimmed.
+- Tapping the cell opens a full-width modal Touch Bar with one compact gauge
+  per provider — a brand badge, two mini bars (`5H` accent, `7D` soft tint) and
+  percentages — plus the nearest reset countdown. Fixed-width cards keep the
+  bar's total length bounded. Tap `✕` or the tray cell again to close it.
 
 ## 数据来源 / Data
 
