@@ -43,12 +43,14 @@ same freshness and credential-handling policy.
 
 ## 工作方式 / How It Works
 
-- **Claude：**macOS 只读访问 Keychain；Windows/Linux 只读访问
-  `~/.claude/.credentials.json`。随后调用 Anthropic 用量接口。组件不会刷新、
-  保存或打印 Claude 令牌。
-- **Claude:** reads macOS Keychain or, on Windows/Linux,
-  `~/.claude/.credentials.json`, then calls Anthropic's usage endpoint. Claude
-  credentials are never refreshed, saved, or printed by this project.
+- **Claude：**macOS 读取 Keychain；Windows/Linux 读取
+  `~/.claude/.credentials.json`。随后调用 Anthropic 用量接口。令牌过期时用其
+  refresh token 在官方锁内续期并原子写回（与 Kimi 同协议），续期失败回退过期态。
+- **Claude:** reads the macOS Keychain or, on Windows/Linux,
+  `~/.claude/.credentials.json`, then calls Anthropic's usage endpoint. When the
+  token has expired it is refreshed with its refresh token under the official
+  lock and written back atomically (same protocol as Kimi), falling back to the
+  expired state on failure.
 - **Codex：**读取本地 Codex 会话 JSONL 中最近一次模型响应附带的限额快照，
   默认不访问凭据或发送模型请求。用户可显式开启节流后的主动探测。
 - **Codex:** reads the latest rate-limit snapshot from local Codex session
@@ -180,12 +182,15 @@ tray menu, saved position, and autostart. See
 
 ### Claude
 
-正常登录并使用 Claude Code。令牌过期时，请让官方客户端自行重新登录或刷新。
-组件故意不刷新令牌，避免旋转 refresh token 导致官方客户端退出。
+正常登录并使用 Claude（CLI 或桌面 App）。令牌每 8 小时过期；若官方客户端没有
+自行刷新（如只用桌面 App 的场景），组件会用其 refresh token 在官方锁内续期并
+原子写回，使 Claude 长期保持实时。续期失败（如被限流）会退避重试并暂显缓存值。
 
-Sign in to and use Claude Code normally. When its token expires, let the
-official client log in or refresh itself. The widget deliberately avoids token
-refresh because rotating refresh tokens could sign the official client out.
+Sign in to and use Claude (CLI or desktop app) normally. The token expires
+every 8 hours; if the official client does not refresh it itself (e.g. when you
+use only the desktop app), the widget refreshes it with its refresh token under
+the official lock and writes it back atomically, keeping Claude live. A failed
+refresh (e.g. rate-limited) backs off and temporarily shows the cached value.
 
 ### Codex
 
@@ -275,12 +280,14 @@ probing is explicitly enabled.
 
 ## 隐私与安全 / Privacy And Security
 
-- 凭据只在运行时从官方客户端存储位置读取；Claude 与旧版 Kimi 凭据保持只读。
-- Credentials are read at runtime from official-client storage; Claude and
-  legacy Kimi credentials stay read-only.
-- 当前 Kimi 凭据仅在官方锁内续期，并以 `0600` 权限原子写回。
-- Current Kimi credentials refresh only under the official lock and are
-  atomically written with `0600` permissions.
+- 凭据只在运行时从官方客户端存储位置读取；旧版 Kimi 凭据保持只读。
+- Credentials are read at runtime from official-client storage; legacy Kimi
+  credentials stay read-only.
+- Claude 与当前 Kimi 凭据仅在官方锁内续期，写回时保留其余字段、原子替换并收紧
+  权限（文件 `0600`；macOS 经 Keychain 原位更新）。
+- Claude and current Kimi credentials refresh only under the official lock; the
+  write-back preserves the other fields, replaces atomically, and tightens
+  permissions (`0600` for files; macOS updates the Keychain item in place).
 - 令牌不会写入仓库、缓存、日志或命令行参数。
 - Tokens are never written to the repository, cache, logs, or process arguments.
 - Claude 用量只发送到 Anthropic；Kimi 用量只发送到 Kimi 官方 API。
