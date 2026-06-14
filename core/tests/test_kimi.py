@@ -200,6 +200,20 @@ class TestKimiStorage(unittest.TestCase):
 
 
 class TestKimiFetch(unittest.TestCase):
+    def setUp(self):
+        # Neutralize the refresh backoff so these tests are deterministic and
+        # never touch the real ~/.cache state.
+        patches = [
+            mock.patch.object(kimi.refresh_backoff, "due", return_value=True),
+            mock.patch.object(kimi.refresh_backoff, "note_failure"),
+            mock.patch.object(kimi.refresh_backoff, "clear"),
+        ]
+        self.backoff_due, self.backoff_note, self.backoff_clear = (
+            p.start() for p in patches
+        )
+        for p in patches:
+            self.addCleanup(p.stop)
+
     def test_fetch_returns_no_data_without_credentials(self):
         with mock.patch.object(kimi, "read_credentials_with_path",
                                return_value=(None, None)):
@@ -279,6 +293,32 @@ class TestKimiFetch(unittest.TestCase):
 
         refresh.assert_called_once_with("/current.json", creds, force=True)
         self.assertEqual(get.call_count, 2)
+
+    def test_active_backoff_skips_refresh(self):
+        creds = {"access_token": "old", "refresh_token": "r", "expires_at": 1000}
+        self.backoff_due.return_value = False
+        with mock.patch.object(kimi, "read_credentials_with_path",
+                               return_value=(creds, "/current.json")), \
+             mock.patch.object(kimi, "credentials_path",
+                               return_value="/current.json"), \
+             mock.patch.object(kimi, "_refresh_credentials") as refresh, \
+             mock.patch.object(kimi.time, "time", return_value=1000):
+            self.assertEqual(kimi.fetch_kimi(), {"ok": False, "reason": "expired"})
+        refresh.assert_not_called()
+
+    def test_rate_limited_refresh_escalates_backoff(self):
+        creds = {"access_token": "old", "refresh_token": "r", "expires_at": 1000}
+        with mock.patch.object(kimi, "read_credentials_with_path",
+                               return_value=(creds, "/current.json")), \
+             mock.patch.object(kimi, "credentials_path",
+                               return_value="/current.json"), \
+             mock.patch.object(kimi, "_refresh_credentials",
+                               side_effect=kimi.KimiRefreshRateLimited), \
+             mock.patch.object(kimi.time, "time", return_value=1000):
+            self.assertEqual(
+                kimi.fetch_kimi(), {"ok": False, "reason": "rate_limited"}
+            )
+        self.assertTrue(self.backoff_note.call_args.kwargs.get("rate_limited"))
 
     def test_refresh_short_circuits_when_peer_rotated_credentials(self):
         initial = {
