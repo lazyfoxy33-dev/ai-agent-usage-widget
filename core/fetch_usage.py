@@ -9,6 +9,7 @@ from usage import cache
 
 CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/claude.json")
 KIMI_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/kimi.json")
+CODEX_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/codex.json")
 CACHE_TTL = 300  # 5 min
 CODEX_FRESH_TTL = 1800  # 30 min
 
@@ -44,6 +45,16 @@ def _provider_with_cache(path, fetch):
         return _failed_result(result)
 
     fallback = dict(stale["data"])
+    # Recalculate per-window stale flags based on current time, since the
+    # cached data may have been written before the stale field was added or
+    # with an old now value.
+    now = int(time.time())
+    for key in ("five_h", "weekly"):
+        win = fallback.get(key)
+        if isinstance(win, dict):
+            resets_at = win.get("resets_at")
+            if resets_at is not None:
+                win["stale"] = resets_at < now
     fallback["reason"] = "stale"
     fallback["upstream_reason"] = result.get("reason", "error")
     fallback["fetched_at"] = int(stale["ts"])
@@ -61,16 +72,28 @@ def kimi_with_cache():
 
 def codex_result(now=None):
     now = time.time() if now is None else now
+    # Prefer current limits read live via the Codex app-server, cached 5 min so
+    # we don't spawn the CLI every cycle. Newer accounts stop logging windows, so
+    # the live read is the only source that stays correct.
+    cached = cache.read_entry(CODEX_CACHE_PATH, ttl=CACHE_TTL, now=now)
+    if cached is not None:
+        return _fresh_result(cached["data"], cached["ts"])
+    live = codex.fetch_codex_live(now=now)
+    if live.get("ok"):
+        cache.write(CODEX_CACHE_PATH, live, now=now)
+        return _fresh_result(live, now)
+
+    # Fall back to local session-log scraping (accounts that still log windows).
     result = codex.parse_codex()
     if not result.get("ok"):
         codex.maybe_active_refresh(None, now=now)
         return _failed_result(result)
-    fetched_at = result.get("as_of")
-    codex.maybe_active_refresh(fetched_at, now=now)
+    as_of = result.get("as_of")
+    codex.maybe_active_refresh(as_of, now=now)
     normalized = dict(result)
-    normalized["fetched_at"] = int(fetched_at) if fetched_at is not None else None
+    normalized["fetched_at"] = int(now)
     normalized["live"] = (
-        fetched_at is not None and now - float(fetched_at) <= CODEX_FRESH_TTL
+        as_of is not None and now - float(as_of) <= CODEX_FRESH_TTL
     )
     return normalized
 

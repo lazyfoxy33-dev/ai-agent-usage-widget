@@ -23,14 +23,18 @@ class TestFetch(unittest.TestCase):
         claude_res = {"ok": False, "reason": "expired"}
         kimi_res = {"ok": True, "five_h": {"pct": 34, "resets_at": 3},
                     "weekly": {"pct": 8, "resets_at": 4}}
-        with mock.patch.object(fetch_usage.codex, "parse_codex", return_value=codex_res), \
+        with mock.patch.object(fetch_usage.time, "time", return_value=2000), \
+             mock.patch.object(fetch_usage.cache, "read_entry", return_value=None), \
+             mock.patch.object(fetch_usage.codex, "fetch_codex_live",
+                               return_value={"ok": False, "reason": "error"}), \
+             mock.patch.object(fetch_usage.codex, "parse_codex", return_value=codex_res), \
              mock.patch.object(fetch_usage, "claude_with_cache", return_value=claude_res), \
              mock.patch.object(fetch_usage, "kimi_with_cache", return_value=kimi_res):
             out = json.loads(fetch_usage.build_payload())
         self.assertEqual(out["schema_version"], 1)
         self.assertEqual(out["codex"]["five_h"]["pct"], 7)
-        self.assertEqual(out["codex"]["fetched_at"], 1)
-        self.assertFalse(out["codex"]["live"])
+        self.assertEqual(out["codex"]["fetched_at"], 2000)  # now, not as_of
+        self.assertFalse(out["codex"]["live"])  # as_of=1, now=2000, diff=1999 > 1800
         self.assertEqual(out["claude"]["reason"], "expired")
         self.assertIsNone(out["claude"]["fetched_at"])
         self.assertFalse(out["claude"]["live"])
@@ -97,10 +101,44 @@ class TestFetch(unittest.TestCase):
             "five_h": {"pct": 1, "resets_at": 2},
             "weekly": {"pct": 3, "resets_at": 4},
         }
-        with mock.patch.object(fetch_usage.codex, "parse_codex",
+        with mock.patch.object(fetch_usage.cache, "read_entry", return_value=None), \
+             mock.patch.object(fetch_usage.codex, "fetch_codex_live",
+                               return_value={"ok": False, "reason": "error"}), \
+             mock.patch.object(fetch_usage.codex, "parse_codex",
                                return_value=parsed), \
              mock.patch.object(fetch_usage.codex,
                                "maybe_active_refresh") as refresh:
             fetch_usage.codex_result(now=3000)
 
         refresh.assert_called_once_with(1000, now=3000)
+
+    def test_codex_prefers_live_and_caches_it(self):
+        live = {"ok": True, "as_of": 5000,
+                "five_h": {"pct": 1, "resets_at": 9, "stale": False},
+                "weekly": {"pct": 16, "resets_at": 9, "stale": False}}
+        with mock.patch.object(fetch_usage.cache, "read_entry", return_value=None), \
+             mock.patch.object(fetch_usage.codex, "fetch_codex_live",
+                               return_value=live), \
+             mock.patch.object(fetch_usage.codex, "parse_codex") as parse, \
+             mock.patch.object(fetch_usage.cache, "write") as write:
+            result = fetch_usage.codex_result(now=5000)
+
+        self.assertTrue(result["live"])
+        self.assertEqual(result["fetched_at"], 5000)
+        self.assertEqual(result["five_h"]["pct"], 1)
+        parse.assert_not_called()  # live succeeded → no log scrape
+        write.assert_called_once_with(fetch_usage.CODEX_CACHE_PATH, live, now=5000)
+
+    def test_codex_live_failure_falls_back_to_log_scrape(self):
+        parsed = {"ok": True, "as_of": 4900,
+                  "five_h": {"pct": 80, "resets_at": 9},
+                  "weekly": {"pct": 40, "resets_at": 9}}
+        with mock.patch.object(fetch_usage.cache, "read_entry", return_value=None), \
+             mock.patch.object(fetch_usage.codex, "fetch_codex_live",
+                               return_value={"ok": False, "reason": "error"}), \
+             mock.patch.object(fetch_usage.codex, "parse_codex",
+                               return_value=parsed), \
+             mock.patch.object(fetch_usage.codex, "maybe_active_refresh"):
+            result = fetch_usage.codex_result(now=5000)
+
+        self.assertEqual(result["five_h"]["pct"], 80)  # from the log fallback

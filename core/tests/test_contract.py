@@ -22,7 +22,10 @@ class TestContract(unittest.TestCase):
 
     def test_actual_payload_has_required_provider_shape(self):
         no_data = {"ok": False, "reason": "no_data"}
-        with mock.patch.object(fetch_usage.codex, "parse_codex",
+        with mock.patch.object(fetch_usage.cache, "read_entry", return_value=None), \
+             mock.patch.object(fetch_usage.codex, "fetch_codex_live",
+                               return_value=no_data), \
+             mock.patch.object(fetch_usage.codex, "parse_codex",
                                return_value=no_data), \
              mock.patch.object(fetch_usage, "claude_with_cache",
                                return_value=no_data), \
