@@ -30,17 +30,22 @@ class TestClaudeParse(unittest.TestCase):
             return _json.load(f)
 
     def test_parse_five_h_and_weekly(self):
-        result = claude.parse_claude_usage(self._fixture())
+        result = claude.parse_claude_usage(self._fixture(), now=1800000000)
         self.assertEqual(result["five_h"]["pct"], 49)
         self.assertEqual(result["weekly"]["pct"], 5)
         expected_five_h_ts = int(datetime.fromisoformat("2026-06-11T12:09:59.599553+00:00").timestamp())
         self.assertEqual(result["five_h"]["resets_at"], expected_five_h_ts)
+        # resets_at is in the past vs now=1800000000, so stale should be True
+        self.assertTrue(result["five_h"]["stale"])
+        self.assertTrue(result["weekly"]["stale"])
 
     def test_parse_accepts_0_to_100_scale(self):
         data = {"five_hour": {"utilization": 43, "resets_at": 1},
                 "seven_day": {"utilization": 61, "resets_at": 2}}
-        result = claude.parse_claude_usage(data)
+        result = claude.parse_claude_usage(data, now=3)
         self.assertEqual(result["five_h"]["pct"], 43)
+        self.assertTrue(result["five_h"]["stale"])  # resets_at=1 < now=3
+        self.assertTrue(result["weekly"]["stale"])  # resets_at=2 < now=3
 
     def test_parse_resets_iso_string(self):
         iso = "2026-06-11T12:09:59.599553+00:00"

@@ -127,14 +127,18 @@ def _is_five_hour_limit(item):
     return duration == 300 and "MINUTE" in unit
 
 
-def _window(data):
+def _window(data, now=None):
+    now = time.time() if now is None else now
+    resets_at = _reset_timestamp(data)
     return {
         "pct": _percentage(data),
-        "resets_at": _reset_timestamp(data),
+        "resets_at": resets_at,
+        "stale": resets_at < now,
     }
 
 
-def parse_kimi_usage(payload):
+def parse_kimi_usage(payload, now=None):
+    now = time.time() if now is None else now
     usage = payload.get("usage")
     limits = payload.get("limits")
     if not isinstance(usage, dict) or not isinstance(limits, list):
@@ -152,8 +156,8 @@ def parse_kimi_usage(payload):
 
     return {
         "ok": True,
-        "five_h": _window(five),
-        "weekly": _window(usage),
+        "five_h": _window(five, now=now),
+        "weekly": _window(usage, now=now),
     }
 
 
@@ -414,14 +418,15 @@ def fetch_kimi():
         if not token:
             return {"ok": False, "reason": "expired"}
     try:
-        return parse_kimi_usage(_http_get_usage(token))
+        return parse_kimi_usage(_http_get_usage(token), now=time.time())
     except KimiAuthError:
         if not current_credentials:
             return {"ok": False, "reason": "expired"}
         try:
             refreshed = _refresh_credentials(path, credentials, force=True)
             return parse_kimi_usage(
-                _http_get_usage(refreshed["access_token"])
+                _http_get_usage(refreshed["access_token"]),
+                now=time.time(),
             )
         except (KimiAuthError, KimiRefreshUnauthorized, KeyError):
             return {"ok": False, "reason": "expired"}
