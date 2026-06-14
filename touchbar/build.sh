@@ -44,7 +44,16 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
 PLIST
 
 echo "› ad-hoc signing…"
-./sign_bundle.sh "$APP"
+# Signing can fail when the repo lives in an iCloud-synced folder (e.g.
+# ~/Documents): the file provider keeps re-adding com.apple.FinderInfo to the
+# bundle, which the ad-hoc signer rejects as "resource fork / detritus". Keep
+# this non-fatal — install.sh re-signs the installed copy under ~/Applications,
+# which is not synced, so installation still succeeds. (A dev `open $APP` from a
+# synced dir may be unsigned; build from a non-synced location if you need that.)
+if ! ./sign_bundle.sh "$APP"; then
+    echo "  ⚠️  in-repo signing failed (expected in an iCloud-synced folder);"
+    echo "     install.sh will sign the installed copy under ~/Applications."
+fi
 
 echo "✓ built $APP"
 echo "  run:   open $APP    (or ./$BIN --once to print usage)"
