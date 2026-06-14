@@ -10,9 +10,12 @@ import urllib.parse
 from contextlib import contextmanager
 from datetime import datetime
 
+from . import refresh_backoff
+
 USAGE_URL = "https://api.kimi.com/coding/v1/usages"
 OAUTH_URL = "https://auth.kimi.com/api/oauth/token"
 CLIENT_ID = "17e5f671-d194-4dfb-9706-5516cb48c098"
+REFRESH_BACKOFF_PATH = os.path.expanduser("~/.cache/usage-widget/kimi-refresh.json")
 _PROXY_CANDIDATES = [("127.0.0.1", 7897), ("127.0.0.1", 7890)]
 _LOCK_STALE_SECONDS = 5
 _LOCK_HEARTBEAT_SECONDS = 2
@@ -24,6 +27,10 @@ class KimiAuthError(RuntimeError):
 
 class KimiRefreshUnauthorized(RuntimeError):
     """The Kimi OAuth endpoint rejected the refresh token."""
+
+
+class KimiRefreshRateLimited(RuntimeError):
+    """The Kimi OAuth refresh endpoint returned HTTP 429."""
 
 
 def credentials_path():
@@ -249,6 +256,8 @@ def _http_refresh(refresh_token):
         data = {}
     if code in ("401", "403") or data.get("error") == "invalid_grant":
         raise KimiRefreshUnauthorized(f"HTTP {code}")
+    if code == "429":
+        raise KimiRefreshRateLimited("HTTP 429")
     if code != "200":
         raise RuntimeError(f"HTTP {code}: {response_body[:200]}")
     if not all(data.get(key) for key in ("access_token", "refresh_token")):
@@ -408,13 +417,21 @@ def fetch_kimi():
     if not token or is_expired(credentials):
         if not current_credentials:
             return {"ok": False, "reason": "expired"}
+        if not refresh_backoff.due(REFRESH_BACKOFF_PATH):
+            return {"ok": False, "reason": "expired"}
         try:
             credentials = _refresh_credentials(path, credentials, force=False)
             token = credentials.get("access_token")
+        except KimiRefreshRateLimited:
+            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH, rate_limited=True)
+            return {"ok": False, "reason": "rate_limited"}
         except KimiRefreshUnauthorized:
+            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH)
             return {"ok": False, "reason": "expired"}
         except Exception:
+            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH)
             return {"ok": False, "reason": "error"}
+        refresh_backoff.clear(REFRESH_BACKOFF_PATH)
         if not token:
             return {"ok": False, "reason": "expired"}
     try:
@@ -422,15 +439,24 @@ def fetch_kimi():
     except KimiAuthError:
         if not current_credentials:
             return {"ok": False, "reason": "expired"}
+        if not refresh_backoff.due(REFRESH_BACKOFF_PATH):
+            return {"ok": False, "reason": "expired"}
         try:
             refreshed = _refresh_credentials(path, credentials, force=True)
-            return parse_kimi_usage(
+            usage = parse_kimi_usage(
                 _http_get_usage(refreshed["access_token"]),
                 now=time.time(),
             )
+            refresh_backoff.clear(REFRESH_BACKOFF_PATH)
+            return usage
+        except KimiRefreshRateLimited:
+            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH, rate_limited=True)
+            return {"ok": False, "reason": "rate_limited"}
         except (KimiAuthError, KimiRefreshUnauthorized, KeyError):
+            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH)
             return {"ok": False, "reason": "expired"}
         except Exception:
+            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH)
             return {"ok": False, "reason": "error"}
     except Exception:
         return {"ok": False, "reason": "error"}
