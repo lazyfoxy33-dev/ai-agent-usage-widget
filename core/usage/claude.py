@@ -102,16 +102,17 @@ def _proxy():
     return None
 
 
-def parse_claude_usage(data):
+def parse_claude_usage(data, now=None):
     """Map /api/oauth/usage JSON -> {five_h, weekly}.
     Keep ALL field-name knowledge inside this function.
     """
+    now = time.time() if now is None else now
     five = data["five_hour"]
     week = data["seven_day"]
     return {
         "ok": True,
-        "five_h": {"pct": _norm_pct(five["utilization"]), "resets_at": _parse_resets(five["resets_at"])},
-        "weekly": {"pct": _norm_pct(week["utilization"]), "resets_at": _parse_resets(week["resets_at"])},
+        "five_h": {"pct": _norm_pct(five["utilization"]), "resets_at": _parse_resets(five["resets_at"]), "stale": _parse_resets(five["resets_at"]) < now},
+        "weekly": {"pct": _norm_pct(week["utilization"]), "resets_at": _parse_resets(week["resets_at"]), "stale": _parse_resets(week["resets_at"]) < now},
     }
 
 
@@ -354,7 +355,7 @@ def fetch_claude():
             return {"ok": False, "reason": "expired"}
     try:
         data = _http_get_usage(creds["accessToken"])
-        return parse_claude_usage(data)
+        return parse_claude_usage(data, now=time.time())
     except ClaudeRateLimitError:
         return {"ok": False, "reason": "rate_limited"}
     except Exception:

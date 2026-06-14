@@ -56,12 +56,13 @@ The installer puts the stable app at `~/Applications/QuotaBar.app`. The login
 agent runs only that installed copy; the bundle inside the repository remains
 a disposable build artifact.
 
-首次可能弹一次 Keychain 授权（Claude 只读登录态）——点“始终允许”。Claude 不
-写回；当前 Kimi 凭据只在官方锁内安全续期。
+首次可能弹一次 Keychain 授权（读取 Claude 登录态）——点“始终允许”。Claude 与
+当前 Kimi 凭据在过期时都于官方锁内续期并原子写回；续期失败回退过期态。
 
-A one-time Keychain prompt may appear for read-only Claude access; choose
-“Always Allow.” Claude is never written back. Current Kimi credentials refresh
-only under the official lock.
+A one-time Keychain prompt may appear to read the Claude login; choose “Always
+Allow.” Both Claude and current Kimi credentials are refreshed under the
+official lock and written back atomically when expired, falling back to the
+expired state on failure.
 
 卸载 / Uninstall:
 
