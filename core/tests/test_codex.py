@@ -104,6 +104,63 @@ class TestCodex(unittest.TestCase):
         self.assertFalse(result["weekly"]["stale"])
 
 
+class TestCodexLive(unittest.TestCase):
+    SNAP = {
+        "limitId": "codex",
+        "primary": {"usedPercent": 1.4, "windowDurationMins": 300, "resetsAt": 2000},
+        "secondary": {"usedPercent": 16.0, "windowDurationMins": 10080, "resetsAt": 9999},
+    }
+
+    def test_parse_maps_windows_by_duration(self):
+        r = codex.parse_rate_limit_snapshot(self.SNAP, now=1000)
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["five_h"]["pct"], 1)
+        self.assertEqual(r["five_h"]["resets_at"], 2000)
+        self.assertEqual(r["weekly"]["pct"], 16)
+        self.assertEqual(r["weekly"]["resets_at"], 9999)
+        self.assertEqual(r["as_of"], 1000)
+
+    def test_parse_maps_by_duration_not_position(self):
+        snap = {
+            "primary": {"usedPercent": 16, "windowDurationMins": 10080, "resetsAt": 9},
+            "secondary": {"usedPercent": 1, "windowDurationMins": 300, "resetsAt": 8},
+        }
+        r = codex.parse_rate_limit_snapshot(snap, now=1)
+        self.assertEqual(r["five_h"]["pct"], 1)
+        self.assertEqual(r["weekly"]["pct"], 16)
+
+    def test_parse_null_windows_returns_no_data(self):
+        snap = {"limitId": "premium", "primary": None, "secondary": None,
+                "credits": {"balance": "0"}}
+        r = codex.parse_rate_limit_snapshot(snap, now=1)
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["reason"], "no_data")
+
+    def test_parse_marks_stale_when_window_already_reset(self):
+        snap = {
+            "primary": {"usedPercent": 5, "windowDurationMins": 300, "resetsAt": 50},
+            "secondary": {"usedPercent": 5, "windowDurationMins": 10080, "resetsAt": 9999},
+        }
+        r = codex.parse_rate_limit_snapshot(snap, now=100)
+        self.assertTrue(r["five_h"]["stale"])
+        self.assertFalse(r["weekly"]["stale"])
+
+    def test_fetch_live_uses_snapshot(self):
+        with mock.patch.object(codex, "_app_server_read_snapshot",
+                               return_value=self.SNAP):
+            r = codex.fetch_codex_live(now=1000)
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["five_h"]["pct"], 1)
+        self.assertEqual(r["weekly"]["pct"], 16)
+
+    def test_fetch_live_failure_returns_error(self):
+        with mock.patch.object(codex, "_app_server_read_snapshot",
+                               return_value=None):
+            r = codex.fetch_codex_live(now=1000)
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["reason"], "error")
+
+
 class TestCodexActiveRefresh(unittest.TestCase):
     def test_module_does_not_require_posix_fcntl(self):
         source = pathlib.Path(codex.__file__).read_text()

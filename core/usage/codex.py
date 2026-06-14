@@ -3,8 +3,10 @@ import glob
 import json
 import os
 import shutil
+import signal
 import subprocess
 import tempfile
+import threading
 import time
 from contextlib import contextmanager
 from datetime import datetime
@@ -20,6 +22,7 @@ REFRESH_THROTTLE_PATH = os.path.expanduser(
 )
 _LOCK_STALE_SECONDS = 10
 _LOCK_WAIT_SECONDS = 2
+_APP_SERVER_TIMEOUT = 20  # seconds to await the live rate-limits read
 
 
 def _parse_ts(s):
@@ -117,6 +120,153 @@ def parse_codex(session_dirs=None, days=14, now=None):
             "stale": week["resets_at"] < now,
         },
     }
+
+
+# --- Live read via the Codex app-server (JSON-RPC over stdio) ---
+#
+# Newer Codex CLIs stop writing windowed limits to session logs once an account
+# meters on a different bucket, so log scraping freezes. The official client
+# reads current limits through `codex app-server`'s `account/rateLimits/read`
+# method, which uses the CLI's own auth — so we drive that protocol and never
+# touch the Codex token ourselves (read-only, no rotation conflict).
+
+
+def _app_server_read_snapshot(timeout=_APP_SERVER_TIMEOUT):
+    """Spawn `codex app-server`, handshake, and return the rate-limit snapshot.
+
+    Returns the ``rateLimits`` dict from the response, or None on any failure.
+    """
+    executable = _codex_executable()
+    if executable is None:
+        return None
+    try:
+        proc = subprocess.Popen(
+            [executable, "app-server"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            text=True,
+            bufsize=1,
+            # Own process group so _terminate can reap any forked stdio worker.
+            start_new_session=True,
+        )
+    except OSError:
+        return None
+
+    def send(obj):
+        proc.stdin.write(json.dumps(obj) + "\n")
+        proc.stdin.flush()
+
+    # The read happens on a thread so a hung server is bounded by `timeout`.
+    captured = {}
+
+    def reader():
+        for line in proc.stdout:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                msg = json.loads(line)
+            except ValueError:
+                continue
+            if msg.get("id") == 2:
+                captured["msg"] = msg
+                return
+
+    try:
+        send({"jsonrpc": "2.0", "id": 1, "method": "initialize",
+              "params": {"clientInfo": {"name": "quotabar", "title": None,
+                                        "version": "1.0"}, "capabilities": None}})
+        send({"jsonrpc": "2.0", "id": 2,
+              "method": "account/rateLimits/read", "params": None})
+    except (OSError, ValueError):
+        _terminate(proc)
+        return None
+
+    thread = threading.Thread(target=reader, daemon=True)
+    thread.start()
+    thread.join(timeout)
+    _terminate(proc)
+
+    msg = captured.get("msg")
+    if not msg or "result" not in msg:
+        return None
+    return (msg["result"] or {}).get("rateLimits")
+
+
+def _terminate(proc):
+    """Reap the app-server and any forked stdio worker (kill the group)."""
+    def signal_group(sig):
+        if hasattr(os, "killpg"):
+            try:
+                os.killpg(os.getpgid(proc.pid), sig)
+                return
+            except OSError:
+                pass
+        try:
+            proc.send_signal(sig)
+        except OSError:
+            pass
+
+    signal_group(signal.SIGTERM)
+    try:
+        proc.wait(timeout=2)
+        return
+    except (OSError, subprocess.SubprocessError):
+        pass
+    signal_group(signal.SIGKILL)
+    try:
+        proc.wait(timeout=2)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
+def _snapshot_window(snapshot, minutes):
+    """Pick the primary/secondary window whose duration == minutes."""
+    for key in ("primary", "secondary"):
+        block = snapshot.get(key)
+        if isinstance(block, dict) and block.get("windowDurationMins") == minutes:
+            return block
+    # Fallback by position: primary=5h, secondary=weekly.
+    block = snapshot.get("primary" if minutes == 300 else "secondary")
+    return block if isinstance(block, dict) else None
+
+
+def parse_rate_limit_snapshot(snapshot, now=None):
+    """Map an app-server RateLimitSnapshot to {ok, as_of, five_h, weekly}."""
+    if now is None:
+        now = time.time()
+    if not isinstance(snapshot, dict):
+        return {"ok": False, "reason": "no_data"}
+    five = _snapshot_window(snapshot, 300)
+    week = _snapshot_window(snapshot, 10080)
+    if not five or not week:
+        return {"ok": False, "reason": "no_data"}
+    if five.get("usedPercent") is None or week.get("usedPercent") is None:
+        return {"ok": False, "reason": "no_data"}
+
+    def win(block):
+        resets = block.get("resetsAt")
+        resets = int(resets) if isinstance(resets, (int, float)) else None
+        return {
+            "pct": round(block["usedPercent"]),
+            "resets_at": resets,
+            "stale": resets is not None and resets < now,
+        }
+
+    return {"ok": True, "as_of": int(now), "five_h": win(five), "weekly": win(week)}
+
+
+def fetch_codex_live(now=None, timeout=_APP_SERVER_TIMEOUT):
+    """Current Codex usage via the app-server, or {ok:False, reason} on failure."""
+    now = time.time() if now is None else now
+    try:
+        snapshot = _app_server_read_snapshot(timeout=timeout)
+    except Exception:
+        return {"ok": False, "reason": "error"}
+    if snapshot is None:
+        return {"ok": False, "reason": "error"}
+    return parse_rate_limit_snapshot(snapshot, now=now)
 
 
 @contextmanager
