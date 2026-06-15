@@ -185,6 +185,7 @@ def _http_refresh(refresh_token):
         "-sS", "--max-time", "20",
         "-H", "Accept: application/json",
         "-H", "Content-Type: application/x-www-form-urlencoded",
+        "-H", "User-Agent: claude-cli/1.0 (external, cli)",
         "--data-binary", "@-",
         OAUTH_TOKEN_URL,
         "-w", "\n__HTTP__%{http_code}",

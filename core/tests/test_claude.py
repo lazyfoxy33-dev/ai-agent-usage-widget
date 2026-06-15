@@ -231,6 +231,9 @@ class TestClaudeRefresh(unittest.TestCase):
         self.assertNotIn("secret-refresh", " ".join(argv))
         self.assertIn("refresh_token=secret-refresh", run.call_args.kwargs["input"])
         self.assertEqual(result["access_token"], "new")
+        # The refresh endpoint 429s requests without a recognized client
+        # User-Agent, so we must identify as the CLI.
+        self.assertTrue(any("claude-cli" in a for a in argv))
 
     def test_http_refresh_invalid_grant_raises_unauthorized(self):
         completed = mock.Mock(stdout='{"error":"invalid_grant"}\n__HTTP__400')
