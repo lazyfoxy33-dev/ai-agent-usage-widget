@@ -17,16 +17,15 @@ from contextlib import contextmanager
 from datetime import datetime
 
 from . import credential_store
+from . import refresh_backoff
 
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
 OAUTH_TOKEN_URL = "https://platform.claude.com/v1/oauth/token"
 CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 REFRESH_LOCK_PATH = os.path.expanduser("~/.cache/usage-widget/claude-oauth")
-REFRESH_THROTTLE_PATH = os.path.expanduser("~/.cache/usage-widget/claude-refresh.json")
-# A successful refresh yields an ~8h token, so it is self-limiting. This backoff
-# only governs *failing* attempts so an expired token (refreshed on every cache
-# miss, ~once a minute across widgets) cannot hammer the OAuth endpoint into 429.
-MIN_REFRESH_INTERVAL = 600
+# A successful refresh yields an ~8h token (self-limiting); failures escalate via
+# refresh_backoff so an expired token cannot hammer the OAuth endpoint into 429.
+REFRESH_BACKOFF_PATH = os.path.expanduser("~/.cache/usage-widget/claude-refresh.json")
 _PROXY_CANDIDATES = [("127.0.0.1", 7897), ("127.0.0.1", 7890)]
 _LOCK_STALE_SECONDS = 5
 _LOCK_HEARTBEAT_SECONDS = 2
@@ -40,8 +39,12 @@ class ClaudeRefreshUnauthorized(RuntimeError):
     """The Claude OAuth endpoint rejected the refresh token."""
 
 
+class ClaudeRefreshRateLimited(RuntimeError):
+    """The Claude OAuth refresh endpoint returned HTTP 429."""
+
+
 class ClaudeRefreshThrottled(RuntimeError):
-    """A refresh was attempted too recently; backing off before retrying."""
+    """A refresh is being skipped while the backoff window is active."""
 
 
 def read_keychain_blob():
@@ -182,6 +185,7 @@ def _http_refresh(refresh_token):
         "-sS", "--max-time", "20",
         "-H", "Accept: application/json",
         "-H", "Content-Type: application/x-www-form-urlencoded",
+        "-H", "User-Agent: claude-cli/1.0 (external, cli)",
         "--data-binary", "@-",
         OAUTH_TOKEN_URL,
         "-w", "\n__HTTP__%{http_code}",
@@ -203,6 +207,8 @@ def _http_refresh(refresh_token):
         data = {}
     if code in ("400", "401", "403") or data.get("error") == "invalid_grant":
         raise ClaudeRefreshUnauthorized(f"HTTP {code}")
+    if code == "429":
+        raise ClaudeRefreshRateLimited("HTTP 429")
     if code != "200":
         raise RuntimeError(f"HTTP {code}: {response_body[:200]}")
     if not all(data.get(key) for key in ("access_token", "refresh_token")):
@@ -266,35 +272,15 @@ def _refresh_lock(timeout=60):
             pass
 
 
-def _refresh_throttled(now):
-    """True when the last refresh attempt was within MIN_REFRESH_INTERVAL."""
-    try:
-        with open(REFRESH_THROTTLE_PATH) as handle:
-            last = float(json.load(handle).get("attempted_at", 0))
-    except (OSError, ValueError, TypeError, AttributeError):
-        last = 0
-    return (now - last) < MIN_REFRESH_INTERVAL
-
-
-def _mark_refresh_attempt(now):
-    """Record an attempt timestamp (best effort) to drive the backoff."""
-    try:
-        os.makedirs(os.path.dirname(REFRESH_THROTTLE_PATH), exist_ok=True)
-        tmp = REFRESH_THROTTLE_PATH + ".tmp"
-        with open(tmp, "w") as handle:
-            json.dump({"attempted_at": int(now)}, handle)
-        os.replace(tmp, REFRESH_THROTTLE_PATH)
-    except OSError:
-        pass
-
-
 def _refresh_creds(creds, now=None):
     """Refresh + persist the Claude OAuth token under the lock.
 
     Re-reads the stored blob after acquiring the lock: if a peer already
-    refreshed it, use that and skip the network. Otherwise exchange the refresh
-    token, merge only the three token fields back into the blob (preserving all
-    others), and write it atomically. Returns the fresh ``claudeAiOauth`` dict.
+    refreshed it, use that and skip the network. Otherwise — gated by the
+    escalating refresh_backoff so repeated failures can't hammer the endpoint —
+    exchange the refresh token, merge only the three token fields back into the
+    blob (preserving all others), and write it atomically. Returns the fresh
+    ``claudeAiOauth`` dict.
     """
     now = time.time() if now is None else now
     with _refresh_lock():
@@ -313,10 +299,18 @@ def _refresh_creds(creds, now=None):
         refresh_token = active.get("refreshToken")
         if not refresh_token:
             raise ClaudeRefreshUnauthorized("Missing refresh token")
-        if _refresh_throttled(now):
-            raise ClaudeRefreshThrottled("Recent refresh attempt; backing off")
-        _mark_refresh_attempt(now)
-        refreshed = _http_refresh(refresh_token)
+        if not refresh_backoff.due(REFRESH_BACKOFF_PATH, now):
+            raise ClaudeRefreshThrottled("backing off after a recent failure")
+
+        try:
+            refreshed = _http_refresh(refresh_token)
+        except ClaudeRefreshRateLimited:
+            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH, now, rate_limited=True)
+            raise
+        except Exception:
+            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH, now)
+            raise
+        refresh_backoff.clear(REFRESH_BACKOFF_PATH)
 
         expires_in = int(refreshed.get("expires_in", 0))
         updated = dict(active)
@@ -349,6 +343,8 @@ def fetch_claude():
             creds = _refresh_creds(creds)
         except (ClaudeRefreshUnauthorized, ClaudeRefreshThrottled):
             return {"ok": False, "reason": "expired"}
+        except ClaudeRefreshRateLimited:
+            return {"ok": False, "reason": "rate_limited"}
         except Exception:
             return {"ok": False, "reason": "error"}
         if is_expired(creds):

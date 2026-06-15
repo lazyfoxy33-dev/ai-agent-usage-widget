@@ -200,8 +200,8 @@ class TestClaudeRefresh(unittest.TestCase):
         }
         with mock.patch.object(claude, "_refresh_lock", self._unlocked), \
              mock.patch.object(claude, "read_keychain_blob", return_value=None), \
-             mock.patch.object(claude, "_refresh_throttled", return_value=False), \
-             mock.patch.object(claude, "_mark_refresh_attempt"), \
+             mock.patch.object(claude.refresh_backoff, "due", return_value=True), \
+             mock.patch.object(claude.refresh_backoff, "clear") as clear, \
              mock.patch.object(claude, "_http_refresh",
                                return_value=token_response), \
              mock.patch.object(claude.credential_store, "write_claude_blob") as write:
@@ -214,6 +214,7 @@ class TestClaudeRefresh(unittest.TestCase):
         written = _json.loads(write.call_args.args[0])
         self.assertEqual(written["claudeAiOauth"]["accessToken"], "new")
         self.assertEqual(written["claudeAiOauth"]["subscriptionType"], "max")
+        clear.assert_called_once()  # backoff reset on success
 
     def test_refresh_token_is_sent_in_stdin_not_process_arguments(self):
         completed = mock.Mock(
@@ -230,6 +231,9 @@ class TestClaudeRefresh(unittest.TestCase):
         self.assertNotIn("secret-refresh", " ".join(argv))
         self.assertIn("refresh_token=secret-refresh", run.call_args.kwargs["input"])
         self.assertEqual(result["access_token"], "new")
+        # The refresh endpoint 429s requests without a recognized client
+        # User-Agent, so we must identify as the CLI.
+        self.assertTrue(any("claude-cli" in a for a in argv))
 
     def test_http_refresh_invalid_grant_raises_unauthorized(self):
         completed = mock.Mock(stdout='{"error":"invalid_grant"}\n__HTTP__400')
@@ -238,15 +242,27 @@ class TestClaudeRefresh(unittest.TestCase):
             with self.assertRaises(claude.ClaudeRefreshUnauthorized):
                 claude._http_refresh("dead-token")
 
-    def test_recent_attempt_backs_off_without_calling_network(self):
+    def test_active_backoff_skips_network_attempt(self):
         initial = {"accessToken": "old", "refreshToken": "r", "expiresAt": 1_000_000}
         with mock.patch.object(claude, "_refresh_lock", self._unlocked), \
              mock.patch.object(claude, "read_keychain_blob", return_value=None), \
-             mock.patch.object(claude, "_refresh_throttled", return_value=True), \
+             mock.patch.object(claude.refresh_backoff, "due", return_value=False), \
              mock.patch.object(claude, "_http_refresh") as refresh:
             with self.assertRaises(claude.ClaudeRefreshThrottled):
                 claude._refresh_creds(initial, now=2000)
         refresh.assert_not_called()
+
+    def test_rate_limited_refresh_escalates_backoff(self):
+        initial = {"accessToken": "old", "refreshToken": "r", "expiresAt": 1_000_000}
+        with mock.patch.object(claude, "_refresh_lock", self._unlocked), \
+             mock.patch.object(claude, "read_keychain_blob", return_value=None), \
+             mock.patch.object(claude.refresh_backoff, "due", return_value=True), \
+             mock.patch.object(claude, "_http_refresh",
+                               side_effect=claude.ClaudeRefreshRateLimited), \
+             mock.patch.object(claude.refresh_backoff, "note_failure") as note:
+            with self.assertRaises(claude.ClaudeRefreshRateLimited):
+                claude._refresh_creds(initial, now=2000)
+        self.assertTrue(note.call_args.kwargs.get("rate_limited"))
 
     def test_throttled_refresh_surfaces_as_expired(self):
         old = {"accessToken": "old", "refreshToken": "r", "expiresAt": 1_000_000}
