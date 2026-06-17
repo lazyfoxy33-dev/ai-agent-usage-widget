@@ -20,26 +20,47 @@ cd "$(dirname "$0")"
 APP_GROUP="${QUOTAWIDGET_APP_GROUP:-group.dev.lazyfoxy.QuotaWidget}"
 NOTARY_PROFILE="${QUOTAWIDGET_NOTARY_PROFILE:-}"
 
-DERIVED="build/DerivedData"
-APP="$DERIVED/Build/Products/Release/QuotaWidgetApp.app"
+ARCHIVE="build/QuotaWidget.xcarchive"
+EXPORT_DIR="build/export"
+EXPORT_PLIST="build/ExportOptions.plist"
+APP="$EXPORT_DIR/QuotaWidgetApp.app"
 DIST="build/dist"
 DMG="$DIST/QuotaWidget.dmg"
 
-echo "› building Release with Developer ID + hardened runtime…"
-rm -rf "$DERIVED" "$DIST"
-xcodebuild \
+echo "› archiving (Release, hardened runtime)…"
+rm -rf "$ARCHIVE" "$EXPORT_DIR" "$DIST"
+xcodebuild archive \
     -project QuotaWidget.xcodeproj \
     -scheme QuotaWidget \
     -configuration Release \
-    -derivedDataPath "$DERIVED" \
+    -archivePath "$ARCHIVE" \
     APP_GROUP_ID="$APP_GROUP" \
     DEVELOPMENT_TEAM="$QUOTAWIDGET_TEAM" \
     CODE_SIGN_STYLE=Automatic \
-    CODE_SIGN_IDENTITY="Developer ID Application" \
     ENABLE_HARDENED_RUNTIME=YES \
-    OTHER_CODE_SIGN_FLAGS="--timestamp" \
-    -allowProvisioningUpdates \
-    build
+    -allowProvisioningUpdates
+
+echo "› exporting with Developer ID…"
+cat > "$EXPORT_PLIST" <<PLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>developer-id</string>
+    <key>teamID</key>
+    <string>$QUOTAWIDGET_TEAM</string>
+    <key>signingStyle</key>
+    <string>automatic</string>
+</dict>
+</plist>
+PLIST
+
+xcodebuild -exportArchive \
+    -archivePath "$ARCHIVE" \
+    -exportOptionsPlist "$EXPORT_PLIST" \
+    -exportPath "$EXPORT_DIR" \
+    -allowProvisioningUpdates
 
 test -d "$APP"
 
@@ -72,6 +93,8 @@ hdiutil create -volname "QuotaWidget" -srcfolder "$STAGING" -ov -format UDZO "$D
 rm -rf "$STAGING"
 
 if [[ -n "$NOTARY_PROFILE" ]]; then
+    echo "› notarizing the dmg…"
+    xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
     echo "› stapling the dmg…"
     xcrun stapler staple "$DMG"
 fi
