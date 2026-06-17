@@ -56,6 +56,54 @@ refresh. Failed refreshes keep the last successful snapshot.
 伴侣 app 只显示在菜单栏。点击**立即刷新**可手动刷新；刷新失败时会保留上一次
 成功数据。
 
+## Distribution / 分发
+
+`install.sh` uses development signing for your own machine. To produce a `.dmg`
+others can download and run, use `distribute.sh`, which builds with a
+**Developer ID Application** certificate and **Hardened Runtime**, notarizes with
+`notarytool`, staples the ticket, and packages a `.dmg`.
+
+`install.sh` 用开发签名，只适合自己的机器。要产出可供别人下载运行的 `.dmg`，用
+`distribute.sh`：它以 **Developer ID Application** 证书 + **Hardened Runtime**
+构建，用 `notarytool` 公证、装订票据并打包成 `.dmg`。
+
+One-time setup / 一次性准备：
+
+1. In Xcode → Settings → Accounts → Manage Certificates, create a
+   **Developer ID Application** certificate.
+   在 Xcode → Settings → Accounts → Manage Certificates 中创建一张
+   **Developer ID Application** 证书。
+2. Ensure the App IDs `dev.lazyfoxy.QuotaWidget` and
+   `dev.lazyfoxy.QuotaWidget.extension` have the **App Groups** capability
+   enabled (the same setup development signing needs).
+   确认 App ID `dev.lazyfoxy.QuotaWidget` 与 `.extension` 都启用了 **App Groups**
+   能力（和开发签名所需的一致）。
+3. Store notarization credentials once / 存一次公证凭证：
+
+   ```bash
+   xcrun notarytool store-credentials quotawidget-notary \
+     --apple-id "you@example.com" \
+     --team-id "YOUR_TEAM_ID" \
+     --password "app-specific-password"   # from appleid.apple.com
+   ```
+
+Build, notarize and package / 构建、公证、打包：
+
+```bash
+export QUOTAWIDGET_TEAM="YOUR_TEAM_ID"
+export QUOTAWIDGET_NOTARY_PROFILE="quotawidget-notary"
+./distribute.sh
+# → build/dist/QuotaWidget.dmg
+```
+
+> **End users need `python3`.** The companion app runs the shared Python data
+> layer via `/usr/bin/python3`, which recent macOS does not ship by default; the
+> first launch may prompt to install the Command Line Tools. Mention this in your
+> release notes.
+>
+> **终端用户需要 `python3`。** 伴侣 app 通过 `/usr/bin/python3` 运行共享数据层，
+> 新版 macOS 默认不自带，首次启动可能会提示安装命令行工具。请在发布说明里注明。
+
 ## Development / 开发
 
 The generated Xcode project is committed. To regenerate it after editing
