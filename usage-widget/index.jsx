@@ -7,7 +7,7 @@ const CX = { accent: "#6676FF", soft: "#A78BFA", ink: "#ECECEC", sub: "#888894",
 const KM = { accent: "#1478FF", soft: "#252A33", ink: "#17181C", sub: "#737984", track: "rgba(20,24,30,.09)" };
 
 export const className = `
-  right: 40px; bottom: 40px;
+  left: 40px; top: 40px;
   width: 300px;
   border-radius: 22px; overflow: hidden;
   box-shadow: 0 20px 44px -12px rgba(0,0,0,.6), 0 2px 6px rgba(0,0,0,.3);
