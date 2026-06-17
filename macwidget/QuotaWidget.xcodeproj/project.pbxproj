@@ -13,6 +13,7 @@
 		3FDA6A06400A345CEC17A77C /* UsageContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */; };
 		572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4396386870ACF13B0387F84A /* UsageFetcher.swift */; };
 		5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */; };
+		6F42E7D510DD5460675285E5 /* claude-app.png in Resources */ = {isa = PBXBuildFile; fileRef = 83B2F686AE6622C66E97AB7A /* claude-app.png */; };
 		6F452D2E46ADD0D6463835E4 /* codex-app.png in Resources */ = {isa = PBXBuildFile; fileRef = E6DD29948C08249FDE990314 /* codex-app.png */; };
 		7F29DEE2E20A48DBBE0CF80C /* kimi-code.png in Resources */ = {isa = PBXBuildFile; fileRef = 8060F7384E94F23C12BAF56E /* kimi-code.png */; };
 		9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10993021F1557349A9B061FA /* UsageStoreTests.swift */; };
@@ -62,6 +63,7 @@
 		6AC74E158F9E7CF5C7A45A26 /* QuotaWidgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QuotaWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7FB8541A0C552866932C346F /* UsageContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageContractTests.swift; sourceTree = "<group>"; };
 		8060F7384E94F23C12BAF56E /* kimi-code.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "kimi-code.png"; sourceTree = "<group>"; };
+		83B2F686AE6622C66E97AB7A /* claude-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "claude-app.png"; sourceTree = "<group>"; };
 		84083F78F49E30915AB023A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageContract.swift; sourceTree = "<group>"; };
 		9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStore.swift; sourceTree = "<group>"; };
@@ -97,6 +99,7 @@
 		A392B10FF47E44FBED2AA8A8 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				83B2F686AE6622C66E97AB7A /* claude-app.png */,
 				E6DD29948C08249FDE990314 /* codex-app.png */,
 				8060F7384E94F23C12BAF56E /* kimi-code.png */,
 			);
@@ -247,6 +250,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				6F42E7D510DD5460675285E5 /* claude-app.png in Resources */,
 				6F452D2E46ADD0D6463835E4 /* codex-app.png in Resources */,
 				7F29DEE2E20A48DBBE0CF80C /* kimi-code.png in Resources */,
 			);

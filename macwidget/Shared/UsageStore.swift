@@ -29,6 +29,28 @@ struct UsageStore {
         }
     }
 
+    func writeActive(_ tag: String) throws {
+        let url = try activeURL
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try tag.write(to: url, atomically: true, encoding: .utf8)
+    }
+
+    func readActive() -> String? {
+        guard let url = try? activeURL else { return nil }
+        return (try? String(contentsOf: url, encoding: .utf8))?.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var activeURL: URL {
+        get throws {
+            guard let container = containerURLProvider() else {
+                throw CocoaError(.fileNoSuchFile)
+            }
+            return container
+                .appendingPathComponent("Library/Application Support", isDirectory: true)
+                .appendingPathComponent("active")
+        }
+    }
+
     private var fileURL: URL {
         get throws {
             guard let container = containerURLProvider() else {
