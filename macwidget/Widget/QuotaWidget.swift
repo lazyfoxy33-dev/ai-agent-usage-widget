@@ -182,7 +182,7 @@ private struct SmallCard: View {
             if provider.ok, let five = provider.fiveH, let week = provider.weekly {
                 DualRing(provider: provider, palette: p, diameter: 54)
                 VStack(spacing: 6) {
-                    MetricRow(label: "5 小时", pct: five.percentage, resetsAt: five.resetsAt, dot: p.accent, palette: p, valueColor: p.accent)
+                    MetricRow(label: "5H", pct: five.percentage, resetsAt: five.resetsAt, dot: p.accent, palette: p, valueColor: p.accent)
                     MetricRow(label: "Weekly", pct: week.percentage, resetsAt: week.resetsAt, dot: p.soft, palette: p, valueColor: p.ink)
                 }
             } else {
