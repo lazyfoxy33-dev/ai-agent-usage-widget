@@ -412,11 +412,13 @@ def fetch_kimi():
     credentials, path = read_credentials_with_path()
     if not credentials:
         return {"ok": False, "reason": "no_data"}
-    current_credentials = path == credentials_path()
     token = credentials.get("access_token")
     if not token or is_expired(credentials):
-        if not current_credentials:
-            return {"ok": False, "reason": "expired"}
+        # Refresh whichever store is active: read_credentials_with_path returns
+        # the current path if present, else the legacy ~/.kimi store. Both refresh
+        # in place under the official lock + post-lock re-read, so a user whose
+        # creds live only in the legacy store stays live too (previously that
+        # store was left read-only and went stale whenever idle).
         if not refresh_backoff.due(REFRESH_BACKOFF_PATH):
             return {"ok": False, "reason": "expired"}
         try:
@@ -437,8 +439,6 @@ def fetch_kimi():
     try:
         return parse_kimi_usage(_http_get_usage(token), now=time.time())
     except KimiAuthError:
-        if not current_credentials:
-            return {"ok": False, "reason": "expired"}
         if not refresh_backoff.due(REFRESH_BACKOFF_PATH):
             return {"ok": False, "reason": "expired"}
         try:

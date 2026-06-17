@@ -242,16 +242,21 @@ class TestKimiFetch(unittest.TestCase):
         refresh.assert_called_once_with("/current.json", old, force=False)
         parse.assert_called_once()
 
-    def test_fetch_returns_expired_for_expired_legacy_credentials(self):
-        creds = {"access_token": "abc", "refresh_token": "r", "expires_at": 1000}
+    def test_expired_legacy_credentials_are_also_refreshed(self):
+        # The active store may be the legacy ~/.kimi path; it must refresh in
+        # place too, not be left read-only to go stale.
+        old = {"access_token": "old", "refresh_token": "r", "expires_at": 1000}
+        fresh = dict(old, access_token="new", expires_at=2000)
         with mock.patch.object(kimi, "read_credentials_with_path",
-                               return_value=(creds, "/legacy.json")), \
-             mock.patch.object(kimi, "credentials_path",
-                               return_value="/current.json"), \
-             mock.patch.object(kimi, "_refresh_credentials") as refresh, \
+                               return_value=(old, "/legacy.json")), \
+             mock.patch.object(kimi, "_refresh_credentials",
+                               return_value=fresh) as refresh, \
+             mock.patch.object(kimi, "_http_get_usage",
+                               return_value={"usage": {}, "limits": []}), \
+             mock.patch.object(kimi, "parse_kimi_usage", return_value={"ok": True}), \
              mock.patch.object(kimi.time, "time", return_value=1000):
-            self.assertEqual(kimi.fetch_kimi(), {"ok": False, "reason": "expired"})
-        refresh.assert_not_called()
+            self.assertEqual(kimi.fetch_kimi(), {"ok": True})
+        refresh.assert_called_once_with("/legacy.json", old, force=False)
 
     def test_fetch_returns_expired_for_rejected_credentials(self):
         creds = {
