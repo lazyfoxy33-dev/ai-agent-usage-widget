@@ -1,25 +1,28 @@
+import AppKit
 import SwiftUI
 import WidgetKit
 
 struct QuotaEntry: TimelineEntry {
     let date: Date
     let payload: UsagePayload?
+    var active: String? = nil
 }
 
 struct QuotaTimelineProvider: TimelineProvider {
     func placeholder(in context: Context) -> QuotaEntry {
-        QuotaEntry(date: Date(), payload: .preview)
+        QuotaEntry(date: Date(), payload: .preview, active: "claude")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (QuotaEntry) -> Void) {
-        completion(QuotaEntry(date: Date(), payload: .preview))
+        completion(QuotaEntry(date: Date(), payload: .preview, active: "claude"))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<QuotaEntry>) -> Void) {
         let json = try? UsageStore().read()
         let payload = json.flatMap { try? UsagePayload.decode(Data($0.utf8)) }
+        let active = UsageStore().readActive() ?? "claude"
         completion(Timeline(
-            entries: [QuotaEntry(date: Date(), payload: payload)],
+            entries: [QuotaEntry(date: Date(), payload: payload, active: active)],
             policy: .after(Date().addingTimeInterval(25 * 60))
         ))
     }
@@ -76,208 +79,153 @@ private extension ProviderKind {
     }
 }
 
-private struct UsageRing: View {
-    let provider: UsageProvider
-    let palette: Palette
-
-    var body: some View {
-        ZStack {
-            ring(provider.weekly?.percentage ?? 0, color: palette.soft, size: 72)
-            ring(provider.fiveH?.percentage ?? 0, color: palette.accent, size: 52)
-            VStack(spacing: 1) {
-                let percentage = Int(provider.fiveH?.percentage ?? 0)
-                Text("\(percentage)%")
-                    .font(.system(
-                        size: percentage >= 100 ? 14 : 19,
-                        weight: .bold,
-                        design: .rounded
-                    ))
-                    .foregroundStyle(palette.accent)
-                Text("5H")
-                    .font(.system(size: 8, weight: .semibold))
-                    .foregroundStyle(palette.sub)
-            }
-        }
-        .frame(width: 80, height: 80)
-        .opacity(provider.isStale ? 0.55 : 1)
-    }
-
-    private func ring(_ value: Double, color: Color, size: CGFloat) -> some View {
-        ZStack {
-            Circle().stroke(color.opacity(0.13), lineWidth: 6)
-            Circle()
-                .trim(from: 0, to: min(1, max(0, value / 100)))
-                .stroke(color, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-        }
-        .frame(width: size, height: size)
-    }
-}
-
-private struct CompactUsageRing: View {
-    let provider: UsageProvider
-    let palette: Palette
-
-    var body: some View {
-        ZStack {
-            ring(
-                provider.weekly?.percentage ?? 0,
-                color: palette.soft,
-                size: WidgetLayout.mediumRingSize
-            )
-            ring(
-                provider.fiveH?.percentage ?? 0,
-                color: palette.accent,
-                size: WidgetLayout.mediumRingSize - 14
-            )
-            Text("\(Int(provider.fiveH?.percentage ?? 0))%")
-                .font(.system(size: 11, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.accent)
-                .minimumScaleFactor(0.7)
-                .lineLimit(1)
-        }
-        .frame(width: WidgetLayout.mediumRingSize + 4, height: WidgetLayout.mediumRingSize + 4)
-        .opacity(provider.isStale ? 0.55 : 1)
-    }
-
-    private func ring(_ value: Double, color: Color, size: CGFloat) -> some View {
-        ZStack {
-            Circle().stroke(color.opacity(0.13), lineWidth: 5)
-            Circle()
-                .trim(from: 0, to: min(1, max(0, value / 100)))
-                .stroke(color, style: StrokeStyle(lineWidth: 5, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-        }
-        .frame(width: size, height: size)
-    }
-}
-
-private struct ProviderCard: View {
-    let kind: ProviderKind
-    let provider: UsageProvider
-    let compact: Bool
-
-    private var palette: Palette { kind.palette }
-
-    var body: some View {
-        HStack(spacing: compact ? 6 : 12) {
-            UsageRing(provider: provider, palette: palette)
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 5) {
-                    ProviderMark(kind: kind)
-                    Text(kind.rawValue)
-                        .font(.system(size: compact ? 11 : 14, weight: .bold))
-                }
-                .foregroundStyle(palette.ink)
-                if provider.ok, let five = provider.fiveH, let week = provider.weekly {
-                    metric("5 小时", window: five, color: palette.accent)
-                    metric("本周", window: week, color: palette.soft)
-                    if provider.isStale {
-                        Text("缓存数据 · 等待刷新")
-                            .font(.system(size: 8))
-                            .foregroundStyle(palette.sub)
-                    }
-                } else {
-                    Text(ProviderPresentation.message(for: kind, provider: provider))
-                        .font(.system(size: 8.5))
-                        .foregroundStyle(palette.sub)
-                        .lineLimit(2)
-                }
-            }
-            Spacer(minLength: 0)
-        }
-        .padding(compact ? 7 : 12)
-        .background(palette.background)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    private func metric(_ label: String, window: UsageWindow, color: Color) -> some View {
-        VStack(alignment: .leading, spacing: 1) {
-            HStack(spacing: 4) {
-                Circle().fill(color).frame(width: 6, height: 6)
-                Text(label).font(.system(size: 8.5, weight: .semibold))
-                Spacer(minLength: 2)
-                Text("\(Int(window.percentage))%")
-                    .font(.system(size: 9.5, weight: .bold))
-            }
-            Text(ProviderPresentation.countdown(until: window.resetsAt))
-                .font(.system(size: 7))
-                .foregroundStyle(palette.sub)
-                .padding(.leading, 10)
-        }
-        .foregroundStyle(palette.ink)
-    }
-}
-
-private struct MediumProviderColumn: View {
-    let kind: ProviderKind
-    let provider: UsageProvider
-
-    private var palette: Palette { kind.palette }
-
-    var body: some View {
-        VStack(spacing: 4) {
-            HStack(spacing: 4) {
-                ProviderMark(kind: kind)
-                    .frame(width: 16, height: 16)
-                Text(kind.rawValue)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(palette.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-            }
-
-            CompactUsageRing(provider: provider, palette: palette)
-
-            if provider.ok, let five = provider.fiveH, let week = provider.weekly {
-                compactMetric("5H", percentage: five.percentage, color: palette.accent)
-                compactMetric("周", percentage: week.percentage, color: palette.soft)
-            } else {
-                Text(ProviderPresentation.message(for: kind, provider: provider))
-                    .font(.system(size: 7.5))
-                    .foregroundStyle(palette.sub)
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.vertical, 8)
-        .padding(.horizontal, 5)
-        .background(palette.background)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-
-    private func compactMetric(_ label: String, percentage: Double, color: Color) -> some View {
-        HStack(spacing: 3) {
-            Circle().fill(color).frame(width: 5, height: 5)
-            Text(label)
-            Spacer(minLength: 1)
-            Text("\(Int(percentage))%").fontWeight(.bold)
-        }
-        .font(.system(size: 8))
-        .foregroundStyle(palette.ink)
-    }
-}
-
 private struct ProviderMark: View {
     let kind: ProviderKind
 
+    private var assetName: String {
+        switch kind {
+        case .claude: return "claude-app"
+        case .codex: return "codex-app"
+        case .kimi: return "kimi-code"
+        }
+    }
+
+    // SwiftUI 的 Image("name") 在 macOS 上只认资源目录，散放的 PNG 需从 bundle 直接加载
+    private var icon: Image {
+        if let url = Bundle.main.url(forResource: assetName, withExtension: "png"),
+           let ns = NSImage(contentsOf: url) {
+            return Image(nsImage: ns)
+        }
+        return Image(systemName: "app.dashed")
+    }
+
     var body: some View {
-        Group {
-            switch kind {
-            case .claude:
-                Text("✳")
-                    .font(.system(size: 18))
-                    .foregroundStyle(kind.palette.accent)
-            case .codex:
-                Image("codex-app").resizable().scaledToFit()
-            case .kimi:
-                Image("kimi-code").resizable().scaledToFit()
+        icon
+            .resizable()
+            .scaledToFit()
+            .frame(width: 20, height: 20)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+    }
+}
+
+private struct DualRing: View {
+    let provider: UsageProvider
+    let palette: Palette
+    var diameter: CGFloat = 56
+
+    var body: some View {
+        let five = provider.fiveH?.percentage ?? 0
+        let week = provider.weekly?.percentage ?? 0
+        let lw = diameter * 0.12
+        let inset = lw + 3
+        ZStack {
+            Circle().stroke(palette.soft.opacity(0.22), lineWidth: lw)
+            Circle().trim(from: 0, to: min(1, max(0, week/100)))
+                .stroke(palette.soft, style: .init(lineWidth: lw, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Circle().inset(by: inset).stroke(palette.accent.opacity(0.15), lineWidth: lw)
+            Circle().inset(by: inset).trim(from: 0, to: min(1, max(0, five/100)))
+                .stroke(palette.accent, style: .init(lineWidth: lw, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+            Text("\(Int(five))%")
+                .font(.system(size: diameter * 0.24, weight: .bold, design: .rounded))
+                .foregroundStyle(palette.accent)
+                .minimumScaleFactor(0.5)
+                .lineLimit(1)
+                .frame(width: diameter - 2 * (inset + lw) - 2)
+        }
+        .frame(width: diameter, height: diameter)
+        .opacity(provider.isStale ? 0.6 : 1)
+    }
+}
+
+private struct MetricRow: View {
+    let label: String
+    let pct: Double
+    let resetsAt: TimeInterval?
+    let dot: Color
+    let palette: Palette
+    var valueColor: Color
+    var compact: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 1) {
+            HStack(spacing: 4) {
+                Circle().fill(dot).frame(width: compact ? 5 : 6, height: compact ? 5 : 6)
+                Text(label).font(.system(size: compact ? 11 : 12))
+                Spacer(minLength: 2)
+                Text("\(Int(pct))%").font(.system(size: compact ? 11 : 12, weight: .semibold)).foregroundStyle(valueColor)
+            }
+            .foregroundStyle(palette.ink)
+            Text(ProviderPresentation.countdown(until: resetsAt))
+                .font(.system(size: compact ? 8.5 : 9.5))
+                .foregroundStyle(palette.sub)
+                .padding(.leading, compact ? 9 : 10)
+                .lineLimit(1)
+                .minimumScaleFactor(0.75)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+private struct SmallCard: View {
+    let kind: ProviderKind
+    let provider: UsageProvider
+    private var p: Palette { kind.palette }
+
+    var body: some View {
+        VStack(spacing: 8) {
+            HStack(spacing: 6) {
+                ProviderMark(kind: kind).frame(width: 18, height: 18)
+                Text(kind.rawValue).font(.system(size: 14, weight: .medium)).foregroundStyle(p.ink).lineLimit(1).minimumScaleFactor(0.8)
+            }
+            if provider.ok, let five = provider.fiveH, let week = provider.weekly {
+                DualRing(provider: provider, palette: p, diameter: 54)
+                VStack(spacing: 6) {
+                    MetricRow(label: "5 小时", pct: five.percentage, resetsAt: five.resetsAt, dot: p.accent, palette: p, valueColor: p.accent)
+                    MetricRow(label: "Weekly", pct: week.percentage, resetsAt: week.resetsAt, dot: p.soft, palette: p, valueColor: p.ink)
+                }
+            } else {
+                Spacer(minLength: 0)
+                Text(ProviderPresentation.message(for: kind, provider: provider)).font(.system(size: 11)).foregroundStyle(p.sub).multilineTextAlignment(.center)
+                Spacer(minLength: 0)
             }
         }
-        .frame(width: 20, height: 20)
-        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(p.background)
+    }
+}
+
+private struct MediumColumn: View {
+    let kind: ProviderKind
+    let provider: UsageProvider
+    private var p: Palette { kind.palette }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 4) {
+                ProviderMark(kind: kind).frame(width: 14, height: 14)
+                Text(kind.rawValue).font(.system(size: 12, weight: .medium)).foregroundStyle(p.ink).lineLimit(1).minimumScaleFactor(0.7)
+            }
+            Spacer(minLength: 0)
+            if provider.ok, let five = provider.fiveH, let week = provider.weekly {
+                DualRing(provider: provider, palette: p, diameter: 50)
+                Spacer(minLength: 0)
+                VStack(spacing: 5) {
+                    MetricRow(label: "5H", pct: five.percentage, resetsAt: five.resetsAt, dot: p.accent, palette: p, valueColor: p.accent, compact: true)
+                    MetricRow(label: "Weekly", pct: week.percentage, resetsAt: week.resetsAt, dot: p.soft, palette: p, valueColor: p.ink, compact: true)
+                }
+            } else {
+                Spacer(minLength: 0)
+                Text(ProviderPresentation.message(for: kind, provider: provider)).font(.system(size: 9.5)).foregroundStyle(p.sub).lineLimit(3).multilineTextAlignment(.center)
+                Spacer(minLength: 0)
+            }
+        }
+        .padding(.vertical, 11).padding(.horizontal, 8)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(p.background)
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
@@ -288,13 +236,14 @@ struct QuotaWidgetView: View {
     var body: some View {
         if let payload = entry.payload {
             if family == .systemSmall {
-                ProviderCard(kind: .claude, provider: payload.claude, compact: true)
+                let kind = kindFor(entry.active)
+                SmallCard(kind: kind, provider: provider(payload, kind))
                     .containerBackground(.clear, for: .widget)
             } else {
-                HStack(spacing: 5) {
-                    MediumProviderColumn(kind: .claude, provider: payload.claude)
-                    MediumProviderColumn(kind: .codex, provider: payload.codex)
-                    MediumProviderColumn(kind: .kimi, provider: payload.kimi)
+                HStack(spacing: 8) {
+                    MediumColumn(kind: .claude, provider: payload.claude)
+                    MediumColumn(kind: .codex, provider: payload.codex)
+                    MediumColumn(kind: .kimi, provider: payload.kimi)
                 }
                 .containerBackground(.clear, for: .widget)
             }
@@ -305,6 +254,22 @@ struct QuotaWidgetView: View {
                 description: Text("伴侣 app 会刷新用量数据")
             )
             .containerBackground(.background, for: .widget)
+        }
+    }
+
+    private func kindFor(_ active: String?) -> ProviderKind {
+        switch active {
+        case "codex": return .codex
+        case "kimi": return .kimi
+        default: return .claude
+        }
+    }
+
+    private func provider(_ p: UsagePayload, _ kind: ProviderKind) -> UsageProvider {
+        switch kind {
+        case .claude: return p.claude
+        case .codex: return p.codex
+        case .kimi: return p.kimi
         }
     }
 }

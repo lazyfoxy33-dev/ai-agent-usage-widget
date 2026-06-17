@@ -1,7 +1,7 @@
 import Foundation
 
 enum WidgetLayout {
-    static let mediumRingSize: CGFloat = 54
+    static let mediumRingSize: CGFloat = 58
 }
 
 struct UsageWindow: Codable, Equatable {

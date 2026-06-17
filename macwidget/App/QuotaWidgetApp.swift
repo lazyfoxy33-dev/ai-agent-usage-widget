@@ -6,6 +6,40 @@ import WidgetKit
 final class QuotaWidgetModel: ObservableObject {
     @Published var status = "等待首次刷新"
     private var timer: Timer?
+    private var lastUsed: String?
+
+    init() {
+        self.lastUsed = UserDefaults.standard.string(forKey: "lastUsedProvider")
+        startForegroundTracking()
+    }
+
+    func startForegroundTracking() {
+        updateActive(NSWorkspace.shared.frontmostApplication)
+        NSWorkspace.shared.notificationCenter.addObserver(
+            self, selector: #selector(activeAppChanged),
+            name: NSWorkspace.didActivateApplicationNotification, object: nil)
+    }
+
+    @objc private func activeAppChanged() {
+        updateActive(NSWorkspace.shared.frontmostApplication)
+    }
+
+    private func updateActive(_ app: NSRunningApplication?) {
+        let tag = providerTag(app)
+        if let tag { lastUsed = tag; UserDefaults.standard.set(tag, forKey: "lastUsedProvider") }
+        let active = tag ?? lastUsed ?? "claude"
+        try? UsageStore().writeActive(active)
+        WidgetCenter.shared.reloadAllTimelines()
+    }
+
+    private func providerTag(_ app: NSRunningApplication?) -> String? {
+        guard let app else { return nil }
+        let s = ((app.bundleIdentifier ?? "") + " " + (app.localizedName ?? "")).lowercased()
+        if s.contains("claude") { return "claude" }
+        if s.contains("kimi") || s.contains("moonshot") { return "kimi" }
+        if s.contains("codex") || s.contains("openai") || s.contains("chatgpt") { return "codex" }
+        return nil
+    }
 
     func start() {
         refresh()
