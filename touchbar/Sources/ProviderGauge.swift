@@ -23,14 +23,15 @@ final class ProviderGauge: NSView {
     // Fonts
     private let badgeFont = NSFont.systemFont(ofSize: 12, weight: .heavy)
     private let microFont = NSFont.systemFont(ofSize: 8,  weight: .semibold)
+    private let weeklyMicroFont = NSFont.systemFont(ofSize: 6,  weight: .semibold)
     private let pctFont   = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
     private let statusFont = NSFont.systemFont(ofSize: 11, weight: .medium)
 
     // Layout constants
     private let badgeX: CGFloat = 6, badgeSize: CGFloat = 20
     private var textX: CGFloat { badgeX + badgeSize + 8 }      // 34
-    private let microW: CGFloat = 15
-    private let barW: CGFloat = 56, barH: CGFloat = 4
+    private let microW: CGFloat = 17
+    private let barW: CGFloat = 54, barH: CGFloat = 4
     private let rowTopY: CGFloat = 20, rowBottomY: CGFloat = 10
 
     init(letter: String, accent: NSColor, soft: NSColor) {
@@ -86,15 +87,16 @@ final class ProviderGauge: NSView {
         }
 
         row("5H", fiveH,  base: accent, centerY: rowTopY)
-        row("7D", weekly, base: soft,   centerY: rowBottomY)
+        row("Weekly", weekly, base: soft,   centerY: rowBottomY)
     }
 
     private func row(_ label: String, _ win: (pct: Double, stale: Bool)?,
                      base: NSColor, centerY: CGFloat) {
         let color = (win?.stale ?? false) ? dim : base
 
+        let labelFont = label.count > 2 ? weeklyMicroFont : microFont
         let micro = NSAttributedString(string: label,
-                                       attributes: [.font: microFont, .foregroundColor: dim])
+                                       attributes: [.font: labelFont, .foregroundColor: dim])
         micro.draw(at: NSPoint(x: textX, y: centerY - micro.size().height / 2))
 
         let barX = textX + microW

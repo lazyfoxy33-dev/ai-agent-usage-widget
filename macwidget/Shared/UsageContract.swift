@@ -104,14 +104,14 @@ enum ProviderPresentation {
     }
 
     static func countdown(until timestamp: TimeInterval?, now: Date = Date()) -> String {
-        guard let timestamp else { return "重置时间未知" }
+        guard let timestamp else { return "Resets soon" }
         let seconds = max(0, Int(timestamp - now.timeIntervalSince1970))
         let days = seconds / 86_400
         let hours = (seconds % 86_400) / 3_600
         let minutes = (seconds % 3_600) / 60
-        if days > 0 { return "\(days) 天 \(hours) 小时后重置" }
-        if hours > 0 { return "\(hours) 小时 \(minutes) 分后重置" }
-        return "\(minutes) 分后重置"
+        if days > 0 { return "Resets in \(days)d \(hours)h" }
+        if hours > 0 { return "Resets in \(hours)h \(minutes)m" }
+        return "Resets in \(minutes)m"
     }
 }
 

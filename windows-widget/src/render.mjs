@@ -36,13 +36,14 @@ export function providerMessage(name, data = {}) {
 }
 
 export function countdown(resetsAt, nowMs = Date.now()) {
+  if (!resetsAt) return "Resets soon";
   const seconds = Math.max(0, Math.floor(Number(resetsAt) - nowMs / 1000));
   const days = Math.floor(seconds / 86_400);
   const hours = Math.floor((seconds % 86_400) / 3_600);
   const minutes = Math.floor((seconds % 3_600) / 60);
-  if (days > 0) return `${days} 天 ${hours} 小时后重置`;
-  if (hours > 0) return `${hours} 小时 ${minutes} 分后重置`;
-  return `${minutes} 分后重置`;
+  if (days > 0) return `Resets in ${days}d ${hours}h`;
+  if (hours > 0) return `Resets in ${hours}h ${minutes}m`;
+  return `Resets in ${minutes}m`;
 }
 
 function ring(name, five, weekly) {
@@ -105,8 +106,8 @@ function providerCard(name, data, nowMs) {
     <div class="details">
       <header><img src="${palette.logo}" alt=""/><b>${name}</b></header>
       ${stale ? '<div class="stale-note">缓存数据 · 等待下次刷新</div>' : ""}
-      ${metric("5 小时", data.five_h, palette.accent, nowMs)}
-      ${metric("本周", data.weekly, palette.soft, nowMs)}
+      ${metric("5H", data.five_h, palette.accent, nowMs)}
+      ${metric("Weekly", data.weekly, palette.soft, nowMs)}
     </div>
   </section>`;
 }

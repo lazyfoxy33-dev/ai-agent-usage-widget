@@ -16,13 +16,14 @@ export const className = `
 `;
 
 function fmtCountdown(resetsAt) {
+  if (!resetsAt) return "Resets soon";
   const sec = Math.max(0, Math.floor(resetsAt - Date.now() / 1000));
   const d = Math.floor(sec / 86400);
   const h = Math.floor((sec % 86400) / 3600);
   const m = Math.floor((sec % 3600) / 60);
-  if (d > 0) return `${d} 天 ${h} 小时后重置`;
-  if (h > 0) return `${h} 小时 ${m} 分后重置`;
-  return `${m} 分后重置`;
+  if (d > 0) return `Resets in ${d}d ${h}h`;
+  if (h > 0) return `Resets in ${h}h ${m}m`;
+  return `Resets in ${m}m`;
 }
 
 function pctFontSize(pct) {
@@ -106,8 +107,8 @@ function panel(name, glyph, pal, bg, data) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{glyph}<span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span></div>
           {cached && <span style={{ fontSize: 9.5, color: pal.sub, marginLeft: 32 }}>缓存数据 · 等待下次刷新</span>}
         </div>
-        {row(pal.accent, "5 小时", data.five_h.pct, data.five_h.resets_at)}
-        {row(pal.soft, "本周", data.weekly.pct, data.weekly.resets_at)}
+        {row(pal.accent, "5H", data.five_h.pct, data.five_h.resets_at)}
+        {row(pal.soft, "Weekly", data.weekly.pct, data.weekly.resets_at)}
       </div>
     </div>
   );
@@ -157,15 +158,15 @@ function codexPanel(glyph, pal, bg, data) {
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>{glyph}<span style={{ fontSize: 15, fontWeight: 650 }}>Codex</span></div>
           {asOfStr && <span style={{ fontSize: 9.5, color: pal.sub, marginLeft: 32 }}>{"数据截至 " + asOfStr}</span>}
         </div>
-        {row(pal.accent, "5 小时", data.five_h)}
-        {row(pal.soft, "本周", data.weekly)}
+        {row(pal.accent, "5H", data.five_h)}
+        {row(pal.soft, "Weekly", data.weekly)}
       </div>
     </div>
   );
 }
 
 const claudeGlyph = (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><g stroke="#D97757" strokeWidth="2.1" strokeLinecap="round"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6L5.6 18.4" /></g></svg>
+  <img src="/usage-widget/assets/claude-app.png" width="27" height="27" alt="Claude" style={{ objectFit: "contain", borderRadius: 8, overflow: "hidden", WebkitMaskImage: "-webkit-radial-gradient(white, black)", flex: "none" }} />
 );
 const codexGlyph = (
   <img src="/usage-widget/assets/codex-app.png" width="27" height="27" alt="Codex" style={{ objectFit: "contain", borderRadius: 8, overflow: "hidden", WebkitMaskImage: "-webkit-radial-gradient(white, black)", flex: "none" }} />
