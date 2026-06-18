@@ -1,0 +1,88 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0;width:516px;height:320px;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;
+    background:linear-gradient(135deg,#3b6ea5 0%,#2a4a6b 55%,#20364f 100%);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;font-feature-settings:"tnum"}
+  .widget{width:300px;border-radius:22px;overflow:hidden;transform:scale(.72);
+    box-shadow:0 20px 44px -12px rgba(0,0,0,.6),0 2px 6px rgba(0,0,0,.3)}
+  .panel{display:flex;align-items:center;gap:17px;padding:17px 18px 16px}
+  .ringwrap{width:88px;height:88px;position:relative;flex:none}
+  .ringtxt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1;transform:translateY(-1px)}
+  .pct{font-size:18px;font-weight:720;letter-spacing:-.5px}
+  .h5{font-size:8px;margin-top:3px;letter-spacing:.5px;font-weight:600}
+  .body{flex:1;display:flex;flex-direction:column;gap:11px}
+  .name{font-size:15px;font-weight:650}
+  .hdr{display:flex;align-items:center;gap:8px}
+  .ico{width:27px;height:27px;border-radius:8px;object-fit:contain;flex:none}
+  .row{display:flex;flex-direction:column;gap:3px}
+  .rowtop{display:flex;align-items:center;gap:7px}
+  .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .lbl{font-size:12px;font-weight:600}
+  .val{margin-left:auto;font-size:13px;font-weight:700}
+  .cd{font-size:10.5px;margin-left:16px}
+  .div{height:1px}
+</style></head><body>
+<div class="widget">
+
+  <!-- Claude -->
+  <div class="panel" style="background:linear-gradient(180deg,#FAF9F5,#F0EEE6);color:#26231F">
+    <div class="ringwrap">
+      <svg width="88" height="88" viewBox="0 0 88 88" style="transform:rotate(-90deg)">
+        <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(38,35,31,.09)" stroke-width="6.5"/>
+        <circle cx="44" cy="44" r="38" fill="none" stroke="#E3A77F" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="21.5"/>
+        <circle cx="44" cy="44" r="27" fill="none" stroke="rgba(38,35,31,.09)" stroke-width="6.5"/>
+        <circle cx="44" cy="44" r="27" fill="none" stroke="#D97757" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="169.65" stroke-dashoffset="89.9"/>
+      </svg>
+      <div class="ringtxt"><span class="pct" style="color:#D97757">47%</span><span class="h5" style="color:#9A9286">5H</span></div>
+    </div>
+    <div class="body">
+      <div class="hdr"><img class="ico" src="assets/claude-app.png"><span class="name">Claude</span></div>
+      <div class="row"><div class="rowtop"><span class="dot" style="background:#D97757"></span><span class="lbl">5H</span><span class="val" style="color:#D97757">47%</span></div><div class="cd" style="color:#9A9286">Resets in 3h 34m</div></div>
+      <div class="row"><div class="rowtop"><span class="dot" style="background:#E3A77F"></span><span class="lbl">Weekly</span><span class="val" style="color:#26231F">91%</span></div><div class="cd" style="color:#9A9286">Resets in 3h 4m</div></div>
+    </div>
+  </div>
+  <div class="div" style="background:rgba(0,0,0,.06)"></div>
+
+  <!-- Codex -->
+  <div class="panel" style="background:linear-gradient(180deg,#17171A,#0E0E10);color:#ECECEC">
+    <div class="ringwrap">
+      <svg width="88" height="88" viewBox="0 0 88 88" style="transform:rotate(-90deg)">
+        <defs>
+          <linearGradient id="ca" x1="12" y1="12" x2="76" y2="76" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#A98CFF"/><stop offset=".48" stop-color="#7284FF"/><stop offset="1" stop-color="#394DFF"/></linearGradient>
+          <linearGradient id="cs" x1="12" y1="12" x2="76" y2="76" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#C4B5FD"/><stop offset="1" stop-color="#7C86E8"/></linearGradient>
+        </defs>
+        <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="6.5"/>
+        <circle cx="44" cy="44" r="38" fill="none" stroke="url(#cs)" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="236.4"/>
+        <circle cx="44" cy="44" r="27" fill="none" stroke="rgba(255,255,255,.10)" stroke-width="6.5"/>
+        <circle cx="44" cy="44" r="27" fill="none" stroke="url(#ca)" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="169.65" stroke-dashoffset="162.9"/>
+      </svg>
+      <div class="ringtxt"><span class="pct" style="color:#8E9BFF">4%</span><span class="h5" style="color:#888894">5H</span></div>
+    </div>
+    <div class="body">
+      <div class="hdr"><img class="ico" src="assets/codex-app.png"><span class="name">Codex</span></div>
+      <div class="row"><div class="rowtop"><span class="dot" style="background:linear-gradient(135deg,#A98CFF,#394DFF)"></span><span class="lbl">5H</span><span class="val" style="color:#8E9BFF">4%</span></div><div class="cd" style="color:#888894">Resets in 3h 41m</div></div>
+      <div class="row"><div class="rowtop"><span class="dot" style="background:linear-gradient(135deg,#C4B5FD,#7C86E8)"></span><span class="lbl">Weekly</span><span class="val" style="color:#ECECEC">1%</span></div><div class="cd" style="color:#888894">Resets in 6d 22h</div></div>
+    </div>
+  </div>
+  <div class="div" style="background:rgba(0,0,0,.08)"></div>
+
+  <!-- Kimi -->
+  <div class="panel" style="background:linear-gradient(180deg,#FBFBFC,#F1F3F7);color:#17181C">
+    <div class="ringwrap">
+      <svg width="88" height="88" viewBox="0 0 88 88" style="transform:rotate(-90deg)">
+        <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(20,24,30,.09)" stroke-width="6.5"/>
+        <circle cx="44" cy="44" r="38" fill="none" stroke="#252A33" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="236.4"/>
+        <circle cx="44" cy="44" r="27" fill="none" stroke="rgba(20,24,30,.09)" stroke-width="6.5"/>
+        <circle cx="44" cy="44" r="27" fill="none" stroke="#1478FF" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="169.65" stroke-dashoffset="167.9"/>
+      </svg>
+      <div class="ringtxt"><span class="pct" style="color:#1478FF">1%</span><span class="h5" style="color:#737984">5H</span></div>
+    </div>
+    <div class="body">
+      <div class="hdr"><img class="ico" src="assets/kimi-code.png" style="border-radius:7px"><span class="name">Kimi Code</span></div>
+      <div class="row"><div class="rowtop"><span class="dot" style="background:#1478FF"></span><span class="lbl">5H</span><span class="val" style="color:#1478FF">1%</span></div><div class="cd" style="color:#737984">Resets in 4h 37m</div></div>
+      <div class="row"><div class="rowtop"><span class="dot" style="background:#252A33"></span><span class="lbl">Weekly</span><span class="val" style="color:#17181C">1%</span></div><div class="cd" style="color:#737984">Resets in 6d 7h</div></div>
+    </div>
+  </div>
+
+</div>
+</body></html>
