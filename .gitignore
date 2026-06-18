@@ -39,3 +39,5 @@ windows-widget/src-tauri/gen/
 # Runtime usage snapshots
 usage.json
 *.usage.json
+
+usage-widget/dist/
