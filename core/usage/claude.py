@@ -66,11 +66,14 @@ def is_expired(creds, now=None):
 
 
 def _norm_pct(v):
-    """Normalize utilization to 0-100 int. Accept 0-1 or 0-100."""
-    v = float(v)
-    if v <= 1.0:
-        v *= 100.0
-    return round(v)
+    """Normalize utilization to a 0-100 int.
+
+    The /api/oauth/usage endpoint reports utilization on a 0-100 scale (e.g.
+    86.0), and its `limits` array uses integer percents — so a value of 1.0
+    means 1%, not the fraction 100%. Round and floor at 0; never rescale, or
+    genuine low usage (0 < util <= 1) would be inflated (1% -> 100%).
+    """
+    return max(0, round(float(v)))
 
 
 def _parse_resets(v):
