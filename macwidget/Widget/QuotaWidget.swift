@@ -30,52 +30,81 @@ struct QuotaTimelineProvider: TimelineProvider {
 
 private struct Palette {
     let accent: Color
-    let soft: Color
     let ink: Color
     let sub: Color
-    let background: LinearGradient
+    let background: Color
 }
 
 private extension ProviderKind {
-    var palette: Palette {
+    var accentColor: Color {
         switch self {
         case .claude:
-            Palette(
-                accent: Color(red: 0.85, green: 0.47, blue: 0.34),
-                soft: Color(red: 0.89, green: 0.65, blue: 0.50),
-                ink: Color(red: 0.15, green: 0.14, blue: 0.12),
-                sub: Color(red: 0.60, green: 0.57, blue: 0.53),
-                background: LinearGradient(
-                    colors: [.init(red: 0.98, green: 0.98, blue: 0.96),
-                             .init(red: 0.94, green: 0.93, blue: 0.90)],
-                    startPoint: .top, endPoint: .bottom
-                )
-            )
+            return Color(red: 0.85098, green: 0.46667, blue: 0.34118)   // #D97757
         case .codex:
-            Palette(
-                accent: Color(red: 0.40, green: 0.46, blue: 1.0),
-                soft: Color(red: 0.65, green: 0.55, blue: 0.98),
-                ink: Color(red: 0.93, green: 0.93, blue: 0.93),
-                sub: Color(red: 0.53, green: 0.53, blue: 0.58),
-                background: LinearGradient(
-                    colors: [.init(red: 0.09, green: 0.09, blue: 0.10),
-                             .init(red: 0.05, green: 0.05, blue: 0.06)],
-                    startPoint: .top, endPoint: .bottom
-                )
-            )
+            return Color(red: 0.48235, green: 0.51373, blue: 0.96078)   // #7B83F5
         case .kimi:
-            Palette(
-                accent: Color(red: 0.08, green: 0.47, blue: 1.0),
-                soft: Color(red: 0.15, green: 0.17, blue: 0.20),
-                ink: Color(red: 0.09, green: 0.09, blue: 0.11),
-                sub: Color(red: 0.45, green: 0.47, blue: 0.52),
-                background: LinearGradient(
-                    colors: [.init(red: 0.98, green: 0.98, blue: 0.99),
-                             .init(red: 0.94, green: 0.95, blue: 0.97)],
-                    startPoint: .top, endPoint: .bottom
-                )
-            )
+            return Color(red: 0.07843, green: 0.47059, blue: 1.0)       // #1478FF
         }
+    }
+
+    private var tintLight: Color {
+        switch self {
+        case .claude: return Color(red: 0.98039, green: 0.96863, blue: 0.95294) // #FAF7F3
+        case .codex:  return Color(red: 0.96471, green: 0.96471, blue: 0.98431) // #F6F6FB
+        case .kimi:   return Color(red: 0.95686, green: 0.96863, blue: 0.98824) // #F4F7FC
+        }
+    }
+
+    private var tintDark: Color {
+        switch self {
+        case .claude: return Color(red: 0.12941, green: 0.12157, blue: 0.10980) // #211F1C
+        case .codex:  return Color(red: 0.10588, green: 0.10588, blue: 0.13725) // #1B1B23
+        case .kimi:   return Color(red: 0.09412, green: 0.10980, blue: 0.14118) // #181C24
+        }
+    }
+
+    func palette(isDark: Bool) -> Palette {
+        let ink = isDark
+            ? Color(red: 0.92549, green: 0.91765, blue: 0.90196) // #ECEAE6
+            : Color(red: 0.14902, green: 0.13725, blue: 0.12157) // #26231F
+        let sub = isDark
+            ? Color(red: 0.54902, green: 0.53333, blue: 0.49804) // #8c887f
+            : Color(red: 0.60392, green: 0.57255, blue: 0.52549) // #9a9286
+        return Palette(
+            accent: accentColor,
+            ink: ink,
+            sub: sub,
+            background: isDark ? tintDark : tintLight
+        )
+    }
+}
+
+/// In-hue emphasis: darken in light mode, brighten in dark mode.
+private func emphasis(_ accent: Color, used: Double, isDark: Bool) -> Color {
+    let level = used >= 90 ? 2 : used >= 70 ? 1 : 0
+    guard level > 0 else { return accent }
+
+    let base = NSColor(accent).usingColorSpace(.sRGB) ?? NSColor(accent)
+    let r = base.redComponent
+    let g = base.greenComponent
+    let b = base.blueComponent
+
+    if isDark {
+        let t = [0.0, 0.20, 0.38][level]
+        return Color(NSColor(
+            red: r + (1.0 - r) * t,
+            green: g + (1.0 - g) * t,
+            blue: b + (1.0 - b) * t,
+            alpha: 1.0
+        ))
+    } else {
+        let f = [1.0, 0.84, 0.70][level]
+        return Color(NSColor(
+            red: r * f,
+            green: g * f,
+            blue: b * f,
+            alpha: 1.0
+        ))
     }
 }
 
@@ -111,83 +140,146 @@ private struct ProviderMark: View {
 private struct DualRing: View {
     let provider: UsageProvider
     let palette: Palette
+    let isDark: Bool
     var diameter: CGFloat = 56
 
     var body: some View {
         let five = provider.fiveH?.percentage ?? 0
         let week = provider.weekly?.percentage ?? 0
+        let weekColor = emphasis(palette.accent, used: week, isDark: isDark)
+        let fiveColor = emphasis(palette.accent, used: five, isDark: isDark)
+        let urgent: (pct: Double, label: String) = five >= week
+            ? (five, "5H")
+            : (week, "Weekly")
+        let urgentColor = emphasis(palette.accent, used: urgent.pct, isDark: isDark)
+
         let lw = diameter * 0.12
         let inset = lw + 3
+        let trackColor = isDark
+            ? Color.white.opacity(0.13)
+            : Color.black.opacity(0.09)
+
         ZStack {
-            Circle().stroke(palette.soft.opacity(0.22), lineWidth: lw)
-            Circle().trim(from: 0, to: min(1, max(0, week/100)))
-                .stroke(palette.soft, style: .init(lineWidth: lw, lineCap: .round))
+            Circle().stroke(trackColor, lineWidth: lw)
+            Circle().trim(from: 0, to: min(1, max(0, week / 100)))
+                .stroke(weekColor, style: .init(lineWidth: lw, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Circle().inset(by: inset).stroke(palette.accent.opacity(0.15), lineWidth: lw)
-            Circle().inset(by: inset).trim(from: 0, to: min(1, max(0, five/100)))
-                .stroke(palette.accent, style: .init(lineWidth: lw, lineCap: .round))
+
+            Circle().inset(by: inset).stroke(trackColor, lineWidth: lw)
+            Circle().inset(by: inset).trim(from: 0, to: min(1, max(0, five / 100)))
+                .stroke(fiveColor, style: .init(lineWidth: lw, lineCap: .round))
                 .rotationEffect(.degrees(-90))
-            Text("\(Int(five))%")
-                .font(.system(size: diameter * 0.24, weight: .bold, design: .rounded))
-                .foregroundStyle(palette.accent)
-                .minimumScaleFactor(0.5)
-                .lineLimit(1)
-                .frame(width: diameter - 2 * (inset + lw) - 2)
+
+            VStack(spacing: 1) {
+                Text("\(Int(urgent.pct))%")
+                    .font(.system(
+                        size: urgent.pct >= 100 ? diameter * 0.22 : diameter * 0.26,
+                        weight: .bold,
+                        design: .rounded
+                    ))
+                    .foregroundStyle(urgentColor)
+                    .minimumScaleFactor(0.5)
+                    .lineLimit(1)
+
+                Text(ProviderPresentation.code(for: urgent.label).uppercased())
+                    .font(.system(size: diameter * 0.11, weight: .semibold))
+                    .foregroundStyle(palette.sub)
+                    .lineLimit(1)
+            }
+            .frame(width: diameter - 2 * (inset + lw) - 2)
         }
         .frame(width: diameter, height: diameter)
-        .opacity(provider.isStale ? 0.6 : 1)
     }
 }
 
 private struct MetricRow: View {
-    let label: String
+    let code: String
     let pct: Double
-    let resetsAt: TimeInterval?
-    let dot: Color
-    let palette: Palette
-    var valueColor: Color
+    let reset: String
+    let accent: Color
+    let ink: Color
+    let sub: Color
+    let isDark: Bool
     var compact: Bool = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            HStack(spacing: 4) {
-                Circle().fill(dot).frame(width: compact ? 5 : 6, height: compact ? 5 : 6)
-                Text(label).font(.system(size: compact ? 11 : 12))
-                Spacer(minLength: 2)
-                Text("\(Int(pct))%").font(.system(size: compact ? 11 : 12, weight: .semibold)).foregroundStyle(valueColor)
-            }
-            .foregroundStyle(palette.ink)
-            Text(ProviderPresentation.countdown(until: resetsAt))
-                .font(.system(size: compact ? 8.5 : 9.5))
-                .foregroundStyle(palette.sub)
-                .padding(.leading, compact ? 9 : 10)
+        HStack(spacing: compact ? 2 : 4) {
+            Circle()
+                .fill(emphasis(accent, used: pct, isDark: isDark))
+                .frame(width: compact ? 5 : 6, height: compact ? 5 : 6)
+            Text(code)
+                .font(.system(size: compact ? 9.5 : 12, weight: .medium))
+                .foregroundStyle(ink)
                 .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .fixedSize()
+            Spacer(minLength: 2)
+            Text("↻ \(reset)")
+                .font(.system(size: compact ? 8 : 9.5))
+                .foregroundStyle(sub)
+                .lineLimit(1)
+                .minimumScaleFactor(0.6)
+            Text("\(Int(pct))%")
+                .font(.system(size: compact ? 9.5 : 12, weight: .semibold))
+                .foregroundStyle(emphasis(accent, used: pct, isDark: isDark))
+                .lineLimit(1)
+                .fixedSize()
+                .frame(minWidth: compact ? 24 : 34, alignment: .trailing)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
 private struct SmallCard: View {
+    @Environment(\.colorScheme) private var colorScheme
     let kind: ProviderKind
     let provider: UsageProvider
-    private var p: Palette { kind.palette }
+
+    private var isDark: Bool { colorScheme == .dark }
+    private var p: Palette { kind.palette(isDark: isDark) }
 
     var body: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 6) {
-                ProviderMark(kind: kind).frame(width: 18, height: 18)
-                Text(kind.rawValue).font(.system(size: 14, weight: .medium)).foregroundStyle(p.ink).lineLimit(1).minimumScaleFactor(0.8)
-            }
+            header
+
             if provider.ok, let five = provider.fiveH, let week = provider.weekly {
-                DualRing(provider: provider, palette: p, diameter: 54)
-                VStack(spacing: 6) {
-                    MetricRow(label: "5H", pct: five.percentage, resetsAt: five.resetsAt, dot: p.accent, palette: p, valueColor: p.accent)
-                    MetricRow(label: "Weekly", pct: week.percentage, resetsAt: week.resetsAt, dot: p.soft, palette: p, valueColor: p.ink)
+                let stale = provider.isStale
+                if stale {
+                    Text(ProviderPresentation.cachedMessage())
+                        .font(.system(size: 10))
+                        .foregroundStyle(p.sub)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
                 }
+
+                DualRing(provider: provider, palette: p, isDark: isDark, diameter: 54)
+                    .opacity(stale ? 0.55 : 1)
+
+                VStack(spacing: 6) {
+                    MetricRow(
+                        code: "5H",
+                        pct: five.percentage,
+                        reset: ProviderPresentation.countdown(until: five.resetsAt),
+                        accent: p.accent,
+                        ink: p.ink,
+                        sub: p.sub,
+                        isDark: isDark
+                    )
+                    MetricRow(
+                        code: "Wk",
+                        pct: week.percentage,
+                        reset: ProviderPresentation.countdown(until: week.resetsAt),
+                        accent: p.accent,
+                        ink: p.ink,
+                        sub: p.sub,
+                        isDark: isDark
+                    )
+                }
+                .opacity(stale ? 0.55 : 1)
             } else {
                 Spacer(minLength: 0)
-                Text(ProviderPresentation.message(for: kind, provider: provider)).font(.system(size: 11)).foregroundStyle(p.sub).multilineTextAlignment(.center)
+                Text(ProviderPresentation.message(for: kind, provider: provider))
+                    .font(.system(size: 11))
+                    .foregroundStyle(p.sub)
+                    .multilineTextAlignment(.center)
                 Spacer(minLength: 0)
             }
         }
@@ -195,30 +287,83 @@ private struct SmallCard: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(p.background)
     }
+
+    @ViewBuilder
+    private var header: some View {
+        HStack(spacing: 6) {
+            ProviderMark(kind: kind).frame(width: 18, height: 18)
+            Text(kind.rawValue)
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(p.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+            Spacer(minLength: 0)
+        }
+    }
 }
 
 private struct MediumColumn: View {
+    @Environment(\.colorScheme) private var colorScheme
     let kind: ProviderKind
     let provider: UsageProvider
-    private var p: Palette { kind.palette }
+
+    private var isDark: Bool { colorScheme == .dark }
+    private var p: Palette { kind.palette(isDark: isDark) }
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack(spacing: 4) {
-                ProviderMark(kind: kind).frame(width: 14, height: 14)
-                Text(kind.rawValue).font(.system(size: 12, weight: .medium)).foregroundStyle(p.ink).lineLimit(1).minimumScaleFactor(0.7)
-            }
+            header
             Spacer(minLength: 0)
+
             if provider.ok, let five = provider.fiveH, let week = provider.weekly {
-                DualRing(provider: provider, palette: p, diameter: 50)
+                let stale = provider.isStale
+                if stale {
+                    Text(ProviderPresentation.cachedMessage())
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(p.sub)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+
+                DualRing(
+                    provider: provider,
+                    palette: p,
+                    isDark: isDark,
+                    diameter: WidgetLayout.mediumRingSize
+                )
+                .opacity(stale ? 0.55 : 1)
+
                 Spacer(minLength: 0)
                 VStack(spacing: 5) {
-                    MetricRow(label: "5H", pct: five.percentage, resetsAt: five.resetsAt, dot: p.accent, palette: p, valueColor: p.accent, compact: true)
-                    MetricRow(label: "Weekly", pct: week.percentage, resetsAt: week.resetsAt, dot: p.soft, palette: p, valueColor: p.ink, compact: true)
+                    MetricRow(
+                        code: "5H",
+                        pct: five.percentage,
+                        reset: ProviderPresentation.countdown(until: five.resetsAt),
+                        accent: p.accent,
+                        ink: p.ink,
+                        sub: p.sub,
+                        isDark: isDark,
+                        compact: true
+                    )
+                    MetricRow(
+                        code: "Wk",
+                        pct: week.percentage,
+                        reset: ProviderPresentation.countdown(until: week.resetsAt),
+                        accent: p.accent,
+                        ink: p.ink,
+                        sub: p.sub,
+                        isDark: isDark,
+                        compact: true
+                    )
                 }
+                .opacity(stale ? 0.55 : 1)
             } else {
                 Spacer(minLength: 0)
-                Text(ProviderPresentation.message(for: kind, provider: provider)).font(.system(size: 9.5)).foregroundStyle(p.sub).lineLimit(3).multilineTextAlignment(.center)
+                Text(ProviderPresentation.message(for: kind, provider: provider))
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(p.sub)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.center)
                 Spacer(minLength: 0)
             }
         }
@@ -226,6 +371,19 @@ private struct MediumColumn: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(p.background)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    @ViewBuilder
+    private var header: some View {
+        HStack(spacing: 4) {
+            ProviderMark(kind: kind).frame(width: 14, height: 14)
+            Text(kind.rawValue)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(p.ink)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Spacer(minLength: 0)
+        }
     }
 }
 

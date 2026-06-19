@@ -1,7 +1,7 @@
 import Foundation
 
 enum WidgetLayout {
-    static let mediumRingSize: CGFloat = 58
+    static let mediumRingSize: CGFloat = 50
 }
 
 struct UsageWindow: Codable, Equatable {
@@ -86,21 +86,56 @@ enum ProviderKind: String, CaseIterable {
 }
 
 enum ProviderPresentation {
+    private struct Strings {
+        let rateLimited: String
+        let notSignedIn: String
+        let cached: String
+        let cmdMap: [String: String]
+    }
+
+    private static let zh = Strings(
+        rateLimited: "请求受限 · 稍后自动重试",
+        notSignedIn: "未登录 · 请先在 {CLI} 登录",
+        cached: "缓存数据 · 等待刷新",
+        cmdMap: [
+            "Claude": "Claude Code",
+            "Codex": "Codex CLI",
+            "Kimi Code": "Kimi CLI"
+        ]
+    )
+
+    private static let en = Strings(
+        rateLimited: "Rate limited · retrying soon",
+        notSignedIn: "Not signed in · Log in via {CLI}",
+        cached: "Cached · awaiting refresh",
+        cmdMap: [
+            "Claude": "Claude Code",
+            "Codex": "Codex CLI",
+            "Kimi Code": "Kimi CLI"
+        ]
+    )
+
+    private static var strings: Strings {
+        let code = Locale.current.language.languageCode?.identifier ?? "zh"
+        return code.hasPrefix("en") ? en : zh
+    }
+
     static func message(for kind: ProviderKind, provider: UsageProvider) -> String {
         switch provider.reason {
         case "rate_limited":
-            return "请求受限 · 稍后自动重试"
-        case "expired" where kind == .kimi:
-            return "登录态过期 · 去 Kimi CLI 重新登录"
-        case "expired":
-            return "登录态过期 · 去 Claude Code 重新登录"
-        case "no_data" where kind == .kimi:
-            return "未登录 · 先在 Kimi CLI 完成登录"
-        case "no_data" where kind == .codex:
-            return "暂无数据 · 先使用一次 Codex"
+            return strings.rateLimited
         default:
-            return "暂无数据"
+            let cli = strings.cmdMap[kind.rawValue] ?? kind.rawValue
+            return strings.notSignedIn.replacingOccurrences(of: "{CLI}", with: cli)
         }
+    }
+
+    static func cachedMessage() -> String {
+        strings.cached
+    }
+
+    static func code(for label: String) -> String {
+        label == "Weekly" ? "Wk" : label
     }
 
     static func countdown(until timestamp: TimeInterval?, now: Date = Date()) -> String {
@@ -109,9 +144,28 @@ enum ProviderPresentation {
         let days = seconds / 86_400
         let hours = (seconds % 86_400) / 3_600
         let minutes = (seconds % 3_600) / 60
-        if days > 0 { return "Resets in \(days)d \(hours)h" }
-        if hours > 0 { return "Resets in \(hours)h \(minutes)m" }
-        return "Resets in \(minutes)m"
+        if days > 0 { return "\(days)d \(hours)h" }
+        if hours > 0 { return "\(hours)h \(minutes)m" }
+        return "\(minutes)m"
+    }
+
+    static func soonest(
+        provider: UsageProvider,
+        now: Date = Date()
+    ) -> (code: String, text: String) {
+        let windows = [
+            (label: "5H", resetsAt: provider.fiveH?.resetsAt),
+            (label: "Weekly", resetsAt: provider.weekly?.resetsAt)
+        ]
+        let nearest = windows.min {
+            let a = $0.resetsAt ?? Double.infinity
+            let b = $1.resetsAt ?? Double.infinity
+            return a < b
+        } ?? windows[0]
+        return (
+            code: code(for: nearest.label),
+            text: countdown(until: nearest.resetsAt, now: now)
+        )
     }
 }
 

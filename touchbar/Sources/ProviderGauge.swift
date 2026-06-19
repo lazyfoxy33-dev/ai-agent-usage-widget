@@ -1,5 +1,25 @@
 import AppKit
 
+extension NSColor {
+    /// In-hue emphasis for a dark (always black) Touch Bar background.
+    /// Level 0 returns the accent unchanged; level 1/2 brighten the color
+    /// toward white without shifting hue.
+    func emphasized(by usedPct: Double) -> NSColor {
+        let level: Int
+        if usedPct >= 90 { level = 2 }
+        else if usedPct >= 70 { level = 1 }
+        else { level = 0 }
+        if level == 0 { return self }
+
+        guard let c = usingColorSpace(.sRGB) else { return self }
+        let t: CGFloat = [0, 0.20, 0.38][level]
+        var r: CGFloat = 0, g: CGFloat = 0, b: CGFloat = 0, a: CGFloat = 0
+        c.getRed(&r, green: &g, blue: &b, alpha: &a)
+        let brighten = { (v: CGFloat) -> CGFloat in v + (1.0 - v) * t }
+        return NSColor(srgbRed: brighten(r), green: brighten(g), blue: brighten(b), alpha: a)
+    }
+}
+
 /// One provider's compact Touch Bar gauge. It translates the Übersicht widget's
 /// two-ring design (5h = accent, weekly = soft tint) onto the horizontal strip as
 /// a brand badge plus two mini bars. Fixed width keeps the modal's total length
@@ -87,12 +107,12 @@ final class ProviderGauge: NSView {
         }
 
         row("5H", fiveH,  base: accent, centerY: rowTopY)
-        row("Weekly", weekly, base: soft,   centerY: rowBottomY)
+        row("Wk", weekly, base: soft,   centerY: rowBottomY)
     }
 
     private func row(_ label: String, _ win: (pct: Double, stale: Bool)?,
                      base: NSColor, centerY: CGFloat) {
-        let color = (win?.stale ?? false) ? dim : base
+        let color = (win?.stale ?? false) ? dim : base.emphasized(by: win?.pct ?? 0)
 
         let labelFont = label.count > 2 ? weeklyMicroFont : microFont
         let micro = NSAttributedString(string: label,
