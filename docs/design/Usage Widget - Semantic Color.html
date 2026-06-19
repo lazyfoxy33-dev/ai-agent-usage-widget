@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="zh"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usage Widget — Semantic Color</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:#e7e6e1;color:#26231F;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;font-feature-settings:"tnum";
+    -webkit-font-smoothing:antialiased}
+  .canvas{min-width:100%;width:max-content;min-height:100vh;padding:52px 60px 90px}
+  .head{max-width:720px;margin-bottom:6px}
+  .kicker{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#9a9286;font-weight:600;margin:0 0 9px}
+  h1{font-size:27px;font-weight:680;letter-spacing:-.5px;margin:0 0 12px}
+  .head p{font-size:14px;line-height:1.6;color:#5c574e;margin:0}
+  .head b{color:#26231F;font-weight:650}
+
+  .grid{display:flex;gap:24px;align-items:flex-start;flex-wrap:wrap;margin-top:36px}
+  .scheme{width:268px;display:flex;flex-direction:column;gap:12px}
+  .stag{display:flex;align-items:baseline;gap:8px}
+  .stag .nm{font-size:14px;font-weight:650;letter-spacing:-.2px}
+  .stag .rec{font-size:10px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#1FA37A;border:1px solid #1FA37A;border-radius:5px;padding:1px 5px}
+  .stag.muted .nm{color:#9a9286}
+  .plate{border-radius:16px;padding:24px;border:1px solid rgba(0,0,0,.05);background:#efeee9}
+  .plate.dark{background:#23232a;border-color:rgba(255,255,255,.06)}
+  .card{border-radius:16px;overflow:hidden;box-shadow:0 8px 22px -10px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.14)}
+  .panel{padding:15px 16px;background:#FAF7F3}
+  .panel.dark{background:#211F1C}
+  .bars{display:flex;flex-direction:column;gap:11px}
+  .brow{display:flex;align-items:center;gap:10px}
+  .blbl{font-size:12px;font-weight:600;width:54px;flex:none;color:inherit}
+  .track{flex:1;height:7px;border-radius:4px;overflow:hidden;position:relative}
+  .fill{position:absolute;left:0;top:0;height:100%;border-radius:4px}
+  .bval{font-size:13px;font-weight:700;width:38px;text-align:right;font-variant-numeric:tabular-nums}
+  .mech{font-size:11.5px;line-height:1.5;color:#6c675e}
+  .mech b{color:#46423b;font-weight:600}
+  .legend{font-size:11px;color:#9a9286;margin-top:2px}
+</style></head>
+<body>
+<div class="canvas">
+  <div class="head">
+    <p class="kicker">Usage Widget · 语义告急色</p>
+    <h1>更柔和的告急表达</h1>
+    <p>同一组测试数据(<b>充足 41% · 注意 78% · 告急 94%</b>),五种取色策略对比。目标:平时保留品牌识别,接近上限时<b>有强调但不刺眼</b>。每张卡都用 Claude 品牌色为基,因为暖橙最难与红区分——能在 Claude 上成立,其余 provider 更没问题。</p>
+  </div>
+
+  <div class="grid" id="grid"></div>
+
+  <div class="head" style="margin-top:48px">
+    <p class="kicker">推荐方案 · 亮 + 暗</p>
+    <p class="head" style="font-size:13px;color:#6c675e;max-width:680px">下面把推荐的 <b>C · 品牌填充 + 语义点缀</b> 放到真实面板里看效果:填充始终是品牌色,只有<b>数值</b>和<b>轨道底色</b>随告急升温。</p>
+  </div>
+  <div class="grid" id="reco"></div>
+</div>
+
+<script>
+/* test rows */
+const ROWS = [ {label:'5H', used:41}, {label:'Wk', used:78}, {label:'Cr', used:94} ];
+const BRAND = '#D97757';
+const INK_L = '#26231F', INK_D = '#ECEAE6', TRK_L = 'rgba(0,0,0,.09)', TRK_D = 'rgba(255,255,255,.13)';
+
+/* ---- scheme color resolvers: (used, theme) -> {fill, val, track} ---- */
+const SCHEMES = {
+  current:{
+    nm:'现状', muted:true,
+    mech:'<b>纯语义覆盖</b>:70% 转标准琥珀、90% 转正红。强调够,但红色偏"警报",品牌感被吃掉。',
+    fn:(u,dk)=>{ const trk=dk?TRK_D:TRK_L;
+      if(u>=90) return {fill:dk?'#F0635C':'#CE3B36', val:dk?'#F0635C':'#CE3B36', track:trk};
+      if(u>=70) return {fill:dk?'#E0A93B':'#C8881E', val:dk?'#E0A93B':'#C8881E', track:trk};
+      return {fill:BRAND, val:BRAND, track:trk}; }
+  },
+  A:{
+    nm:'A · 柔和语义',
+    mech:'同样换填充色,但用<b>降饱和的尘调</b>琥珀 / 陶土红——温暖、不刺眼,与暖色面板更协调。',
+    fn:(u,dk)=>{ const trk=dk?TRK_D:TRK_L;
+      if(u>=90) return {fill:dk?'#D2796B':'#C26553', val:dk?'#D2796B':'#BC5546', track:trk};
+      if(u>=70) return {fill:dk?'#D2A862':'#C99A57', val:dk?'#D2A862':'#B6852C', track:trk};
+      return {fill:BRAND, val:BRAND, track:trk}; }
+  },
+  B:{
+    nm:'B · 品牌色加深',
+    mech:'不引入新色相,<b>在品牌色相内加深</b>:越满越浓。100% 保留识别,强调=深度。跨蓝/紫 provider 时"危险感"较弱。',
+    fn:(u,dk)=>{ const trk=dk?TRK_D:TRK_L;
+      if(u>=90) return {fill:dk?'#C9583B':'#AE4126', val:dk?'#C9583B':'#AE4126', track:trk};
+      if(u>=70) return {fill:dk?'#D86A45':'#C65E3C', val:dk?'#D86A45':'#C65E3C', track:trk};
+      return {fill:BRAND, val:BRAND, track:trk}; }
+  },
+  C:{
+    nm:'C · 品牌填充 + 语义点缀', rec:true,
+    mech:'<b>填充永远是品牌色</b>(识别最强);告急只体现在<b>数值色</b>+<b>轨道暖底</b>。最柔和,蓝/紫 provider 上对比更明显。',
+    fn:(u,dk)=>{
+      if(u>=90) return {fill:BRAND, val:dk?'#F0635C':'#C24A3C', track:dk?'rgba(240,99,92,.22)':'rgba(193,70,58,.16)'};
+      if(u>=70) return {fill:BRAND, val:dk?'#E0A93B':'#B6852C', track:dk?'rgba(224,169,59,.22)':'rgba(200,136,30,.18)'};
+      return {fill:BRAND, val:BRAND, track:dk?TRK_D:TRK_L}; }
+  },
+  D:{
+    nm:'D · 危险区轨道',
+    mech:'轨道末段(85–100%)预置一抹<b>暖红警示区</b>;填充保持品牌色,几乎满格时自然"压进"红区——空间化提示。',
+    fn:(u,dk)=>{
+      const base=dk?TRK_D:TRK_L, zone=dk?'rgba(240,99,92,.30)':'rgba(193,70,58,.20)';
+      const trk='linear-gradient(90deg,'+base+' 0 85%,'+zone+' 85% 100%)';
+      return {fill:BRAND, val:(u>=90?(dk?'#F0635C':'#C24A3C'):BRAND), track:trk}; }
+  }
+};
+
+function barsHTML(fn, dk){
+  return ROWS.map(r=>{
+    const c = fn(r.used, dk);
+    return '<div class="brow"><span class="blbl">'+r.label+'</span>'
+      + '<span class="track" style="background:'+c.track+'"><span class="fill" style="width:'+r.used+'%;background:'+c.fill+'"></span></span>'
+      + '<span class="bval" style="color:'+c.val+'">'+r.used+'%</span></div>';
+  }).join('');
+}
+
+/* render scheme grid */
+const grid = document.getElementById('grid');
+['current','A','B','C','D'].forEach(key=>{
+  const s = SCHEMES[key];
+  const el = document.createElement('div'); el.className='scheme';
+  el.innerHTML =
+    '<div class="stag'+(s.muted?' muted':'')+'"><span class="nm">'+s.nm+'</span>'+(s.rec?'<span class="rec">推荐</span>':'')+'</div>'
+    + '<div class="plate"><div class="card"><div class="panel" style="color:'+INK_L+'"><div class="bars">'+barsHTML(s.fn,false)+'</div></div></div></div>'
+    + '<div class="mech">'+s.mech+'</div>';
+  grid.appendChild(el);
+});
+
+/* recommended C in light + dark */
+const reco = document.getElementById('reco');
+[['浅色',false],['暗色',true]].forEach(([lab,dk])=>{
+  const el = document.createElement('div'); el.className='scheme';
+  el.innerHTML =
+    '<div class="stag"><span class="nm">'+lab+'</span></div>'
+    + '<div class="plate'+(dk?' dark':'')+'"><div class="card"><div class="panel'+(dk?' dark':'')+'" style="color:'+(dk?INK_D:INK_L)+'"><div class="bars">'+barsHTML(SCHEMES.C.fn,dk)+'</div></div></div></div>';
+  reco.appendChild(el);
+});
+</script>
+</body></html>

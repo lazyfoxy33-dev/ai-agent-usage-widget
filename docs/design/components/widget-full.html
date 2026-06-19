@@ -1,0 +1,24 @@
+<!-- @dsCard group="Components" name="Usage Widget — full" subtitle="调和品牌底色 · 条形 · 跟随亮/暗" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="_widget.css">
+<style>
+  html,body{margin:0;padding:0}
+  body{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;justify-content:center;
+    padding:34px;box-sizing:border-box;background:#e7e6e1;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+  .frame{display:flex;flex-direction:column;gap:11px}
+  .flabel{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;letter-spacing:.3px;color:#8a847a;text-transform:uppercase}
+  .plate{border-radius:18px;padding:30px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.05)}
+  .plate.light{background:#efeee9}
+  .plate.dark{background:#23232a;border-color:rgba(255,255,255,.06)}
+</style></head><body>
+  <div class="frame">
+    <div class="flabel">Light</div>
+    <div class="plate light"><div class="widget" data-form="bar" data-theme="light"></div></div>
+  </div>
+  <div class="frame">
+    <div class="flabel">Dark</div>
+    <div class="plate dark"><div class="widget dark-shadow" data-form="bar" data-theme="dark"></div></div>
+  </div>
+<script src="_widget.js"></script>
+</body></html>

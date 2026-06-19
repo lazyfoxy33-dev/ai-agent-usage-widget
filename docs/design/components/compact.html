@@ -1,0 +1,32 @@
+<!-- @dsCard group="Components" name="Compact & Touch Bar" subtitle="方案 B 紧凑横排 → Touch Bar 微布局" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="_widget.css">
+<style>
+  html,body{margin:0;padding:0}
+  body{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;justify-content:center;
+    padding:34px;box-sizing:border-box;background:#e7e6e1;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+  .frame{display:flex;flex-direction:column;gap:11px}
+  .flabel{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;color:#8a847a;text-transform:uppercase}
+  .flabel b{color:#46423b;font-weight:600}
+  .plate{border-radius:16px;padding:26px;border:1px solid rgba(0,0,0,.05);display:flex;align-items:center;justify-content:center}
+  .plate.light{background:#efeee9}
+  .plate.dark{background:#23232a;border-color:rgba(255,255,255,.06)}
+  .plate.touch{background:#000;border-radius:9px;padding:0;border:1px solid #2c2c2e}
+  .tnote{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:10px;color:#8a847a}
+</style></head><body>
+  <div class="frame">
+    <div class="flabel"><b>紧凑卡</b> · Light · 桌面 Widget</div>
+    <div class="plate light"><div class="widget compact" data-form="compact" data-theme="light"></div></div>
+  </div>
+  <div class="frame">
+    <div class="flabel"><b>紧凑卡</b> · Dark</div>
+    <div class="plate dark"><div class="widget compact dark-shadow" data-form="compact" data-theme="dark"></div></div>
+  </div>
+  <div class="frame">
+    <div class="flabel"><b>Touch Bar</b> · 实际约 30pt 高</div>
+    <div class="plate touch"><div class="touchbar" data-auto></div></div>
+    <div class="tnote">图标 + 最告急窗口 % + 双微条(上 5H / 下 Wk)</div>
+  </div>
+<script src="_widget.js"></script>
+</body></html>
