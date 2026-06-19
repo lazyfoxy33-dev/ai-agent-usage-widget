@@ -47,6 +47,22 @@ class TestClaudeParse(unittest.TestCase):
         self.assertTrue(result["five_h"]["stale"])  # resets_at=1 < now=3
         self.assertTrue(result["weekly"]["stale"])  # resets_at=2 < now=3
 
+    def test_norm_pct_does_not_rescale_low_values(self):
+        # The endpoint is 0-100, so 1.0 is 1%, not the fraction 100%.
+        self.assertEqual(claude._norm_pct(0.0), 0)
+        self.assertEqual(claude._norm_pct(1.0), 1)
+        self.assertEqual(claude._norm_pct(2.0), 2)
+        self.assertEqual(claude._norm_pct(86.0), 86)
+        self.assertEqual(claude._norm_pct(100.0), 100)
+
+    def test_parse_low_utilization_is_not_inflated(self):
+        # Regression: a freshly-reset window at ~1% must not show as 100%.
+        data = {"five_hour": {"utilization": 1.0, "resets_at": 9999999999},
+                "seven_day": {"utilization": 0.0, "resets_at": 9999999999}}
+        result = claude.parse_claude_usage(data, now=0)
+        self.assertEqual(result["five_h"]["pct"], 1)
+        self.assertEqual(result["weekly"]["pct"], 0)
+
     def test_parse_resets_iso_string(self):
         iso = "2026-06-11T12:09:59.599553+00:00"
         expected = int(datetime.fromisoformat(iso).timestamp())
