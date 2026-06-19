@@ -8,7 +8,7 @@ A cross-platform tool that shows Claude, Codex, and Kimi Code usage in one
 place. One shared data layer (`core/`) drives four frontends: Übersicht,
 Touch Bar, native macOS WidgetKit, and Windows Tauri.
 
-![组件预览 / Widget preview](docs/widget-preview.svg)
+![组件预览 / Widget preview](docs/widget-preview.png)
 
 ## 项目结构 / Layout
 
