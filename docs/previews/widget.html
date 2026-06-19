@@ -1,0 +1,115 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+  /* macOS WidgetKit preview (light theme), Claude Design iteration.
+     Small (single provider, follows the active app) + Medium (three columns). */
+  html,body{margin:0;padding:0;width:600px;height:240px;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;gap:22px;
+    background:radial-gradient(120% 120% at 30% 0%,#6f7db0 0%,#4a5688 45%,#2c3460 100%);
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;font-feature-settings:"tnum"}
+  .tile{border-radius:20px;overflow:hidden;box-shadow:0 14px 30px -10px rgba(0,0,0,.5)}
+  .small{width:158px;height:158px;background:#FAF7F3;padding:14px;box-sizing:border-box;
+    display:flex;flex-direction:column;gap:8px;color:#26231F}
+  .medium{width:336px;height:158px;display:flex;gap:8px}
+  .col{flex:1;background:#FAF7F3;border-radius:18px;padding:11px 8px;box-sizing:border-box;
+    display:flex;flex-direction:column;color:#26231F}
+  .col.codex{background:#F6F6FB}.col.kimi{background:#F4F7FC}
+  .hdr{display:flex;align-items:center;gap:6px}
+  .hdr.m{gap:4px}
+  .ico{border-radius:6px;object-fit:contain;flex:none}
+  .nm{font-weight:500}
+  .ring{position:relative;flex:none;align-self:center}
+  .rtxt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1}
+  .rpct{font-weight:700;letter-spacing:-.3px}
+  .rcode{margin-top:1px;font-weight:600;color:#9a9286}
+  .rows{display:flex;flex-direction:column}
+  .row{display:flex;align-items:center}
+  .dot{border-radius:50%;flex:none}
+  .lbl{font-weight:500;color:#26231F}
+  .rst{margin-left:auto;color:#9a9286;white-space:nowrap;display:flex;align-items:center;gap:2px}
+  .rr{opacity:.75}
+  .val{font-weight:600;text-align:right}
+  .sp{flex:1}
+</style></head><body>
+
+  <!-- Small: single provider (active app) — Claude -->
+  <div class="tile small">
+    <div class="hdr">
+      <img class="ico" src="../../usage-widget/assets/claude-app.png" style="width:18px;height:18px">
+      <span class="nm" style="font-size:14px">Claude</span>
+    </div>
+    <div class="ring" style="width:54px;height:54px">
+      <svg width="54" height="54" viewBox="0 0 88 88" style="transform:rotate(-90deg)">
+        <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="6.5"/>
+        <circle cx="44" cy="44" r="38" fill="none" stroke="#98533D" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="21.5"/>
+        <circle cx="44" cy="44" r="27" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="6.5"/>
+        <circle cx="44" cy="44" r="27" fill="none" stroke="#D97757" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="169.65" stroke-dashoffset="89.9"/>
+      </svg>
+      <div class="rtxt"><span class="rpct" style="font-size:14px;color:#98533D">91%</span><span class="rcode" style="font-size:6px">WK</span></div>
+    </div>
+    <div class="rows" style="gap:6px">
+      <div class="row" style="gap:4px"><span class="dot" style="width:6px;height:6px;background:#D97757"></span><span class="lbl" style="font-size:12px">5H</span><span class="rst" style="font-size:9.5px"><span class="rr">↻</span>3h 34m</span><span class="val" style="font-size:12px;color:#D97757;min-width:32px">47%</span></div>
+      <div class="row" style="gap:4px"><span class="dot" style="width:6px;height:6px;background:#98533D"></span><span class="lbl" style="font-size:12px">Wk</span><span class="rst" style="font-size:9.5px"><span class="rr">↻</span>4d 12h</span><span class="val" style="font-size:12px;color:#98533D;min-width:32px">91%</span></div>
+    </div>
+  </div>
+
+  <!-- Medium: three columns -->
+  <div class="tile medium">
+    <!-- Claude -->
+    <div class="col">
+      <div class="hdr m"><img class="ico" src="../../usage-widget/assets/claude-app.png" style="width:14px;height:14px"><span class="nm" style="font-size:12px">Claude</span></div>
+      <div class="sp"></div>
+      <div class="ring" style="width:50px;height:50px">
+        <svg width="50" height="50" viewBox="0 0 88 88" style="transform:rotate(-90deg)">
+          <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="6.5"/>
+          <circle cx="44" cy="44" r="38" fill="none" stroke="#98533D" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="21.5"/>
+          <circle cx="44" cy="44" r="27" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="6.5"/>
+          <circle cx="44" cy="44" r="27" fill="none" stroke="#D97757" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="169.65" stroke-dashoffset="89.9"/>
+        </svg>
+        <div class="rtxt"><span class="rpct" style="font-size:13px;color:#98533D">91%</span><span class="rcode" style="font-size:5.5px">WK</span></div>
+      </div>
+      <div class="sp"></div>
+      <div class="rows" style="gap:5px">
+        <div class="row" style="gap:3px"><span class="dot" style="width:5px;height:5px;background:#D97757"></span><span class="lbl" style="font-size:11px">5H</span><span class="rst" style="font-size:8px"><span class="rr">↻</span>3h34m</span><span class="val" style="font-size:11px;color:#D97757;min-width:26px">47%</span></div>
+        <div class="row" style="gap:3px"><span class="dot" style="width:5px;height:5px;background:#98533D"></span><span class="lbl" style="font-size:11px">Wk</span><span class="rst" style="font-size:8px"><span class="rr">↻</span>4d12h</span><span class="val" style="font-size:11px;color:#98533D;min-width:26px">91%</span></div>
+      </div>
+    </div>
+    <!-- Codex -->
+    <div class="col codex">
+      <div class="hdr m"><img class="ico" src="../../usage-widget/assets/codex-app.png" style="width:14px;height:14px"><span class="nm" style="font-size:12px">Codex</span></div>
+      <div class="sp"></div>
+      <div class="ring" style="width:50px;height:50px">
+        <svg width="50" height="50" viewBox="0 0 88 88" style="transform:rotate(-90deg)">
+          <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="6.5"/>
+          <circle cx="44" cy="44" r="38" fill="none" stroke="#7B83F5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="236.4"/>
+          <circle cx="44" cy="44" r="27" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="6.5"/>
+          <circle cx="44" cy="44" r="27" fill="none" stroke="#7B83F5" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="169.65" stroke-dashoffset="162.9"/>
+        </svg>
+        <div class="rtxt"><span class="rpct" style="font-size:13px;color:#7B83F5">4%</span><span class="rcode" style="font-size:5.5px">5H</span></div>
+      </div>
+      <div class="sp"></div>
+      <div class="rows" style="gap:5px">
+        <div class="row" style="gap:3px"><span class="dot" style="width:5px;height:5px;background:#7B83F5"></span><span class="lbl" style="font-size:11px">5H</span><span class="rst" style="font-size:8px"><span class="rr">↻</span>3h41m</span><span class="val" style="font-size:11px;color:#7B83F5;min-width:26px">4%</span></div>
+        <div class="row" style="gap:3px"><span class="dot" style="width:5px;height:5px;background:#7B83F5"></span><span class="lbl" style="font-size:11px">Wk</span><span class="rst" style="font-size:8px"><span class="rr">↻</span>6d22h</span><span class="val" style="font-size:11px;color:#7B83F5;min-width:26px">1%</span></div>
+      </div>
+    </div>
+    <!-- Kimi -->
+    <div class="col kimi">
+      <div class="hdr m"><img class="ico" src="../../usage-widget/assets/kimi-code.png" style="width:14px;height:14px"><span class="nm" style="font-size:12px">Kimi Code</span></div>
+      <div class="sp"></div>
+      <div class="ring" style="width:50px;height:50px">
+        <svg width="50" height="50" viewBox="0 0 88 88" style="transform:rotate(-90deg)">
+          <circle cx="44" cy="44" r="38" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="6.5"/>
+          <circle cx="44" cy="44" r="38" fill="none" stroke="#1478FF" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="236.4"/>
+          <circle cx="44" cy="44" r="27" fill="none" stroke="rgba(0,0,0,.09)" stroke-width="6.5"/>
+          <circle cx="44" cy="44" r="27" fill="none" stroke="#1478FF" stroke-width="6.5" stroke-linecap="round" stroke-dasharray="169.65" stroke-dashoffset="168.0"/>
+        </svg>
+        <div class="rtxt"><span class="rpct" style="font-size:13px;color:#1478FF">1%</span><span class="rcode" style="font-size:5.5px">5H</span></div>
+      </div>
+      <div class="sp"></div>
+      <div class="rows" style="gap:5px">
+        <div class="row" style="gap:3px"><span class="dot" style="width:5px;height:5px;background:#1478FF"></span><span class="lbl" style="font-size:11px">5H</span><span class="rst" style="font-size:8px"><span class="rr">↻</span>4h37m</span><span class="val" style="font-size:11px;color:#1478FF;min-width:26px">1%</span></div>
+        <div class="row" style="gap:3px"><span class="dot" style="width:5px;height:5px;background:#1478FF"></span><span class="lbl" style="font-size:11px">Wk</span><span class="rst" style="font-size:8px"><span class="rr">↻</span>6d6h</span><span class="val" style="font-size:11px;color:#1478FF;min-width:26px">1%</span></div>
+      </div>
+    </div>
+  </div>
+
+</body></html>
