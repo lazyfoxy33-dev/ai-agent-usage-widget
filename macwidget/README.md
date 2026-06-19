@@ -9,7 +9,22 @@ QuotaWidget 是 Claude、Codex 与 Kimi Code 用量的原生 WidgetKit 前端。
 伴侣 app 每三分钟运行共享 Python 数据层，把 JSON 契约写入 App Group，并通知
 WidgetKit 刷新。
 
-## Requirements / 要求
+## Download / 下载
+
+Most users don't need to build anything: download the notarized
+`QuotaWidget.dmg` from
+[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases), drag
+**QuotaWidget** to Applications, open it (it lives in the menu bar), and add
+**AI Agent Usage** from the widget gallery. It is Developer ID-signed and notarized,
+so there is no Gatekeeper warning. You still need `python3` (see the note below).
+
+大多数用户无需自行构建：从
+[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
+已公证的 `QuotaWidget.dmg`，把 **QuotaWidget** 拖入「应用程序」并打开（在菜单栏），
+再从小组件库添加 **AI Agent Usage**。已 Developer ID 签名 + 公证，无 Gatekeeper
+拦截；仍需要 `python3`（见下方说明）。
+
+## Requirements (building from source) / 要求（从源码构建）
 
 - macOS 14 or later / macOS 14 或更高版本
 - Xcode 16 or later / Xcode 16 或更高版本

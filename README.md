@@ -36,8 +36,10 @@ same freshness and credential-handling policy.
 - Stale-data indicators prevent cached or expired snapshots from appearing live
 - 每 60 秒检查数据，成功响应最多缓存五分钟
 - Checks data every 60 seconds and caches successful responses for five minutes
-- 固定在桌面右下角
-- Anchored to the desktop bottom-right corner
+- 默认固定在桌面左上角
+- Anchored to the desktop top-left corner by default
+- 跟随系统浅色 / 深色外观，并按已用量显示语义告急色（注意 / 告急）
+- Follows the system light / dark appearance with semantic usage colors
 - macOS 原生 WidgetKit 小组件与 Windows 无边框桌面窗
 - Native macOS WidgetKit and a frameless Windows desktop window
 
@@ -98,6 +100,16 @@ curl --version
 
 ## 快速安装 / Quick Start
 
+> **macOS 原生小组件与 Touch Bar** 可直接从
+> [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
+> **已公证**的 DMG（`QuotaWidget.dmg` / `QuotaBar.dmg`），无需自行构建签名（见下方各端小节）。
+> Übersicht 与 Windows 端从源码安装。
+>
+> The **macOS Widget** and **Touch Bar** ship as **notarized** DMGs on
+> [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases)
+> (`QuotaWidget.dmg` / `QuotaBar.dmg`) — no build or signing needed (see their
+> sections below). Übersicht and Windows install from source.
+
 ### 下载 ZIP / Download ZIP
 
 1. 在 GitHub 仓库的 **Code** 菜单选择 **Download ZIP**。
@@ -130,8 +142,14 @@ location:
 
 ### Touch Bar 组件 / Touch Bar frontend
 
-需要带 Touch Bar 的 Mac。编译并设为登录项：
-Requires a Mac with a Touch Bar. Build and register as a login item:
+需要带 Touch Bar 的 Mac。最简单的方式：从
+[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
+`QuotaBar.dmg`，拖入「应用程序」并打开。或从源码编译并设为登录项：
+
+Requires a Mac with a Touch Bar. Easiest: download `QuotaBar.dmg` from
+[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases), drag
+it to Applications, and open it. Or build from source and register it as a login
+item:
 
 ```bash
 cd ai-agent-usage-widget/touchbar
@@ -144,12 +162,17 @@ The tray cell shows the most-used window; tap to expand the full readout. See
 
 ### macOS WidgetKit / macOS 原生小组件
 
-WidgetKit 扩展必须通过用户自己的 Apple Team 与 App Group 签名。安装、签名与
-排错见 [macwidget/README.md](macwidget/README.md)。
+最简单的方式：从
+[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
+已公证的 `QuotaWidget.dmg`，拖入「应用程序」打开，再从小组件库添加
+**AI Agent Usage**。若要自行从源码构建，WidgetKit 扩展需用你自己的 Apple Team 与
+App Group 签名——详见 [macwidget/README.md](macwidget/README.md)。
 
-The WidgetKit extension must be signed with the user's own Apple Team and App
-Group. See [macwidget/README.md](macwidget/README.md) for signing, installation,
-and troubleshooting.
+Easiest: download the notarized `QuotaWidget.dmg` from
+[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases), drag
+it to Applications, open it, then add **AI Agent Usage** from the widget gallery.
+To build from source instead, the WidgetKit extension must be signed with your own
+Apple Team and App Group — see [macwidget/README.md](macwidget/README.md).
 
 ### Windows Tauri / Windows 桌面组件
 
@@ -174,9 +197,11 @@ tray menu, saved position, and autostart. See
 
 界面标签 / Interface labels:
 
-- `5 小时`: 滚动五小时用量 / rolling five-hour usage
-- `本周`: 每周用量 / weekly usage
-- `后重置`: 距离重置的时间 / time remaining until reset
+- `5H`: 滚动五小时用量百分比 / rolling five-hour usage percentage
+- `Wk`: 每周用量百分比 / weekly usage percentage
+- `↻ …`: 该窗口距离重置的剩余时间 / time until that window resets
+- 用量达 70% / 90% 时，数字与图形会加深为「注意 / 告急」色
+- At 70% / 90% the figure and chart deepen to an attention / urgent color
 
 ## 提供商设置 / Provider Setup
 
@@ -363,8 +388,10 @@ rm -rf "$HOME/.cache/usage-widget"
 
 ```bash
 cd core && python3 -m unittest discover -v          # 数据层 / data layer
-cd usage-widget && python3 -m unittest discover -v  # 桌面组件 / widget
-cd touchbar && python3 -m unittest discover -v && ./build.sh
+cd usage-widget && python3 -m unittest discover -v  # 桌面组件 / Übersicht widget
+cd touchbar && python3 -m unittest discover -v && ./build.sh   # Touch Bar
+cd windows-widget && node --test src/render.test.mjs           # Windows 渲染 / render
+cd macwidget && QUOTAWIDGET_UNSIGNED=1 ./build.sh              # WidgetKit 构建 / build
 ```
 
 贡献说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
@@ -382,8 +409,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
 - Kimi 接口和凭据格式由 Kimi Code CLI 管理，未来版本可能变化。
 - Kimi's endpoint and credential format are managed by Kimi Code CLI and may
   change.
-- 当前只支持 macOS 和 Übersicht。
-- The widget currently targets macOS and Übersicht only.
+- 桌面前端覆盖 macOS（Übersicht、Touch Bar、WidgetKit）与 Windows（Tauri）；Linux 仅有数据层、无原生前端。
+- Desktop frontends cover macOS (Übersicht, Touch Bar, WidgetKit) and Windows
+  (Tauri); Linux has the data layer only, with no native frontend.
 
 ## 品牌与许可 / Trademarks And License
 
