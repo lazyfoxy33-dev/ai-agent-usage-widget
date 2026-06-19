@@ -1,0 +1,35 @@
+<!-- @dsCard group="Components" name="Meter — bar & ring" subtitle="条形(主)· 同心环(备)· 告急同色加深" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="_widget.css">
+<style>
+  html,body{margin:0;padding:0}
+  body{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;justify-content:center;
+    padding:34px;box-sizing:border-box;background:#e7e6e1;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+  .frame{display:flex;flex-direction:column;gap:10px}
+  .flabel{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;color:#8a847a;text-transform:uppercase}
+  .flabel b{color:#46423b;font-weight:600}
+  .plate{border-radius:16px;padding:24px;border:1px solid rgba(0,0,0,.05);background:#efeee9;display:flex;align-items:center;justify-content:center}
+  .single{width:300px;border-radius:18px;overflow:hidden;box-shadow:0 8px 22px -10px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.15)}
+</style></head><body>
+  <div class="frame"><div class="flabel"><b>条形</b> · 主形态</div><div class="plate"><div class="single" id="bar"></div></div></div>
+  <div class="frame"><div class="flabel"><b>同心环</b> · 备选 · 中心=最告急窗口</div><div class="plate"><div class="single" id="ring"></div></div></div>
+  <div class="frame"><div class="flabel"><b>告急表达</b> · 品牌填充 + 同色加深 + 危险区</div><div class="plate"><div class="single" id="sem"></div></div></div>
+<script src="_widget.js"></script>
+<script>
+  const theme='light';
+  function mount(id, html){ const el=document.getElementById(id); el.style.setProperty('--divln',UW.TONE[theme].div); el.innerHTML=html; }
+  mount('bar',  UW.barPanel(UW.P[0], theme));
+  mount('ring', UW.ringPanel(UW.P[0], theme));
+
+  /* semantic scale demo — C+D: 品牌填充 · 数值同色加深 · 轨道危险区 */
+  const t = UW.TONE[theme], demo=[{label:'充足',used:22},{label:'注意',used:78},{label:'告急',used:94}];
+  const bars = demo.map(d=>{
+    const s = UW.style(d.used, '#D97757', theme);
+    return '<div class="brow"><span class="blbl">'+d.label+'</span>'
+      + '<span class="track" style="background:'+s.track+'"><span class="fill" style="width:'+d.used+'%;background:'+s.fill+'"></span></span>'
+      + '<span class="bval" style="color:'+s.val+'">'+d.used+'%</span></div>';
+  }).join('');
+  mount('sem', '<div class="panel col" style="background:#FAF7F3;color:'+t.ink+'"><div class="bars">'+bars+'</div></div>');
+</script>
+</body></html>

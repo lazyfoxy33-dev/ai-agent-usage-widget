@@ -23,8 +23,9 @@ __pycache__/
 # macOS
 .DS_Store
 
-# Touch Bar build artifact
-touchbar/QuotaBar.app/
+# Touch Bar build artifacts (compiled bundle, iCloud dupes, distribution dmg)
+touchbar/QuotaBar*.app/
+touchbar/build/
 
 # Native macOS widget build and local Xcode state
 macwidget/build/

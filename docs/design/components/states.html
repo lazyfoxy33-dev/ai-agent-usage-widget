@@ -1,0 +1,47 @@
+<!-- @dsCard group="Components" name="Panel states" subtitle="仅两态:需登录 / 缓存等待刷新 · 正常态无提示 · 中英双语" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="_widget.css">
+<style>
+  html,body{margin:0;padding:0}
+  body{padding:30px;box-sizing:border-box;background:#5b6472;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+  .grid{display:flex;gap:30px;align-items:flex-start;flex-wrap:wrap;justify-content:center}
+  .lang{display:flex;flex-direction:column;gap:13px}
+  .lhead{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:11px;letter-spacing:.4px;color:#dfe2e8;text-transform:uppercase}
+  .lhead b{color:#fff;font-weight:600}
+  .stack{display:flex;flex-direction:column;gap:16px}
+  .frame{display:flex;flex-direction:column;gap:7px}
+  .flbl{font-size:10.5px;color:#cdd2da;letter-spacing:.2px}
+  .single{width:300px;border-radius:18px;overflow:hidden;box-shadow:0 12px 28px -10px rgba(0,0,0,.5)}
+</style></head><body>
+  <div class="grid" id="root"></div>
+<script src="_widget.js"></script>
+<script>
+  const root = document.getElementById('root');
+  function mount(into, p, theme, state, lang){
+    const w = document.createElement('div');
+    w.className='single'; w.style.setProperty('--divln', UW.TONE[theme].div);
+    w.innerHTML = UW.statePanel(p, theme, state, lang);
+    into.appendChild(w);
+  }
+  /* two languages side by side; default = navigator (zh), shown explicitly here for review */
+  [['zh','中文 · 默认'],['en','English · 英文系统']].forEach(([lang, title])=>{
+    const col = document.createElement('div'); col.className='lang';
+    col.innerHTML = '<div class="lhead"><b>'+title.split(' · ')[0]+'</b> · '+title.split(' · ')[1]+'</div>';
+    const stack = document.createElement('div'); stack.className='stack';
+
+    const f1 = document.createElement('div'); f1.className='frame';
+    f1.innerHTML = '<div class="flbl">'+(lang==='zh'?'需登录':'Needs sign-in')+'</div>';
+    mount(f1, UW.P[0], 'light', 'login', lang);
+    stack.appendChild(f1);
+
+    const f2 = document.createElement('div'); f2.className='frame';
+    f2.innerHTML = '<div class="flbl">'+(lang==='zh'?'缓存等待刷新':'Cached, awaiting refresh')+'</div>';
+    mount(f2, UW.P[1], 'dark', 'cached', lang);
+    stack.appendChild(f2);
+
+    col.appendChild(stack);
+    root.appendChild(col);
+  });
+</script>
+</body></html>

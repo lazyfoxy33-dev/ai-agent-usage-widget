@@ -2,47 +2,58 @@
 
 One shared visual + textual language across every frontend (macOS WidgetKit,
 Übersicht, Touch Bar, Windows). New frontends and changes to existing ones must
-follow this document.
+follow this document. The authoritative, runnable reference is the Claude Design
+iteration under `docs/design/` (especially `components/_widget.css` +
+`components/_widget.js`); this doc is the prose summary.
 
 ## Providers
 
 Three providers, always in this order: **Claude**, **Codex**, **Kimi Code**.
 
-Each provider has a fixed brand palette:
+Each provider has one brand accent and a subtle background tint:
 
-| Provider | accent (5H) | soft (weekly) | card background | text on card |
-|----------|-------------|----------------|-----------------|--------------|
-| Claude   | `#D97757`   | `#E3A77F`      | cream `#FAF9F5 → #F0EEE6` | ink `#26231F`, sub `#9A9286` |
-| Codex    | `#6676FF`   | `#A78BFA`      | dark `#17171A → #0E0E10`  | ink `#ECECEC`, sub `#888894` |
-| Kimi     | `#1478FF`   | `#9AA0AC`      | light `#FBFBFC → #F1F3F7` | ink `#17181C`, sub `#737984` |
+| Provider | accent | tint (light) | tint (dark) |
+|----------|--------|--------------|-------------|
+| Claude   | `#D97757` | `#FAF7F3` | `#211F1C` |
+| Codex    | `#7B83F5` | `#F6F6FB` | `#1B1B23` |
+| Kimi     | `#1478FF` | `#F4F7FC` | `#181C24` |
 
-- **accent** = the 5-hour window color, also the large percentage.
-- **soft** = the weekly window color.
-- Card background is per-provider (Claude warm, Codex dark, Kimi light); pick text
-  ink/sub from the same row so it stays legible on that card.
+- **accent** is the single brand hue per provider. Both windows (5H and Weekly) are
+  drawn in that hue — there is no longer a separate "soft" weekly color.
+- **Card background** is a subtle brand tint that **follows the system appearance**
+  (light/dark). Codex is no longer a hard dark card. Tone tokens by theme:
+  light → ink `#26231F`, sub `#9a9286`; dark → ink `#ECEAE6`, sub `#8c887f`.
+- **Semantic emphasis** — the color is deepened (light) / brightened (dark) *in-hue*
+  by how full a window is: `<70%` plain accent · `70–90%` attention · `≥90%` urgent.
+  Emphasis applies to the metric value, the ring stroke and the row dot; a bar's fill
+  stays the plain accent (with an optional brand-tinted danger zone in the track's last
+  ~18%). Exact math: `emph` / `meter` / `style` in `docs/design/components/_widget.js`.
 
 ## Icons
 
 Every provider is represented by its **app icon**, scaled down — never a glyph or
 letter. Assets live alongside each frontend (`claude-app.png`, `codex-app.png`,
 `kimi-code.png`, or the SVG equivalents on Windows). Render at ~18–20pt with a
-small rounded-corner clip.
+small rounded-corner clip. (The Touch Bar, being severely space-constrained, is the
+one exception and may use single-letter brand badges.)
 
-## Rings
+## Chart form: rings on roomy surfaces, bars when compact
 
-The canonical chart is a **dual ring**:
+- **Roomy widgets** (macOS WidgetKit, Übersicht, Windows) use the **dual ring**.
+- **Compact strips** (Touch Bar) use two stacked **bars** instead.
 
-- **outer ring = Weekly** (soft color)
-- **inner ring = 5H** (accent color)
-- **center label = the 5H percentage** (accent color)
+The color mapping is identical either way.
 
-Each ring has a faint track (same color, low opacity) under the filled arc; arcs
-start at 12 o’clock and fill clockwise. The center percentage must be constrained
-to the inner ring’s hole so it never overlaps the stroke.
+### Dual ring
 
-(Horizontal form factors like the Touch Bar may lay the two rings out as two
-stacked bars instead, but the color mapping — accent = 5H, soft = weekly — is the
-same.)
+- **outer ring = Weekly**, **inner ring = 5H** — both in the provider accent,
+  each emphasized by *its own* fill %.
+- **center label = the more-full (urgent) window's %**, in that window's emphasis color,
+  with its two-letter code (`5H` / `Wk`) beneath.
+
+Each ring has a faint track under the filled arc; arcs start at 12 o'clock and fill
+clockwise. The center figure is constrained to the inner ring's hole so it never
+overlaps the stroke.
 
 ## Canonical text
 
@@ -51,30 +62,47 @@ Use these exact terms everywhere. Do not localize them.
 | Concept | Term |
 |---------|------|
 | 5-hour window | `5H` |
-| weekly window | `Weekly` |
-| reset countdown | `Resets in …` |
+| weekly window | `Wk` |
+| reset countdown | `↻ {dur}` |
 
-Reset countdown format (single source of truth):
+On the roomy widgets (Übersicht, macOS Widget) each metric row shows **its own**
+window's reset inline, between the code and the percentage, as `↻ {dur}` — e.g.
+`● 5H  ↻ 2h 14m  47%`. The Touch Bar, which has no room for per-row countdowns,
+shows the single soonest reset in its strip. There is no `Resets in` prefix anywhere.
 
-- days remaining: `Resets in {d}d {h}h`
-- hours remaining: `Resets in {h}h {m}m`
-- under an hour: `Resets in {m}m`
+Duration grammar (single source of truth):
+
+- days remaining: `{d}d {h}h`
+- hours remaining: `{h}h {m}m`
+- under an hour: `{m}m`
 - already past / unknown: `Resets soon`
 
-Compact strips (Touch Bar) may drop the `Resets in` prefix and show the bare
-duration (`4h47m`) next to a ⟳ glyph, but the duration grammar above is unchanged.
+On platforms that can detect the foreground app, the small/collapsed view follows
+whichever AI client is frontmost (Claude / Codex / Kimi), falling back to the most
+recently used — see the Touch Bar implementation as the reference for the keyword
+matching.
 
-Status messages (no data, expired, rate-limited, etc.) stay in the user’s language
-— only the three terms above are fixed English.
+## States & language
+
+Only **two** states ever show a message; the normal state is silent:
+
+- **cached** — data exists but is stale (`live == false` / `reason == "stale"` / a
+  window's `stale`): dim the metrics and add a short caption
+  (`缓存数据 · 等待刷新` / `Cached · awaiting refresh`).
+- **login** — no usable data (`ok == false`): a dimmed panel with a sign-in line.
+  Map by reason: `expired` / `no_data` → `未登录 · 请先在 {CLI} 登录`
+  (Claude → Claude Code, Codex → Codex CLI, Kimi Code → Kimi CLI);
+  `rate_limited` → `请求受限 · 稍后自动重试`.
+
+Status text follows the user's language (default Chinese; English when the system
+locale starts with `en`). The fixed tokens above (`5H` / `Wk` / the ↻ glyph) stay as
+written regardless of language.
 
 ## Layouts by size
 
-- **Small / single-provider** — one provider card, laid out top-to-bottom: icon +
-  name, dual ring, then `5H` and `Weekly` rows (color dot + label + percentage,
-  with the `Resets in …` line under each). On platforms that can detect the
-  foreground app, the small/collapsed view follows whichever AI client is frontmost
-  (Claude / Codex / Kimi), falling back to the most recently used — see the Touch
-  Bar implementation as the reference for the keyword matching.
-- **Medium / multi-provider** — the three provider cards side by side, each with the
-  dual ring and `5H` / `Weekly` rows + reset times, content distributed to fill the
-  card height (no large empty band at the bottom).
+- **Small / single-provider** — one provider card, top-to-bottom: icon + name, dual ring,
+  then the `5H` and `Wk` rows (color dot + code + inline `↻ {dur}` + percentage).
+- **Medium / multi-provider** — the three provider cards side by side, each with the dual
+  ring and `5H` / `Wk` rows, content distributed to fill the card height (no large empty
+  band at the bottom). Keep type small enough that a row never wraps.
+</content>

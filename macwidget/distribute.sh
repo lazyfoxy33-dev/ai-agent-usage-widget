@@ -64,6 +64,15 @@ xcodebuild -exportArchive \
 
 test -d "$APP"
 
+# Stage outside the iCloud-synced repo: in ~/Documents the file provider keeps
+# re-adding com.apple.FinderInfo to the exported bundle, which codesign --verify
+# and notarization reject as "resource fork / detritus".
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+ditto --norsrc --noextattr "$APP" "$WORK/QuotaWidgetApp.app"
+xattr -cr "$WORK/QuotaWidgetApp.app"
+APP="$WORK/QuotaWidgetApp.app"
+
 echo "› verifying signature…"
 codesign --verify --deep --strict --verbose=2 "$APP"
 
@@ -71,7 +80,7 @@ mkdir -p "$DIST"
 
 if [[ -n "$NOTARY_PROFILE" ]]; then
     echo "› notarizing (profile: $NOTARY_PROFILE)…"
-    ZIP="$DIST/QuotaWidget-notarize.zip"
+    ZIP="$WORK/QuotaWidget-notarize.zip"
     ditto -c -k --keepParent "$APP" "$ZIP"
     xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
     rm -f "$ZIP"
@@ -85,7 +94,7 @@ else
 fi
 
 echo "› building dmg…"
-STAGING="$DIST/staging"
+STAGING="$WORK/staging"
 rm -rf "$STAGING"; mkdir -p "$STAGING"
 ditto "$APP" "$STAGING/QuotaWidget.app"
 ln -s /Applications "$STAGING/Applications"

@@ -1,0 +1,43 @@
+<!-- @dsCard group="Components" name="Provider panel" subtitle="单家面板 · 条形 · 浅/暗品牌色调" -->
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="_widget.css">
+<style>
+  html,body{margin:0;padding:0}
+  body{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;justify-content:center;
+    padding:30px;box-sizing:border-box;background:#e7e6e1;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+  .col{display:flex;flex-direction:column;gap:18px}
+  .frame{display:flex;flex-direction:column;gap:9px}
+  .flabel{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:10.5px;color:#8a847a;text-transform:uppercase}
+  .plate{border-radius:16px;padding:18px;border:1px solid rgba(0,0,0,.05)}
+  .plate.light{background:#efeee9}
+  .plate.dark{background:#23232a;border-color:rgba(255,255,255,.06)}
+  .single{width:300px;border-radius:18px;overflow:hidden;
+    box-shadow:0 8px 22px -10px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.15)}
+</style></head><body>
+  <div class="col" id="lightCol"></div>
+  <div class="col" id="darkCol"></div>
+<script src="_widget.js"></script>
+<script>
+  function build(provider, theme){
+    const w = document.createElement('div');
+    w.className = 'single' + (theme==='dark'?' dark-shadow':'');
+    w.style.setProperty('--divln', UW.TONE[theme].div);
+    w.innerHTML = UW.barPanel(provider, theme);
+    return w;
+  }
+  function col(id, theme){
+    const wrap = document.getElementById(id);
+    const lab = document.createElement('div');
+    lab.className='flabel'; lab.textContent = theme;
+    wrap.appendChild(lab);
+    const plate = document.createElement('div');
+    plate.className = 'plate ' + theme;
+    plate.style.display='flex'; plate.style.flexDirection='column'; plate.style.gap='16px';
+    UW.P.forEach(p=> plate.appendChild(build(p, theme)));
+    plate.appendChild(build(UW.CREDIT, theme));
+    wrap.appendChild(plate);
+  }
+  col('lightCol','light'); col('darkCol','dark');
+</script>
+</body></html>

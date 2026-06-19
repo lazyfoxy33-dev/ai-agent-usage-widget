@@ -1,0 +1,71 @@
+<!-- @dsCard group="Foundations" name="Color system" subtitle="品牌强调 · 告急同色加深 · 表面色调 · 中性 (亮/暗)" -->
+<!doctype html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0}
+  body{padding:30px;box-sizing:border-box;background:#f4f3ef;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}
+  h3{font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:#6b6358;margin:0 0 4px}
+  .sub{font-size:11.5px;color:#9A9286;margin:0 0 13px;line-height:1.4}
+  .group{margin-bottom:28px}
+  .row{display:flex;gap:13px;flex-wrap:wrap}
+  .sw{width:116px}
+  .chip{height:52px;border-radius:11px;border:1px solid rgba(0,0,0,.08);box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+  .nm{font-size:11px;font-weight:600;color:#26231F;margin-top:6px}
+  .hx{font-size:10px;color:#9A9286;font-feature-settings:"tnum"}
+</style></head><body>
+
+  <div class="group">
+    <h3>品牌强调色 · Accent</h3>
+    <p class="sub">每家 provider 的识别色,仅用于环 / 条填充、圆点、图标——不再作整块面板底色。</p>
+    <div class="row">
+      <div class="sw"><div class="chip" style="background:#D97757"></div><div class="nm">Claude</div><div class="hx">#D97757</div></div>
+      <div class="sw"><div class="chip" style="background:#7B83F5"></div><div class="nm">Codex</div><div class="hx">#7B83F5</div></div>
+      <div class="sw"><div class="chip" style="background:#1478FF"></div><div class="nm">Kimi</div><div class="hx">#1478FF</div></div>
+      <div class="sw"><div class="chip" style="background:#1FA37A"></div><div class="nm">Credit (充值)</div><div class="hx">#1FA37A</div></div>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>告急表达 · 同色加深 + 轨道危险区 (C+D)</h3>
+    <p class="sub">不引入新色相。填充<b>始终是品牌色</b>;接近上限时只让<b>数值</b>在品牌色相内变深(亮色×.84/.70、暗色向白 +20/38%),并在<b>轨道末段 82–100%</b> 预置一抹品牌色危险区。下面以 Claude 暖橙为例。</p>
+    <div class="row">
+      <div class="sw"><div class="chip" style="background:#D97757"></div><div class="nm">&lt;70 充足</div><div class="hx">accent</div></div>
+      <div class="sw"><div class="chip" style="background:#B6643F"></div><div class="nm">70–90 注意 · L</div><div class="hx">×.84</div></div>
+      <div class="sw"><div class="chip" style="background:#982E20"></div><div class="nm">≥90 告急 · L</div><div class="hx">×.70</div></div>
+      <div class="sw"><div class="chip" style="background:#E29274"></div><div class="nm">70–90 注意 · D</div><div class="hx">+20%</div></div>
+      <div class="sw"><div class="chip" style="background:#EBAE96"></div><div class="nm">≥90 告急 · D</div><div class="hx">+38%</div></div>
+    </div>
+    <div class="row" style="margin-top:13px">
+      <div class="sw" style="width:248px"><div class="chip" style="background:linear-gradient(90deg,rgba(0,0,0,.09) 0 82%,rgba(217,119,87,.15) 82% 100%)"></div><div class="nm">轨道危险区 · L</div><div class="hx">accent @15% · 82–100%</div></div>
+      <div class="sw" style="width:248px"><div class="chip" style="background:linear-gradient(90deg,rgba(255,255,255,.13) 0 82%,rgba(217,119,87,.26) 82% 100%)"></div><div class="nm">轨道危险区 · D</div><div class="hx">accent @26% · 82–100%</div></div>
+    </div>
+  </div>
+
+  <div class="group">
+    <h3>表面色调 · Surface (浅 / 暗)</h3>
+    <p class="sub">统一明 / 暗材质 + 极淡品牌色调,同一明度区间——堆叠时不再出现沉重的黑色腰带。</p>
+    <div class="row">
+      <div class="sw"><div class="chip" style="background:#FAF7F3"></div><div class="nm">Claude · L</div><div class="hx">#FAF7F3</div></div>
+      <div class="sw"><div class="chip" style="background:#F6F6FB"></div><div class="nm">Codex · L</div><div class="hx">#F6F6FB</div></div>
+      <div class="sw"><div class="chip" style="background:#F4F7FC"></div><div class="nm">Kimi · L</div><div class="hx">#F4F7FC</div></div>
+      <div class="sw"><div class="chip" style="background:#F2F8F5"></div><div class="nm">Credit · L</div><div class="hx">#F2F8F5</div></div>
+    </div>
+    <div class="row" style="margin-top:13px">
+      <div class="sw"><div class="chip" style="background:#211F1C"></div><div class="nm">Claude · D</div><div class="hx">#211F1C</div></div>
+      <div class="sw"><div class="chip" style="background:#1B1B23"></div><div class="nm">Codex · D</div><div class="hx">#1B1B23</div></div>
+      <div class="sw"><div class="chip" style="background:#181C24"></div><div class="nm">Kimi · D</div><div class="hx">#181C24</div></div>
+      <div class="sw"><div class="chip" style="background:#171F1B"></div><div class="nm">Credit · D</div><div class="hx">#171F1B</div></div>
+    </div>
+  </div>
+
+  <div class="group" style="margin-bottom:0">
+    <h3>中性 · Ink / Sub / Track</h3>
+    <p class="sub">文字与轨道色,按主题取。</p>
+    <div class="row">
+      <div class="sw"><div class="chip" style="background:#26231F"></div><div class="nm">ink · light</div><div class="hx">#26231F</div></div>
+      <div class="sw"><div class="chip" style="background:#9A9286"></div><div class="nm">sub · light</div><div class="hx">#9A9286</div></div>
+      <div class="sw"><div class="chip" style="background:#ECEAE6"></div><div class="nm">ink · dark</div><div class="hx">#ECEAE6</div></div>
+      <div class="sw"><div class="chip" style="background:#8C887F"></div><div class="nm">sub · dark</div><div class="hx">#8C887F</div></div>
+    </div>
+  </div>
+
+</body></html>

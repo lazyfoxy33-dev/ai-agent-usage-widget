@@ -50,7 +50,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     private func accent(_ tag: String) -> NSColor {
         switch tag {
         case "C": return rgb(0xD9, 0x77, 0x57)   // Claude terracotta
-        case "X": return rgb(0x66, 0x76, 0xFF)   // Codex blue
+        case "X": return rgb(0x7B, 0x83, 0xF5)   // Codex purple-blue
         case "K": return rgb(0x2E, 0x8B, 0xFF)   // Kimi blue (brightened for dark bar)
         default:  return bright
         }

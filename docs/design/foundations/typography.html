@@ -1,0 +1,35 @@
+<!-- @dsCard group="Foundations" name="Typography & labels" subtitle="SF Pro Text · tabular numerals · 两字母额度码" -->
+<!doctype html><html><head><meta charset="utf-8"><style>
+  html,body{margin:0;padding:0}
+  body{padding:32px;box-sizing:border-box;background:#fff;color:#26231F;
+    font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif;font-feature-settings:"tnum"}
+  h3{font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:#6b6358;margin:0 0 12px}
+  .row{display:flex;align-items:baseline;gap:20px;padding:13px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+  .spec{width:230px;color:#9A9286;font-size:12px;flex:none}
+  .pct{font-size:18px;font-weight:720;letter-spacing:-.5px;color:#D97757}
+  .codes{display:flex;gap:10px;margin-top:18px}
+  .code{display:flex;flex-direction:column;gap:5px;align-items:center;width:92px}
+  .code .c{font-size:13px;font-weight:600;background:#F0EEE6;border-radius:8px;padding:8px 0;width:100%;text-align:center;color:#26231F}
+  .code .d{font-size:10.5px;color:#9A9286}
+</style></head><body>
+
+  <h3>Type scale</h3>
+  <div class="row"><div class="spec">Ring percentage · 18 / 720 / -.5</div><span class="pct">47%</span></div>
+  <div class="row"><div class="spec">Ring label · 8 / 600 / +.5 caps</div><span style="font-size:8px;font-weight:600;letter-spacing:.5px;color:#9A9286">WK</span></div>
+  <div class="row"><div class="spec">Provider name · 15 / 650</div><span style="font-size:15px;font-weight:650">Claude</span></div>
+  <div class="row"><div class="spec">Row label (条/环) · 12 / 600</div><span style="font-size:12px;font-weight:600">Wk</span></div>
+  <div class="row"><div class="spec">Row value · 13 / 700</div><span style="font-size:13px;font-weight:700">91%</span></div>
+  <div class="row"><div class="spec">Countdown / caption · 10.5 / 400 sub</div><span style="font-size:10.5px;color:#9A9286">↻ 5H 3h 34m</span></div>
+  <div class="row"><div class="spec">State note · 9.5 / 400 sub</div><span style="font-size:9.5px;color:#9A9286">缓存数据 · 等待下次刷新</span></div>
+
+  <h3 style="margin-top:28px">额度码 · 2-letter quota codes</h3>
+  <div class="codes">
+    <div class="code"><span class="c">5H</span><span class="d">5 小时窗口</span></div>
+    <div class="code"><span class="c">Wk</span><span class="d">周窗口</span></div>
+    <div class="code"><span class="c">Cr</span><span class="d">充值余额</span></div>
+  </div>
+  <p style="font-size:11.5px;color:#9A9286;margin-top:14px;line-height:1.5;max-width:520px">
+    标签命名「额度类型」而非「指标」,数值统一表示<b>已用 %</b>;微文案走英文数字层(<code style="font-family:ui-monospace">Resets in · $12.40 left · ~9d est.</code>),状态长句保留本地化中文。
+  </p>
+
+</body></html>
