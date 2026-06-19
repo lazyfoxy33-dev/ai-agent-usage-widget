@@ -72,6 +72,35 @@ rm -rf ~/Applications/QuotaBar.app
 rm ~/Library/LaunchAgents/com.quotabar.app.plist
 ```
 
+## 分发 / Distribution
+
+把 QuotaBar 打包成别人可下载、直接运行（不弹 Gatekeeper 警告）的 `.dmg`：
+
+```bash
+export QUOTABAR_TEAM="YOUR_TEAM_ID"
+export QUOTABAR_NOTARY_PROFILE="quotabar-notary"
+./distribute.sh        # 产物在 build/dist/QuotaBar.dmg
+```
+
+一次性前置（仅首次）：
+
+1. 钥匙串里要有 **Developer ID Application** 证书
+   （Xcode ▸ Settings ▸ Accounts ▸ Manage Certificates ▸ ＋ ▸ Developer ID Application）。
+   QuotaBar 没有 App Groups / 沙盒权限，**无需**注册 App ID 或描述文件。
+2. 存一次公证凭据：
+   `xcrun notarytool store-credentials quotabar-notary --apple-id <id> --team-id <TEAMID> --password <app专用密码>`。
+
+`distribute.sh` 会编译、用 Developer ID 强化运行时签名、公证并装订（staple）app 与 dmg。
+不设 `QUOTABAR_NOTARY_PROFILE` 则只签名不公证，接收方需右键打开绕过 Gatekeeper。
+
+> 运行依赖：QuotaBar 启动时调用 `/usr/bin/python3`（来自 Xcode Command Line Tools）。
+> 干净系统首次运行可能提示安装命令行工具——这是 macOS 的标准行为。
+
+To package QuotaBar as a downloadable, Gatekeeper-clean `.dmg`, run `./distribute.sh`
+with `QUOTABAR_TEAM` and `QUOTABAR_NOTARY_PROFILE` set (see the one-time prerequisites
+above). It Developer ID-signs with the hardened runtime, notarizes and staples both the
+app and the dmg. Recipients need `/usr/bin/python3` (Xcode Command Line Tools) at runtime.
+
 ## 调试 / Debug
 
 ```bash
