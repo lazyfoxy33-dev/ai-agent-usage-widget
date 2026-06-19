@@ -1,6 +1,6 @@
 mod fetch;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::thread;
 use std::time::Duration;
 
@@ -11,8 +11,8 @@ use tauri::{Emitter, Manager};
 use tauri_plugin_autostart::ManagerExt;
 use tauri_plugin_window_state::StateFlags;
 
-fn core_directory(app: &tauri::AppHandle) -> PathBuf {
-    if let Ok(resource_dir) = app.path().resource_dir() {
+fn core_directory_from_resource_dir(resource_dir: Option<&Path>) -> PathBuf {
+    if let Some(resource_dir) = resource_dir {
         let bundled = resource_dir.join("core");
         if bundled.join("fetch_usage.py").is_file() {
             return bundled;
@@ -25,6 +25,10 @@ fn core_directory(app: &tauri::AppHandle) -> PathBuf {
         .join("core")
 }
 
+fn core_directory(app: &tauri::AppHandle) -> PathBuf {
+    core_directory_from_resource_dir(app.path().resource_dir().ok().as_deref())
+}
+
 fn fetch_now(app: &tauri::AppHandle) -> Result<String, String> {
     let python = probe_python().ok_or_else(|| "no_python".to_string())?;
     fetch_usage(&python, &core_directory(app), Duration::from_secs(30))
@@ -33,6 +37,17 @@ fn fetch_now(app: &tauri::AppHandle) -> Result<String, String> {
 #[tauri::command]
 fn refresh_usage(app: tauri::AppHandle) -> Result<String, String> {
     fetch_now(&app)
+}
+
+#[tauri::command]
+fn get_window_position(window: tauri::Window) -> (i32, i32) {
+    let pos = window.outer_position().unwrap_or_default();
+    (pos.x, pos.y)
+}
+
+#[tauri::command]
+fn set_window_position(window: tauri::Window, x: i32, y: i32) {
+    let _ = window.set_position(tauri::Position::Physical(tauri::PhysicalPosition { x, y }));
 }
 
 fn emit_refresh(app: tauri::AppHandle) {
@@ -107,7 +122,7 @@ pub fn run() {
                 .with_state_flags(StateFlags::POSITION)
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![refresh_usage])
+        .invoke_handler(tauri::generate_handler![refresh_usage, get_window_position, set_window_position])
         .setup(|app| {
             setup_tray(app)?;
             if !app.autolaunch().is_enabled().unwrap_or(false) {
@@ -131,4 +146,30 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running AI Agent Usage Widget");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn core_directory_prefers_bundled_when_fetch_script_exists() {
+        let temp = std::env::temp_dir().join("usage-widget-test");
+        let core = temp.join("core");
+        std::fs::create_dir_all(&core).unwrap();
+        std::fs::write(core.join("fetch_usage.py"), "").unwrap();
+
+        let result = core_directory_from_resource_dir(Some(&temp));
+        assert_eq!(result, core);
+
+        let _ = std::fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn core_directory_falls_back_to_dev_path() {
+        let result = core_directory_from_resource_dir(None);
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let expected = manifest.parent().unwrap().parent().unwrap().join("core");
+        assert_eq!(result, expected);
+    }
 }
