@@ -142,6 +142,8 @@ location:
 
 ### Touch Bar 组件 / Touch Bar frontend
 
+![Touch Bar 预览 / Touch Bar preview](docs/preview-touchbar.png)
+
 需要带 Touch Bar 的 Mac。最简单的方式：从
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
 `QuotaBar.dmg`，拖入「应用程序」并打开。或从源码编译并设为登录项：
@@ -161,6 +163,8 @@ The tray cell shows the most-used window; tap to expand the full readout. See
 [touchbar/README.md](touchbar/README.md).
 
 ### macOS WidgetKit / macOS 原生小组件
+
+![macOS Widget 预览 / macOS Widget preview](docs/preview-widget.png)
 
 最简单的方式：从
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
