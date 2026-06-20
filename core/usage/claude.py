@@ -8,7 +8,6 @@ desktop-app-only user — whose token nothing else rotates — continuously live
 """
 import json
 import os
-import socket
 import subprocess
 import threading
 import time
@@ -26,7 +25,6 @@ REFRESH_LOCK_PATH = os.path.expanduser("~/.cache/usage-widget/claude-oauth")
 # A successful refresh yields an ~8h token (self-limiting); failures escalate via
 # refresh_backoff so an expired token cannot hammer the OAuth endpoint into 429.
 REFRESH_BACKOFF_PATH = os.path.expanduser("~/.cache/usage-widget/claude-refresh.json")
-_PROXY_CANDIDATES = [("127.0.0.1", 7897), ("127.0.0.1", 7890)]
 _LOCK_STALE_SECONDS = 5
 _LOCK_HEARTBEAT_SECONDS = 2
 
@@ -87,24 +85,11 @@ def _parse_resets(v):
 
 
 def _proxy():
-    """Return a proxy URL string or None.
-
-    Priority:
-    1. HTTPS_PROXY / https_proxy env var (already set by user/shell)
-    2. Probe well-known local Clash proxy ports (7897, 7890)
-    3. None
-    """
+    """Return a proxy URL from HTTPS_PROXY / https_proxy, or None."""
     for key in ("HTTPS_PROXY", "https_proxy"):
         val = os.environ.get(key)
         if val:
             return val
-    # Probe local ports (0.3 s timeout each)
-    for host, port in _PROXY_CANDIDATES:
-        try:
-            with socket.create_connection((host, port), timeout=0.3):
-                return f"http://{host}:{port}"
-        except OSError:
-            continue
     return None
 
 
@@ -125,11 +110,11 @@ def parse_claude_usage(data, now=None):
 def _http_get_usage(token):
     """Fetch usage JSON from Anthropic API via curl.
 
-    Uses curl so that the local Clash proxy is honoured even when Übersicht
-    launches the widget without shell env vars set.  The proxy URL is passed
-    via the subprocess environment (HTTPS_PROXY) rather than -x so it works
-    transparently with curl's built-in proxy support. The authorization header
-    is passed through stdin so the token is not exposed in process arguments.
+    Uses curl so an HTTPS_PROXY / https_proxy proxy is honoured. The proxy URL
+    is passed via the subprocess environment (HTTPS_PROXY) rather than -x so it
+    works transparently with curl's built-in proxy support. The authorization
+    header is passed through stdin so the token is not exposed in process
+    arguments.
     """
     if "\n" in token or "\r" in token:
         raise ValueError("Invalid access token")

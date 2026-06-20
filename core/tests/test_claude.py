@@ -92,13 +92,10 @@ class TestClaudeProxy(unittest.TestCase):
             result = claude._proxy()
         self.assertEqual(result, "http://lowerproxy:9090")
 
-    def test_proxy_returns_none_when_no_env_and_no_open_port(self):
-        # Patch socket.create_connection to always refuse (simulate no proxy)
-        import socket
+    def test_proxy_returns_none_when_no_env(self):
         env = {k: v for k, v in os.environ.items()
                if k not in ("HTTPS_PROXY", "https_proxy")}
-        with mock.patch.dict(os.environ, env, clear=True), \
-             mock.patch("socket.create_connection", side_effect=OSError("refused")):
+        with mock.patch.dict(os.environ, env, clear=True):
             result = claude._proxy()
         self.assertIsNone(result)
 
