@@ -64,6 +64,38 @@ node --test ..\src\render.test.mjs
   the status message.
 - 刷新失败时保留上一次成功数据，只更新状态提示。
 
+## 分发 / Distribution
+
+构建并生成安装包：
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\build.ps1
+```
+
+构建完成后，安装包位于 `src-tauri\target\release\bundle\`（MSI 和 NSIS 两种格式）。
+
+The installer is built under `src-tauri\target\release\bundle\` (MSI and NSIS).
+
+发布到 GitHub Release：
+
+```powershell
+.\release.ps1
+```
+
+可选参数 / Options:
+- `-Tag "v1.0.0"` — 指定 Release tag（默认自动推断为 `windows-widget-v{version}`）
+  Specify the release tag (defaults to `windows-widget-v{version}`)
+- `-NoPublish` — 只构建不上传
+  Build only, skip upload
+
+跨平台发布（从 macOS/Linux 调用）/ Cross-platform release from macOS/Linux:
+
+```bash
+cd ..
+./release.sh --windows
+```
+
 ## Credentials And Privacy / 凭据与隐私
 
 The bundled `core/` reads official local stores. On Windows, Claude uses
