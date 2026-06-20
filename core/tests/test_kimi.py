@@ -1,6 +1,7 @@
 import json
 import os
 import stat
+import sys
 import tempfile
 import unittest
 from contextlib import contextmanager
@@ -27,7 +28,7 @@ class TestKimiCredentials(unittest.TestCase):
         with mock.patch.dict(os.environ, {"KIMI_CODE_HOME": "/tmp/kimi-code"}):
             self.assertEqual(
                 kimi.credentials_path(),
-                "/tmp/kimi-code/credentials/kimi-code.json",
+                os.path.join("/tmp/kimi-code", "credentials", "kimi-code.json"),
             )
 
     def test_credentials_path_defaults_to_home_kimi_code(self):
@@ -36,7 +37,7 @@ class TestKimiCredentials(unittest.TestCase):
                                side_effect=lambda path: path.replace("~", "/home/me")):
             self.assertEqual(
                 kimi.credentials_path(),
-                "/home/me/.kimi-code/credentials/kimi-code.json",
+                os.path.join("/home/me/.kimi-code", "credentials", "kimi-code.json"),
             )
 
     def test_credential_paths_include_legacy_kimi_cli_location(self):
@@ -46,8 +47,8 @@ class TestKimiCredentials(unittest.TestCase):
             self.assertEqual(
                 kimi.credential_paths(),
                 [
-                    "/home/me/.kimi-code/credentials/kimi-code.json",
-                    "/tmp/legacy/credentials/kimi-code.json",
+                    os.path.join("/home/me/.kimi-code", "credentials", "kimi-code.json"),
+                    os.path.join("/tmp/legacy", "credentials", "kimi-code.json"),
                 ],
             )
 
@@ -177,7 +178,7 @@ class TestKimiStorage(unittest.TestCase):
         path = "/tmp/home/credentials/kimi-code.json"
         self.assertEqual(
             kimi._refresh_lock_target(path),
-            "/tmp/home/oauth/kimi-code",
+            os.path.join("/tmp/home", "oauth", "kimi-code"),
         )
 
     def test_atomic_write_preserves_unknown_fields_and_tightens_mode(self):
@@ -196,7 +197,8 @@ class TestKimiStorage(unittest.TestCase):
                 stored = json.load(f)
             self.assertEqual(stored["custom"], "keep")
             self.assertEqual(stored["access_token"], "new")
-            self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
+            if sys.platform != "win32":
+                self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
 
 
 class TestKimiFetch(unittest.TestCase):

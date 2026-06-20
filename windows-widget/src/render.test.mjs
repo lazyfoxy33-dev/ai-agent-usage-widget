@@ -66,8 +66,9 @@ test("render uses new design tokens and structure", () => {
   assert.match(html, />Wk</);
   assert.match(html, />5H</);
 
-  // Soonest-reset header uses ↻ and the soonest window (Codex 5H = 30m)
-  assert.match(html, /↻<\/span>\s*5H\s*30m/);
+  // Each row shows its own reset countdown (matching macwidget MetricRow)
+  assert.match(html, /↻\s*30m/); // Codex 5H = 30m
+  assert.match(html, /↻\s*1h/);  // Claude 5H = 1h
 
   // Center shows most-full (urgent) window: Claude weekly 91%
   assert.match(html, />91%</);

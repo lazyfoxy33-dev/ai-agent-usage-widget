@@ -145,12 +145,14 @@ function ring(pal, tone, fivePct, weekPct, dark) {
     </div>`;
 }
 
-function row(w, accent, tone, dark) {
+function row(w, accent, tone, dark, nowMs) {
   const color = emphasis(accent, w.pct, dark);
+  const dur = countdown(w.resetsAt, nowMs);
   return `
     <div class="row">
       <span class="dot" style="background:${color}"></span>
       <span class="lbl" style="color:${tone.ink}">${sl(w.label)}</span>
+      ${dur ? `<span class="row-reset" style="color:${tone.sub}">↻ ${dur}</span>` : ""}
       <span class="val" style="color:${color}">${w.pct}%</span>
     </div>`;
 }
@@ -177,8 +179,6 @@ function providerCard(name, data, nowMs) {
     { label: "5H", pct: clampPct(data.five_h?.pct), resetsAt: data.five_h?.resets_at },
     { label: "Weekly", pct: clampPct(data.weekly?.pct), resetsAt: data.weekly?.resets_at }
   ];
-  const soonest = wins.slice().sort((a, b) => (a.resetsAt || Infinity) - (b.resetsAt || Infinity))[0];
-  const dur = countdown(soonest?.resetsAt, nowMs) || t.resetsSoon;
 
   const cached = data.live === false || data.reason === "stale"
     || data.five_h?.stale === true || data.weekly?.stale === true;
@@ -192,14 +192,11 @@ function providerCard(name, data, nowMs) {
         <header>
           <img src="${pal.logo}" alt=""/>
           <b>${pal.name}</b>
-          <span class="countdown" style="color:${tone.sub}">
-            <span class="rr">↻</span>${sl(soonest.label)} ${dur}
-          </span>
         </header>
         ${cached ? `<div class="cached-note" style="color:${tone.sub}">${t.cached}</div>` : ""}
         <div class="rows" style="opacity:${cached ? 0.55 : 1}">
-          ${row(wins[0], pal.accent, tone, dark)}
-          ${row(wins[1], pal.accent, tone, dark)}
+          ${row(wins[0], pal.accent, tone, dark, nowMs)}
+          ${row(wins[1], pal.accent, tone, dark, nowMs)}
         </div>
       </div>
     </section>`;

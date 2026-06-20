@@ -224,7 +224,8 @@ class TestCodexActiveRefresh(unittest.TestCase):
                 "codex_active_refresh": True,
                 "codex_refresh_interval_seconds": 1800,
             }
-            with mock.patch.object(codex.subprocess, "Popen") as popen:
+            with mock.patch.object(codex, "_codex_executable", return_value="codex"), \
+                 mock.patch.object(codex.subprocess, "Popen") as popen:
                 first = codex.maybe_active_refresh(
                     None, now=3000, settings=settings, throttle_path=path
                 )

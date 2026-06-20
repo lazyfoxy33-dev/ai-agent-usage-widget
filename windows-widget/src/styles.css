@@ -87,4 +87,5 @@ header b { font-size: 15px; font-weight: 650; letter-spacing: -.1px; }
 .row { display: flex; align-items: center; gap: 7px; }
 .row .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .row .lbl { font-size: 12px; font-weight: 600; }
-.row .val { margin-left: auto; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.row .row-reset { margin-left: auto; font-size: 10px; font-weight: 400; white-space: nowrap; opacity: .75; }
+.row .val { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
