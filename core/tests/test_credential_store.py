@@ -1,6 +1,7 @@
 import json
 import os
 import stat
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -103,4 +104,5 @@ class TestClaudeCredentialWrite(unittest.TestCase):
 
             self.assertEqual(stored["claudeAiOauth"]["accessToken"], "new")
             self.assertEqual(stored["other"], "keep")
-            self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
+            if sys.platform != "win32":
+                self.assertEqual(stat.S_IMODE(os.stat(path).st_mode), 0o600)
