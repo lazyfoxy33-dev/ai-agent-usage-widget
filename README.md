@@ -296,17 +296,6 @@ Without a usable login, the panel displays setup guidance. The
 is available for manual viewing, but the widget never scrapes it or reads
 browser cookies.
 
-## 网络与代理 / Network And Proxy
-
-Claude 和 Kimi 请求遵循 `HTTPS_PROXY` 或 `https_proxy`。如果未设置，脚本会探测
-常见本地代理端口 `7897` 和 `7890`，否则由 `curl` 直连。Codex 默认只读本地
-文件；只有显式开启主动探测后才使用网络。
-
-Claude and Kimi requests honor `HTTPS_PROXY` or `https_proxy`. If neither is
-set, the script probes local ports `7897` and `7890`, then lets `curl` connect
-directly. Codex is local-only by default and uses the network only when active
-probing is explicitly enabled.
-
 ## 隐私与安全 / Privacy And Security
 
 - 凭据只在运行时从官方客户端存储位置读取；旧版 Kimi 凭据保持只读。

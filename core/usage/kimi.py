@@ -1,7 +1,6 @@
 """Kimi Code usage via the local Kimi CLI OAuth token."""
 import json
 import os
-import socket
 import subprocess
 import tempfile
 import threading
@@ -16,7 +15,6 @@ USAGE_URL = "https://api.kimi.com/coding/v1/usages"
 OAUTH_URL = "https://auth.kimi.com/api/oauth/token"
 CLIENT_ID = "17e5f671-d194-4dfb-9706-5516cb48c098"
 REFRESH_BACKOFF_PATH = os.path.expanduser("~/.cache/usage-widget/kimi-refresh.json")
-_PROXY_CANDIDATES = [("127.0.0.1", 7897), ("127.0.0.1", 7890)]
 _LOCK_STALE_SECONDS = 5
 _LOCK_HEARTBEAT_SECONDS = 2
 
@@ -169,16 +167,11 @@ def parse_kimi_usage(payload, now=None):
 
 
 def _proxy():
+    """Return a proxy URL from HTTPS_PROXY / https_proxy, or None."""
     for key in ("HTTPS_PROXY", "https_proxy"):
         value = os.environ.get(key)
         if value:
             return value
-    for host, port in _PROXY_CANDIDATES:
-        try:
-            with socket.create_connection((host, port), timeout=0.3):
-                return f"http://{host}:{port}"
-        except OSError:
-            continue
     return None
 
 
