@@ -11,6 +11,17 @@ if (-not (Get-Command cargo-tauri -ErrorAction SilentlyContinue)) {
   cargo install tauri-cli --version "^2"
 }
 
+if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
+  throw "Node.js is required for frontend tests. Install it from https://nodejs.org/"
+}
+
+Push-Location "$PSScriptRoot/src"
+try {
+  node --test *.test.mjs
+} finally {
+  Pop-Location
+}
+
 Push-Location "$PSScriptRoot/src-tauri"
 try {
   cargo test

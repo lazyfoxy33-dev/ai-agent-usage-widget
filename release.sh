@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # One-shot update & publish for the distributable frontends.
 #
-#   ./release.sh                 # do both: Übersicht widget + macwidget dmg
+#   ./release.sh                 # do all: Übersicht + macwidget + Windows
 #   ./release.sh --ubersicht     # only repackage + publish the Übersicht widget
 #   ./release.sh --macwidget     # only rebuild + notarize the macwidget dmg
+#   ./release.sh --windows       # only build + publish the Windows installer
 #   ./release.sh --screenshot    # also re-render the gallery screenshot
 #
 # Required for the macwidget part (Developer ID notarization):
@@ -18,11 +19,12 @@ ROOT="$(cd "$(dirname "$0")" && pwd)"
 GALLERY_REPO="${GALLERY_REPO:-$(dirname "$ROOT")/quotawidget-ubersicht}"
 RELEASE_TAG="${RELEASE_TAG:-macwidget-v1.0.0}"
 
-DO_UBER=1; DO_MAC=1; DO_SHOT=0
+DO_UBER=1; DO_MAC=1; DO_WIN=1; DO_SHOT=0
 for a in "$@"; do
     case "$a" in
-        --ubersicht) DO_MAC=0 ;;
-        --macwidget) DO_UBER=0 ;;
+        --ubersicht) DO_MAC=0; DO_WIN=0 ;;
+        --macwidget) DO_UBER=0; DO_WIN=0 ;;
+        --windows) DO_UBER=0; DO_MAC=0 ;;
         --screenshot) DO_SHOT=1 ;;
         *) echo "unknown flag: $a"; exit 2 ;;
     esac
@@ -70,6 +72,18 @@ if [[ $DO_MAC == 1 ]]; then
         gh release upload "$RELEASE_TAG" "$DMG" --clobber
     else
         echo "  ⚠ release $RELEASE_TAG not found — dmg built at $DMG (create the release or set RELEASE_TAG)."
+    fi
+fi
+
+if [[ $DO_WIN == 1 ]]; then
+    echo "==> Windows: build + publish…"
+    if command -v pwsh >/dev/null 2>&1; then
+        ( cd "$ROOT/windows-widget" && pwsh -Command "./release.ps1" )
+    elif command -v powershell >/dev/null 2>&1; then
+        ( cd "$ROOT/windows-widget" && powershell -Command "./release.ps1" )
+    else
+        echo "  ⚠ PowerShell (pwsh/powershell) not found — skipping Windows publish."
+        echo "    Build manually from windows-widget/ with .\release.ps1"
     fi
 fi
 
