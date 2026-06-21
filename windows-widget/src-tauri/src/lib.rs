@@ -122,12 +122,14 @@ pub fn run() {
                 .with_state_flags(StateFlags::POSITION)
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![refresh_usage, get_window_position, set_window_position])
+        .invoke_handler(tauri::generate_handler![
+            refresh_usage,
+            get_window_position,
+            set_window_position
+        ])
         .setup(|app| {
             setup_tray(app)?;
-            if !app.autolaunch().is_enabled().unwrap_or(false) {
-                let _ = app.autolaunch().enable();
-            }
+            let _ = app.autolaunch().enable();
             let handle = app.handle().clone();
             thread::spawn(move || {
                 loop {

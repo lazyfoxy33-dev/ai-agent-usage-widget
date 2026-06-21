@@ -5,6 +5,12 @@ use std::process::{Command, Stdio};
 use std::time::Duration;
 use wait_timeout::ChildExt;
 
+#[cfg(windows)]
+use std::os::windows::process::CommandExt;
+
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PythonCandidate {
     pub program: &'static str,
@@ -30,14 +36,26 @@ pub fn python_candidates() -> Vec<PythonCandidate> {
 
 pub fn probe_python() -> Option<PythonCandidate> {
     python_candidates().into_iter().find(|candidate| {
-        Command::new(candidate.program)
+        let mut command = Command::new(candidate.program);
+        command
             .args(candidate.prefix_args)
             .arg("--version")
             .stdout(Stdio::null())
-            .stderr(Stdio::null())
-            .status()
-            .is_ok_and(|status| status.success())
+            .stderr(Stdio::null());
+        suppress_console_window(&mut command);
+        command.status().is_ok_and(|status| status.success())
     })
+}
+
+fn suppress_console_window(command: &mut Command) {
+    #[cfg(windows)]
+    {
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    #[cfg(not(windows))]
+    {
+        let _ = command;
+    }
 }
 
 pub fn parse_fetch_output(success: bool, stdout: &[u8], stderr: &[u8]) -> Result<String, String> {
@@ -71,12 +89,13 @@ pub fn fetch_usage(
     let script = core_dir.join("fetch_usage.py");
     let mut arguments: Vec<OsString> = python.prefix_args.iter().map(OsString::from).collect();
     arguments.push(script.into_os_string());
-    let mut child = Command::new(python.program)
+    let mut command = Command::new(python.program);
+    command
         .args(arguments)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|_| "no_python".to_string())?;
+        .stderr(Stdio::piped());
+    suppress_console_window(&mut command);
+    let mut child = command.spawn().map_err(|_| "no_python".to_string())?;
     let status = child
         .wait_timeout(timeout)
         .map_err(|_| "fetch_wait_failed".to_string())?;
