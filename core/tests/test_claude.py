@@ -101,23 +101,25 @@ class TestClaudeProxy(unittest.TestCase):
 
 
 class TestClaudeHttp(unittest.TestCase):
-    def test_access_token_is_not_exposed_in_process_arguments(self):
+    def test_access_token_is_sent_in_memory_header(self):
         token = "secret-access-token"
-        completed = mock.Mock(stdout='{"ok":true}\n__HTTP__200')
         with mock.patch.object(claude, "_proxy", return_value=None), \
-             mock.patch.object(claude.subprocess, "run", return_value=completed) as run:
+             mock.patch.object(
+                 claude, "_http_request", return_value=(200, '{"ok":true}')
+             ) as request:
             result = claude._http_get_usage(token)
 
-        cmd = run.call_args.args[0]
-        self.assertNotIn(token, " ".join(cmd))
-        self.assertEqual(cmd[:4], ["curl", "-q", "--config", "-"])
-        self.assertIn("Authorization: Bearer " + token, run.call_args.kwargs["input"])
+        self.assertEqual(
+            request.call_args.kwargs["headers"]["Authorization"],
+            "Bearer " + token,
+        )
         self.assertEqual(result, {"ok": True})
 
     def test_http_429_raises_rate_limit_error(self):
-        completed = mock.Mock(stdout='{"error":"limited"}\n__HTTP__429')
         with mock.patch.object(claude, "_proxy", return_value=None), \
-             mock.patch.object(claude.subprocess, "run", return_value=completed):
+             mock.patch.object(
+                 claude, "_http_request", return_value=(429, '{"error":"limited"}')
+             ):
             with self.assertRaises(claude.ClaudeRateLimitError):
                 claude._http_get_usage("token")
 
@@ -229,29 +231,32 @@ class TestClaudeRefresh(unittest.TestCase):
         self.assertEqual(written["claudeAiOauth"]["subscriptionType"], "max")
         clear.assert_called_once()  # backoff reset on success
 
-    def test_refresh_token_is_sent_in_stdin_not_process_arguments(self):
-        completed = mock.Mock(
-            stdout=(
-                '{"access_token":"new","refresh_token":"new-r",'
-                '"expires_in":28800}\n__HTTP__200'
-            ),
-        )
+    def test_refresh_token_is_sent_in_request_body(self):
         with mock.patch.object(claude, "_proxy", return_value=None), \
-             mock.patch.object(claude.subprocess, "run", return_value=completed) as run:
+             mock.patch.object(
+                 claude,
+                 "_http_request",
+                 return_value=(
+                     200,
+                     '{"access_token":"new","refresh_token":"new-r",'
+                     '"expires_in":28800}',
+                 ),
+             ) as request:
             result = claude._http_refresh("secret-refresh")
 
-        argv = run.call_args.args[0]
-        self.assertNotIn("secret-refresh", " ".join(argv))
-        self.assertIn("refresh_token=secret-refresh", run.call_args.kwargs["input"])
+        self.assertIn("refresh_token=secret-refresh", request.call_args.kwargs["body"])
         self.assertEqual(result["access_token"], "new")
         # The refresh endpoint 429s requests without a recognized client
         # User-Agent, so we must identify as the CLI.
-        self.assertTrue(any("claude-cli" in a for a in argv))
+        self.assertIn("claude-cli", request.call_args.kwargs["headers"]["User-Agent"])
 
     def test_http_refresh_invalid_grant_raises_unauthorized(self):
-        completed = mock.Mock(stdout='{"error":"invalid_grant"}\n__HTTP__400')
         with mock.patch.object(claude, "_proxy", return_value=None), \
-             mock.patch.object(claude.subprocess, "run", return_value=completed):
+             mock.patch.object(
+                 claude,
+                 "_http_request",
+                 return_value=(400, '{"error":"invalid_grant"}'),
+             ):
             with self.assertRaises(claude.ClaudeRefreshUnauthorized):
                 claude._http_refresh("dead-token")
 

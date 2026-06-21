@@ -8,10 +8,11 @@ desktop-app-only user — whose token nothing else rotates — continuously live
 """
 import json
 import os
-import subprocess
 import threading
 import time
+import urllib.error
 import urllib.parse
+import urllib.request
 from contextlib import contextmanager
 from datetime import datetime
 
@@ -93,6 +94,20 @@ def _proxy():
     return None
 
 
+def _http_request(url, headers=None, body=None, timeout=25):
+    """Return (HTTP status, response body) without putting secrets in argv."""
+    proxy = _proxy()
+    proxies = {"https": proxy, "http": proxy} if proxy else {}
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler(proxies))
+    data = body.encode("utf-8") if body is not None else None
+    request = urllib.request.Request(url, data=data, headers=headers or {})
+    try:
+        with opener.open(request, timeout=timeout) as response:
+            return response.status, response.read().decode("utf-8")
+    except urllib.error.HTTPError as error:
+        return error.code, error.read().decode("utf-8", errors="replace")
+
+
 def parse_claude_usage(data, now=None):
     """Map /api/oauth/usage JSON -> {five_h, weekly}.
     Keep ALL field-name knowledge inside this function.
@@ -108,49 +123,26 @@ def parse_claude_usage(data, now=None):
 
 
 def _http_get_usage(token):
-    """Fetch usage JSON from Anthropic API via curl.
+    """Fetch usage JSON from Anthropic API.
 
-    Uses curl so an HTTPS_PROXY / https_proxy proxy is honoured. The proxy URL
-    is passed via the subprocess environment (HTTPS_PROXY) rather than -x so it
-    works transparently with curl's built-in proxy support. The authorization
-    header is passed through stdin so the token is not exposed in process
-    arguments.
+    The authorization header stays in process memory and never appears in
+    command-line arguments.
     """
     if "\n" in token or "\r" in token:
         raise ValueError("Invalid access token")
-    escaped_token = token.replace("\\", "\\\\").replace('"', '\\"')
-    curl_config = f'header = "Authorization: Bearer {escaped_token}"\n'
-    proxy = _proxy()
-    cmd = [
-        "curl", "-q", "--config", "-",
-        "-sS", "--max-time", "20",
-        "-H", "anthropic-beta: oauth-2025-04-20",
-        "-H", "User-Agent: claude-cli/1.0 (external, cli)",
-        "-H", "Accept: application/json",
+    code, body = _http_request(
         USAGE_URL,
-        "-w", "\n__HTTP__%{http_code}",
-    ]
-    env = os.environ.copy()
-    if proxy:
-        env["HTTPS_PROXY"] = proxy
-    result = subprocess.run(
-        cmd,
-        input=curl_config,
-        capture_output=True,
-        text=True,
+        headers={
+            "Authorization": f"Bearer {token}",
+            "anthropic-beta": "oauth-2025-04-20",
+            "User-Agent": "claude-cli/1.0 (external, cli)",
+            "Accept": "application/json",
+        },
         timeout=25,
-        env=env,
     )
-    raw = result.stdout
-    # Split off the status sentinel appended by -w
-    if "\n__HTTP__" in raw:
-        body, code = raw.rsplit("\n__HTTP__", 1)
-    else:
-        raise RuntimeError(f"Unexpected curl output: {raw!r}")
-    code = code.strip()
-    if code == "429":
+    if code == 429:
         raise ClaudeRateLimitError("HTTP 429")
-    if code != "200":
+    if code != 200:
         raise RuntimeError(f"HTTP {code}: {body[:200]}")
     return json.loads(body)
 
@@ -159,7 +151,8 @@ def _http_refresh(refresh_token):
     """Exchange a refresh token for a fresh OAuth token set.
 
     The body is form-encoded (JSON is rejected by the gateway) and passed via
-    stdin so the secret never lands in argv. Returns the parsed token JSON.
+    the request body so the secret never lands in argv. Returns the parsed token
+    JSON.
     """
     if "\n" in refresh_token or "\r" in refresh_token:
         raise ValueError("Invalid refresh token")
@@ -168,36 +161,25 @@ def _http_refresh(refresh_token):
         "refresh_token": refresh_token,
         "client_id": CLIENT_ID,
     })
-    cmd = [
-        "curl", "-q",
-        "-sS", "--max-time", "20",
-        "-H", "Accept: application/json",
-        "-H", "Content-Type: application/x-www-form-urlencoded",
-        "-H", "User-Agent: claude-cli/1.0 (external, cli)",
-        "--data-binary", "@-",
+    code, response_body = _http_request(
         OAUTH_TOKEN_URL,
-        "-w", "\n__HTTP__%{http_code}",
-    ]
-    env = os.environ.copy()
-    proxy = _proxy()
-    if proxy:
-        env["HTTPS_PROXY"] = proxy
-    result = subprocess.run(
-        cmd, input=body, capture_output=True, text=True, timeout=25, env=env
+        headers={
+            "Accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+            "User-Agent": "claude-cli/1.0 (external, cli)",
+        },
+        body=body,
+        timeout=25,
     )
-    if "\n__HTTP__" not in result.stdout:
-        raise RuntimeError("Unexpected curl output")
-    response_body, code = result.stdout.rsplit("\n__HTTP__", 1)
-    code = code.strip()
     try:
         data = json.loads(response_body)
     except ValueError:
         data = {}
-    if code in ("400", "401", "403") or data.get("error") == "invalid_grant":
+    if code in (400, 401, 403) or data.get("error") == "invalid_grant":
         raise ClaudeRefreshUnauthorized(f"HTTP {code}")
-    if code == "429":
+    if code == 429:
         raise ClaudeRefreshRateLimited("HTTP 429")
-    if code != "200":
+    if code != 200:
         raise RuntimeError(f"HTTP {code}: {response_body[:200]}")
     if not all(data.get(key) for key in ("access_token", "refresh_token")):
         raise RuntimeError("Claude refresh response is missing tokens")

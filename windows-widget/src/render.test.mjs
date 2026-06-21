@@ -41,6 +41,10 @@ test("provider messages use two-state model", () => {
     "请求受限 · 稍后自动重试"
   );
   assert.equal(
+    providerMessage("Claude", { reason: "error" }),
+    "连接失败 · 检查网络或代理"
+  );
+  assert.equal(
     providerMessage("Claude", { reason: "expired" }),
     "未登录 · 请先在 Claude Code 登录"
   );
@@ -100,6 +104,10 @@ test("english locale switches strings", () => {
     assert.equal(
       providerMessage("Claude", { reason: "expired" }),
       "Not signed in · Log in via Claude Code"
+    );
+    assert.equal(
+      providerMessage("Claude", { reason: "error" }),
+      "Connection failed · check network or proxy"
     );
     const html = renderToHTML(livePayload, NOW_MS);
     assert.match(html, /Cached · awaiting refresh/);

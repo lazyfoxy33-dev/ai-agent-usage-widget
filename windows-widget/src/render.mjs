@@ -34,6 +34,7 @@ const I18N = {
   zh: {
     cached: "缓存数据 · 等待刷新",
     rateLimited: "请求受限 · 稍后自动重试",
+    networkError: "连接失败 · 检查网络或代理",
     notSignedIn: "未登录 · 请先在 {CLI} 登录",
     cmdMap: { Claude: "Claude Code", Codex: "Codex CLI", "Kimi Code": "Kimi CLI" },
     resetsSoon: "Resets soon"
@@ -41,6 +42,7 @@ const I18N = {
   en: {
     cached: "Cached · awaiting refresh",
     rateLimited: "Rate limited · retrying soon",
+    networkError: "Connection failed · check network or proxy",
     notSignedIn: "Not signed in · Log in via {CLI}",
     cmdMap: { Claude: "Claude Code", Codex: "Codex CLI", "Kimi Code": "Kimi CLI" },
     resetsSoon: "Resets soon"
@@ -112,6 +114,7 @@ export function providerMessage(name, data = {}) {
   const lang = locale();
   const t = I18N[lang];
   if (data.reason === "rate_limited") return t.rateLimited;
+  if (data.reason === "error") return t.networkError;
   const cli = t.cmdMap[name] || name;
   return t.notSignedIn.replace("{CLI}", cli);
 }
