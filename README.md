@@ -1,12 +1,14 @@
 # AI Agent Usage Widget / AI Agent 用量组件
 
-集中显示 Claude、Codex 和 Kimi Code 用量的跨平台工具。同一套数据层
+集中显示 Claude、Codex、Kimi Code 用量，以及 DeepSeek、SiliconFlow、
+OpenRouter 余额的跨平台工具。同一套数据层
 （`core/`）驱动 Übersicht、Touch Bar、macOS WidgetKit 和 Windows Tauri
 四个前端。
 
-A cross-platform tool that shows Claude, Codex, and Kimi Code usage in one
-place. One shared data layer (`core/`) drives four frontends: Übersicht,
-Touch Bar, native macOS WidgetKit, and Windows Tauri.
+A cross-platform tool that shows Claude, Codex, and Kimi Code usage plus
+DeepSeek, SiliconFlow, and OpenRouter balances in one place. One shared data
+layer (`core/`) drives four frontends: Übersicht, Touch Bar, native macOS
+WidgetKit, and Windows Tauri.
 
 ![组件预览 / Widget preview](docs/widget-preview.png)
 
@@ -30,7 +32,7 @@ same freshness and credential-handling policy.
 
 - 五小时用量、每周用量和重置倒计时
 - Five-hour usage, weekly usage, and reset countdowns
-- 三个提供商相互隔离，单个失败不会隐藏其他面板
+- 提供商相互隔离，单个失败不会隐藏其他面板
 - Providers fail independently, so one error never hides the other panels
 - 旧数据状态提示，避免把缓存或过期快照误认为实时数据
 - Stale-data indicators prevent cached or expired snapshots from appearing live
@@ -42,6 +44,9 @@ same freshness and credential-handling policy.
 - Follows the system light / dark appearance with semantic usage colors
 - macOS 原生 WidgetKit 小组件与 Windows 无边框桌面窗
 - Native macOS WidgetKit and a frameless Windows desktop window
+- API 余额面板会基于近期本地余额历史估算可用天数（历史不足时不显示猜测）
+- API balance panels estimate days remaining from local recent balance history
+  when enough data exists, and avoid guessing when history is insufficient
 
 ## 工作方式 / How It Works
 
@@ -65,15 +70,20 @@ same freshness and credential-handling policy.
   official `https://api.kimi.com/coding/v1/usages` endpoint. When current CLI
   credentials expire or are rejected, it refreshes them under Kimi Code's
   official lock and atomic-storage protocol. Legacy credentials stay read-only.
+- **DeepSeek / SiliconFlow / OpenRouter：**读取环境变量中的 API key，调用官方
+  账户余额接口，并把每次成功余额快照写入本地缓存以估算近期消耗速度。
+- **DeepSeek / SiliconFlow / OpenRouter:** read API keys from environment
+  variables, call official account-balance endpoints, and store local balance
+  snapshots to estimate recent spend rate.
 
-组件每 60 秒执行一次，但 Claude 和 Kimi 的成功响应会缓存五分钟，因此正常情况
-下最多每五分钟请求一次新用量。缓存过期后会在下一次 60 秒周期请求；若接口失败
-或限流，会继续显示最后一次成功缓存并标记为旧数据。Codex 快照会检查重置时间。
+组件每 60 秒执行一次，但成功响应会缓存五分钟，因此正常情况下每个实时接口最多
+每五分钟请求一次。缓存过期后会在下一次 60 秒周期请求；若接口失败或限流，会
+继续显示最后一次成功缓存并标记为旧数据。Codex 快照会检查重置时间。
 
-The widget runs every 60 seconds, but successful Claude and Kimi responses are
-cached for five minutes, so fresh usage is normally requested at most once
-every five minutes. After expiry, the next 60-second cycle makes a request. If
-the endpoint fails or rate-limits the request, the last successful cache stays
+The widget runs every 60 seconds, but successful live responses are cached for
+five minutes, so each live endpoint is normally requested at most once every
+five minutes. After expiry, the next 60-second cycle makes a request. If the
+endpoint fails or rate-limits the request, the last successful cache stays
 visible and is marked stale. Codex snapshots are checked against their reset
 times.
 
@@ -81,8 +91,8 @@ times.
 
 - Python 3
 - `curl`
-- 至少使用过 Claude Code、Codex 或 Kimi Code CLI 中的一项
-- At least one of Claude Code, Codex, or Kimi Code CLI used once
+- 至少配置或使用过一个受支持提供商
+- At least one supported provider configured or used once
 
 各前端的额外要求 / Frontend-specific requirements:
 
@@ -206,6 +216,10 @@ tray menu, saved position, and autostart. See
 - `↻ …`: 该窗口距离重置的剩余时间 / time until that window resets
 - 用量达 70% / 90% 时，数字与图形会加深为「注意 / 告急」色
 - At 70% / 90% the figure and chart deepen to an attention / urgent color
+- `¥…` / `$…`: API 账户余额 / API account balance
+- `近 … 日约可用 … 天`: 基于近期余额下降速度的估算，不足样本时显示暂无趋势
+- `≈ … days left`: estimate from recent balance decline; unavailable when
+  samples are insufficient
 
 ## 提供商设置 / Provider Setup
 
@@ -296,6 +310,27 @@ Without a usable login, the panel displays setup guidance. The
 is available for manual viewing, but the widget never scrapes it or reads
 browser cookies.
 
+### DeepSeek / SiliconFlow / OpenRouter
+
+API 余额面板通过环境变量读取 API key：
+
+API balance panels read API keys from environment variables:
+
+```bash
+export DEEPSEEK_API_KEY="..."
+export SILICONFLOW_API_KEY="..."
+export OPENROUTER_API_KEY="..."
+```
+
+缺少环境变量时对应面板会显示“未配置 API 密钥”。组件不会把 key 写入缓存或命令
+行参数。余额趋势历史只保存时间戳、余额数值和币种，位置在
+`~/.cache/usage-widget/*-history.jsonl`。
+
+When an environment variable is missing, the corresponding panel shows that no
+API key is configured. The widget does not write keys to cache files or process
+arguments. Balance trend history stores only timestamp, amount, and currency at
+`~/.cache/usage-widget/*-history.jsonl`.
+
 ## 隐私与安全 / Privacy And Security
 
 - 凭据只在运行时从官方客户端存储位置读取；旧版 Kimi 凭据保持只读。
@@ -310,10 +345,14 @@ browser cookies.
 - Tokens are never written to the repository, cache, logs, or process arguments.
 - Claude 用量只发送到 Anthropic；Kimi 用量只发送到 Kimi 官方 API。
 - Claude usage goes only to Anthropic; Kimi usage goes only to Kimi's API.
+- DeepSeek、SiliconFlow、OpenRouter 余额请求只发送到各自官方 API。
+- DeepSeek, SiliconFlow, and OpenRouter balance requests go only to their
+  official APIs.
 - Codex 数据保留在本机。
 - Codex data stays on the local machine.
-- 缓存只包含百分比和重置时间。
-- Cache files contain percentages and reset times only.
+- 缓存包含用量百分比、重置时间、余额和本地趋势估算；不包含凭据。
+- Cache files contain usage percentages, reset times, balances, and local trend
+  estimates; they do not contain credentials.
 
 报告安全问题前请阅读 [SECURITY.md](SECURITY.md)。
 
@@ -328,11 +367,12 @@ cd core
 python3 fetch_usage.py
 ```
 
-输出应包含独立的 `claude`、`codex` 和 `kimi` JSON 字段。公开粘贴前务必检查并
-清理输出。
+输出应包含独立的 `claude`、`codex`、`kimi`、`deepseek`、`siliconflow` 和
+`openrouter` JSON 字段。公开粘贴前务必检查并清理输出。
 
-The output should contain independent `claude`, `codex`, and `kimi` JSON
-fields. Review and sanitize it before posting publicly.
+The output should contain independent `claude`, `codex`, `kimi`, `deepseek`,
+`siliconflow`, and `openrouter` JSON fields. Review and sanitize it before
+posting publicly.
 
 - `claude.reason = "expired"`：打开 Claude Code 并重新登录或发起一次请求。
 - `claude.reason = "expired"`: open Claude Code and sign in or make a request.
@@ -342,6 +382,10 @@ fields. Review and sanitize it before posting publicly.
 - `kimi.reason = "no_data"`: install Kimi Code CLI and sign in with `/login`.
 - `kimi.reason = "expired"`：在 Kimi Code CLI 中重新登录。
 - `kimi.reason = "expired"`: sign in again inside Kimi Code CLI.
+- `deepseek` / `siliconflow` / `openrouter.reason = "no_data"`：设置对应
+  API key 环境变量。
+- `deepseek` / `siliconflow` / `openrouter.reason = "no_data"`: set the
+  corresponding API key environment variable.
 - `reason = "error"`：检查网络、`curl` 和代理设置。
 - `reason = "error"`: check network access, `curl`, and proxy settings.
 - `reason = "rate_limited"`：上游返回 HTTP 429，等待下一次自动刷新。
@@ -402,18 +446,23 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
 - Kimi 接口和凭据格式由 Kimi Code CLI 管理，未来版本可能变化。
 - Kimi's endpoint and credential format are managed by Kimi Code CLI and may
   change.
+- 余额可用时长是基于历史余额下降速度的估算，不是服务商保证。
+- Balance days remaining is an estimate from historical balance decline, not a
+  provider guarantee.
 - 桌面前端覆盖 macOS（Übersicht、Touch Bar、WidgetKit）与 Windows（Tauri）；Linux 仅有数据层、无原生前端。
 - Desktop frontends cover macOS (Übersicht, Touch Bar, WidgetKit) and Windows
   (Tauri); Linux has the data layer only, with no native frontend.
 
 ## 品牌与许可 / Trademarks And License
 
-本项目是非官方开源项目，与 Anthropic、OpenAI 或 Moonshot AI 无隶属或背书关系。
-Claude、Codex、Kimi、相关公司名称和 Logo 均属于其各自权利方。
+本项目是非官方开源项目，与 Anthropic、OpenAI、Moonshot AI、DeepSeek、
+SiliconFlow 或 OpenRouter 无隶属或背书关系。Claude、Codex、Kimi、相关公司名称
+和 Logo 均属于其各自权利方。
 
 This is an unofficial open-source project and is not affiliated with or
-endorsed by Anthropic, OpenAI, or Moonshot AI. Claude, Codex, Kimi, company
-names, and logos belong to their respective owners.
+endorsed by Anthropic, OpenAI, Moonshot AI, DeepSeek, SiliconFlow, or
+OpenRouter. Claude, Codex, Kimi, company names, and logos belong to their
+respective owners.
 
 项目代码采用 [MIT License](LICENSE)。
 

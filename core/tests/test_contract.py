@@ -30,14 +30,40 @@ class TestContract(unittest.TestCase):
              mock.patch.object(fetch_usage, "claude_with_cache",
                                return_value=no_data), \
              mock.patch.object(fetch_usage, "kimi_with_cache",
+                               return_value=no_data), \
+             mock.patch.object(fetch_usage, "deepseek_with_cache",
+                               return_value=no_data), \
+             mock.patch.object(fetch_usage, "siliconflow_with_cache",
+                               return_value=no_data), \
+             mock.patch.object(fetch_usage, "openrouter_with_cache",
                                return_value=no_data):
             payload = json.loads(fetch_usage.build_payload())
 
         self.assertEqual(payload["schema_version"], 1)
-        for name in ("claude", "codex", "kimi"):
+        for name in ("claude", "codex", "kimi", "deepseek", "siliconflow", "openrouter"):
             provider = payload[name]
             self.assertIsInstance(provider["live"], bool)
             self.assertTrue(
                 provider["fetched_at"] is None
                 or isinstance(provider["fetched_at"], int)
             )
+
+    def test_balance_provider_schema(self):
+        path = os.path.join(ROOT, "contract.schema.json")
+        with open(path) as f:
+            schema = json.load(f)
+
+        provider = schema["$defs"]["provider"]
+        self.assertIn("kind", provider["properties"])
+        self.assertIn("balance", provider["properties"])
+        self.assertIn("burn_rate", provider["properties"])
+
+        balance = schema["$defs"]["balance"]
+        self.assertIn("amount", balance["required"])
+        self.assertIn("currency", balance["required"])
+
+        burn_rate = schema["$defs"]["burn_rate"]
+        self.assertEqual(
+            set(burn_rate["properties"]["confidence"]["enum"]),
+            {"none", "low", "medium", "high"}
+        )

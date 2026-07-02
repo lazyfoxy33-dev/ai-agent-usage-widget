@@ -7,23 +7,41 @@ const TONE = {
   dark: { ink: "#ECEAE6", sub: "#8c887f", track: "rgba(255,255,255,.13)", div: "rgba(255,255,255,.07)" }
 };
 
+function glyphLogo(letter, color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 27 27"><rect width="27" height="27" rx="7" fill="${color}"/><text x="13.5" y="18.5" text-anchor="middle" font-size="14" font-weight="700" fill="white" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${letter}</text></svg>`;
+  return "data:image/svg+xml," + encodeURIComponent(svg);
+}
+
 const PROVIDERS = {
   claude: { name: "Claude", accent: "#D97757", tintL: "#FAF7F3", tintD: "#211F1C" },
   codex: { name: "Codex", accent: "#7B83F5", tintL: "#F6F6FB", tintD: "#1B1B23" },
-  kimi: { name: "Kimi Code", accent: "#1478FF", tintL: "#F4F7FC", tintD: "#181C24" }
+  kimi: { name: "Kimi Code", accent: "#1478FF", tintL: "#F4F7FC", tintD: "#181C24" },
+  deepseek: { name: "DeepSeek", kind: "balance", accent: "#4F6D7A", tintL: "#F3F6F7", tintD: "#1A2024" },
+  siliconflow: { name: "SiliconFlow", kind: "balance", accent: "#F56C6C", tintL: "#FDF5F5", tintD: "#241A1A" },
+  openrouter: { name: "OpenRouter", kind: "balance", accent: "#8B5CF6", tintL: "#F5F3FD", tintD: "#1E1A2E" }
 };
 
 const I18N = {
   zh: {
     cached: "缓存数据 · 等待刷新",
+    cachedBalance: "缓存余额 · 等待刷新",
     rateLimited: "请求受限 · 稍后自动重试",
+    networkError: "连接失败 · 检查网络或代理",
+    noApiKey: "未配置 API 密钥",
+    trendEstimate: "近 {window} 日约可用 {days} 天",
+    noTrend: "暂无消耗趋势",
     notSignedIn: "未登录 · 请先在 {CLI} 登录",
     cmdMap: { "Claude": "Claude Code", "Codex": "Codex CLI", "Kimi Code": "Kimi CLI" },
     resetsSoon: "Resets soon"
   },
   en: {
     cached: "Cached · awaiting refresh",
+    cachedBalance: "Cached balance · awaiting refresh",
     rateLimited: "Rate limited · retrying soon",
+    networkError: "Connection failed · check network or proxy",
+    noApiKey: "No API key configured",
+    trendEstimate: "≈ {days} days left ({window}d)",
+    noTrend: "No spending trend yet",
     notSignedIn: "Not signed in · Log in via {CLI}",
     cmdMap: { "Claude": "Claude Code", "Codex": "Codex CLI", "Kimi Code": "Kimi CLI" },
     resetsSoon: "Resets soon"
@@ -80,6 +98,24 @@ function fmtDuration(resetsAt) {
   return `${d}d` + (h ? ` ${h}h` : "");
 }
 
+function fmtBalance(amount, currency) {
+  const value = Number(amount || 0).toFixed(2);
+  const code = String(currency || "").toUpperCase();
+  if (code === "CNY") return `¥${value}`;
+  if (code === "USD") return `$${value}`;
+  return code ? `${value} ${code}` : value;
+}
+
+function balanceTrendText(burnRate) {
+  const t = I18N[locale()];
+  if (!burnRate || burnRate.confidence === "none" || burnRate.estimated_days_left == null) {
+    return t.noTrend;
+  }
+  return t.trendEstimate
+    .replace("{window}", String(burnRate.window_days || 7))
+    .replace("{days}", String(burnRate.estimated_days_left));
+}
+
 function pctFontSize(pct) {
   return pct >= 100 ? 14 : 18;
 }
@@ -117,6 +153,8 @@ function panel(name, glyph, pal, data) {
     let msg;
     if (reason === "rate_limited") {
       msg = t.rateLimited;
+    } else if (reason === "error") {
+      msg = t.networkError;
     } else {
       const cli = t.cmdMap[name] || name;
       msg = t.notSignedIn.replace("{CLI}", cli);
@@ -174,6 +212,48 @@ function panel(name, glyph, pal, data) {
   );
 }
 
+function balancePanel(name, glyph, pal, data) {
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const tone = TONE[isDark ? "dark" : "light"];
+  const bg = isDark ? pal.tintD : pal.tintL;
+  const t = I18N[locale()];
+
+  if (!data || !data.ok) {
+    const reason = data && data.reason;
+    const msg = reason === "rate_limited"
+      ? t.rateLimited
+      : reason === "error"
+        ? t.networkError
+        : t.noApiKey;
+    return (
+      <div style={{ padding: "17px 18px", background: bg, color: tone.sub, fontSize: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {glyph}<strong style={{ color: tone.ink, fontSize: 15 }}>{name}</strong>
+        </div>
+        <div style={{ marginTop: 8 }}>{msg}</div>
+      </div>
+    );
+  }
+
+  const cached = data.reason === "stale" || data.live === false;
+  const balance = data.balance || {};
+  return (
+    <div style={{ padding: "17px 18px 16px", display: "flex", flexDirection: "column", gap: 10, background: bg, color: tone.ink }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {glyph}
+        <span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span>
+      </div>
+      {cached && <span style={{ fontSize: 9.5, color: tone.sub, marginLeft: 32 }}>{t.cachedBalance}</span>}
+      <div style={{ fontSize: 26, fontWeight: 720, color: tone.ink, opacity: cached ? 0.55 : 1 }}>
+        {fmtBalance(balance.amount, balance.currency)}
+      </div>
+      <div style={{ fontSize: 12, color: tone.sub, opacity: cached ? 0.55 : 1 }}>
+        {balanceTrendText(data.burn_rate)}
+      </div>
+    </div>
+  );
+}
+
 // One uniform icon treatment for all providers (design `.ico`: contain + rounded clip).
 const ICON_STYLE = { objectFit: "contain", borderRadius: 7, overflow: "hidden", WebkitMaskImage: "-webkit-radial-gradient(white, black)", flex: "none" };
 const claudeGlyph = (
@@ -184,6 +264,15 @@ const codexGlyph = (
 );
 const kimiGlyph = (
   <img src="/usage-widget/assets/kimi-code.png" width="27" height="27" alt="Kimi Code" style={ICON_STYLE} />
+);
+const deepseekGlyph = (
+  <img src={glyphLogo("D", PROVIDERS.deepseek.accent)} width="27" height="27" alt="DeepSeek" style={ICON_STYLE} />
+);
+const siliconflowGlyph = (
+  <img src={glyphLogo("S", PROVIDERS.siliconflow.accent)} width="27" height="27" alt="SiliconFlow" style={ICON_STYLE} />
+);
+const openrouterGlyph = (
+  <img src={glyphLogo("O", PROVIDERS.openrouter.accent)} width="27" height="27" alt="OpenRouter" style={ICON_STYLE} />
 );
 
 export const className = `
@@ -207,6 +296,12 @@ export const render = ({ output }) => {
       {panel("Codex", codexGlyph, PROVIDERS.codex, data.codex)}
       <div style={{ height: 1, background: divColor }} />
       {panel("Kimi Code", kimiGlyph, PROVIDERS.kimi, data.kimi)}
+      <div style={{ height: 1, background: divColor }} />
+      {balancePanel("DeepSeek", deepseekGlyph, PROVIDERS.deepseek, data.deepseek)}
+      <div style={{ height: 1, background: divColor }} />
+      {balancePanel("SiliconFlow", siliconflowGlyph, PROVIDERS.siliconflow, data.siliconflow)}
+      <div style={{ height: 1, background: divColor }} />
+      {balancePanel("OpenRouter", openrouterGlyph, PROVIDERS.openrouter, data.openrouter)}
     </div>
   );
 };

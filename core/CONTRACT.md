@@ -16,9 +16,43 @@ contract version is `1`.
     "weekly": {"pct": 34, "resets_at": 1781800000}
   },
   "codex": {},
-  "kimi": {}
+  "kimi": {},
+  "deepseek": {
+    "ok": true,
+    "kind": "balance",
+    "fetched_at": 1781234567,
+    "live": true,
+    "balance": {"amount": 110.0, "currency": "CNY", "available": true, "label": "Balance"},
+    "burn_rate": {"amount_per_day": 3.2, "window_days": 7, "estimated_days_left": 34, "confidence": "medium"}
+  },
+  "siliconflow": {
+    "ok": false,
+    "kind": "balance",
+    "fetched_at": null,
+    "live": false,
+    "reason": "no_data"
+  },
+  "openrouter": {
+    "ok": true,
+    "kind": "balance",
+    "fetched_at": 1781234567,
+    "live": true,
+    "balance": {"amount": 75.42, "currency": "USD", "available": true, "label": "Balance"},
+    "burn_rate": {"confidence": "none", "reason": "insufficient_history"}
+  }
 }
 ```
+
+## Provider 类型 / Provider Kind
+
+- `kind=quota`（或省略）：五小时与每周用量窗口，用于 Claude、Codex、Kimi。
+- `kind=balance`：账户余额与可选的近期消耗估算，用于 DeepSeek、SiliconFlow、OpenRouter。
+
+- `kind=quota` (or omitted): five-hour and weekly usage windows for Claude,
+  Codex, and Kimi.
+- `kind=balance`: account balance with an optional recent-spend estimate for
+  DeepSeek, SiliconFlow, and OpenRouter.
+
 
 ## 新鲜度 / Freshness
 
@@ -55,6 +89,21 @@ minutes. Expired cache fallbacks are always `live=false`.
 - `no_data`: no local or remote usage data is available.
 - `error`: another network, parsing, or system error occurred.
 - `stale`: displayed values came from an expired cache.
+
+## 余额提供商配置 / Balance Provider Setup
+
+余额提供商通过环境变量读取 API 密钥（不读取命令行参数）：
+
+- `DEEPSEEK_API_KEY`
+- `SILICONFLOW_API_KEY`
+- `OPENROUTER_API_KEY`
+
+Balance providers read API keys from environment variables (never from command
+line arguments):
+
+- `DEEPSEEK_API_KEY`
+- `SILICONFLOW_API_KEY`
+- `OPENROUTER_API_KEY`
 
 机器可读定义见 `contract.schema.json`。
 

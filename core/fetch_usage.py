@@ -4,12 +4,15 @@ import json
 import os
 import time
 
-from usage import codex, claude, kimi
+from usage import codex, claude, kimi, deepseek, siliconflow, openrouter
 from usage import cache
 
 CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/claude.json")
 KIMI_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/kimi.json")
 CODEX_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/codex.json")
+DEEPSEEK_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/deepseek.json")
+SILICONFLOW_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/siliconflow.json")
+OPENROUTER_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/openrouter.json")
 CACHE_TTL = 300  # 5 min
 CODEX_FRESH_TTL = 1800  # 30 min
 
@@ -70,6 +73,18 @@ def kimi_with_cache():
     return _provider_with_cache(KIMI_CACHE_PATH, kimi.fetch_kimi)
 
 
+def deepseek_with_cache():
+    return _provider_with_cache(DEEPSEEK_CACHE_PATH, deepseek.fetch_deepseek)
+
+
+def siliconflow_with_cache():
+    return _provider_with_cache(SILICONFLOW_CACHE_PATH, siliconflow.fetch_siliconflow)
+
+
+def openrouter_with_cache():
+    return _provider_with_cache(OPENROUTER_CACHE_PATH, openrouter.fetch_openrouter)
+
+
 def codex_result(now=None):
     now = time.time() if now is None else now
     # Prefer current limits read live via the Codex app-server, cached 5 min so
@@ -108,9 +123,12 @@ def _ensure_contract(data):
 def build_payload():
     return json.dumps({
         "schema_version": 1,
-        "codex": _ensure_contract(codex_result()),
         "claude": _ensure_contract(claude_with_cache()),
+        "codex": _ensure_contract(codex_result()),
         "kimi": _ensure_contract(kimi_with_cache()),
+        "deepseek": _ensure_contract(deepseek_with_cache()),
+        "siliconflow": _ensure_contract(siliconflow_with_cache()),
+        "openrouter": _ensure_contract(openrouter_with_cache()),
     })
 
 

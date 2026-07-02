@@ -3,7 +3,7 @@
   "$id": "https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/blob/main/core/contract.schema.json",
   "title": "AI Agent Usage Widget payload",
   "type": "object",
-  "required": ["schema_version", "claude", "codex", "kimi"],
+  "required": ["schema_version", "claude", "codex", "kimi", "deepseek", "siliconflow", "openrouter"],
   "properties": {
     "schema_version": {
       "const": 1
@@ -15,6 +15,15 @@
       "$ref": "#/$defs/provider"
     },
     "kimi": {
+      "$ref": "#/$defs/provider"
+    },
+    "deepseek": {
+      "$ref": "#/$defs/provider"
+    },
+    "siliconflow": {
+      "$ref": "#/$defs/provider"
+    },
+    "openrouter": {
       "$ref": "#/$defs/provider"
     }
   },
@@ -33,6 +42,9 @@
         "live": {
           "type": "boolean"
         },
+        "kind": {
+          "enum": ["quota", "balance"]
+        },
         "reason": {
           "enum": ["expired", "error", "no_data", "stale", "rate_limited"]
         },
@@ -47,6 +59,53 @@
         },
         "weekly": {
           "$ref": "#/$defs/window"
+        },
+        "balance": {
+          "$ref": "#/$defs/balance"
+        },
+        "burn_rate": {
+          "$ref": "#/$defs/burn_rate"
+        }
+      },
+      "additionalProperties": true
+    },
+    "balance": {
+      "type": "object",
+      "required": ["amount", "currency", "available", "label"],
+      "properties": {
+        "amount": {
+          "type": "number"
+        },
+        "currency": {
+          "type": "string"
+        },
+        "available": {
+          "type": "boolean"
+        },
+        "label": {
+          "type": "string"
+        }
+      },
+      "additionalProperties": true
+    },
+    "burn_rate": {
+      "type": "object",
+      "required": ["confidence"],
+      "properties": {
+        "amount_per_day": {
+          "type": "number"
+        },
+        "window_days": {
+          "type": "integer"
+        },
+        "estimated_days_left": {
+          "type": "integer"
+        },
+        "confidence": {
+          "enum": ["none", "low", "medium", "high"]
+        },
+        "reason": {
+          "enum": ["insufficient_history", "no_recent_spend", "balance_increased"]
         }
       },
       "additionalProperties": true

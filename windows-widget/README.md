@@ -101,13 +101,15 @@ cd ..
 The bundled `core/` reads official local stores. On Windows, Claude uses
 `~/.claude/.credentials.json`; an expired token is refreshed under the official
 lock and written back atomically (the file is rewritten with `os.replace`).
-Tokens are sent to provider APIs through curl config stdin and are never placed
-in process arguments or logs.
+DeepSeek, SiliconFlow, and OpenRouter read API keys from `DEEPSEEK_API_KEY`,
+`SILICONFLOW_API_KEY`, and `OPENROUTER_API_KEY`. Tokens are never placed in
+process arguments or logs.
 
 内置的 `core/` 读取官方本地存储。Windows 上 Claude 读取
 `~/.claude/.credentials.json`；令牌过期时在官方锁内续期并原子写回（用
-`os.replace` 重写该文件）。令牌通过 curl config 标准输入发送到提供商 API，
-不进入进程参数或日志。
+`os.replace` 重写该文件）。DeepSeek、SiliconFlow 和 OpenRouter 从
+`DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`、`OPENROUTER_API_KEY` 读取 API key。
+令牌不会进入进程参数或日志。
 
 ## Troubleshooting / 排错
 

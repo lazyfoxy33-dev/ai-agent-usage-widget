@@ -44,6 +44,12 @@ private extension ProviderKind {
             return Color(red: 0.48235, green: 0.51373, blue: 0.96078)   // #7B83F5
         case .kimi:
             return Color(red: 0.07843, green: 0.47059, blue: 1.0)       // #1478FF
+        case .deepseek:
+            return Color(red: 0.30980, green: 0.42745, blue: 0.47843)   // #4F6D7A
+        case .siliconflow:
+            return Color(red: 0.96078, green: 0.42353, blue: 0.42353)   // #F56C6C
+        case .openrouter:
+            return Color(red: 0.54510, green: 0.36078, blue: 0.96471)   // #8B5CF6
         }
     }
 
@@ -52,6 +58,9 @@ private extension ProviderKind {
         case .claude: return Color(red: 0.98039, green: 0.96863, blue: 0.95294) // #FAF7F3
         case .codex:  return Color(red: 0.96471, green: 0.96471, blue: 0.98431) // #F6F6FB
         case .kimi:   return Color(red: 0.95686, green: 0.96863, blue: 0.98824) // #F4F7FC
+        case .deepseek: return Color(red: 0.95294, green: 0.96471, blue: 0.96863) // #F3F6F7
+        case .siliconflow: return Color(red: 0.99216, green: 0.96078, blue: 0.96078) // #FDF5F5
+        case .openrouter: return Color(red: 0.96078, green: 0.95294, blue: 0.99216) // #F5F3FD
         }
     }
 
@@ -60,6 +69,9 @@ private extension ProviderKind {
         case .claude: return Color(red: 0.12941, green: 0.12157, blue: 0.10980) // #211F1C
         case .codex:  return Color(red: 0.10588, green: 0.10588, blue: 0.13725) // #1B1B23
         case .kimi:   return Color(red: 0.09412, green: 0.10980, blue: 0.14118) // #181C24
+        case .deepseek: return Color(red: 0.10196, green: 0.12549, blue: 0.14118) // #1A2024
+        case .siliconflow: return Color(red: 0.14118, green: 0.10196, blue: 0.10196) // #241A1A
+        case .openrouter: return Color(red: 0.11765, green: 0.10196, blue: 0.18039) // #1E1A2E
         }
     }
 
@@ -116,12 +128,14 @@ private struct ProviderMark: View {
         case .claude: return "claude-app"
         case .codex: return "codex-app"
         case .kimi: return "kimi-code"
+        case .deepseek, .siliconflow, .openrouter: return ""
         }
     }
 
     // SwiftUI 的 Image("name") 在 macOS 上只认资源目录，散放的 PNG 需从 bundle 直接加载
     private var icon: Image {
-        if let url = Bundle.main.url(forResource: assetName, withExtension: "png"),
+        if !assetName.isEmpty,
+           let url = Bundle.main.url(forResource: assetName, withExtension: "png"),
            let ns = NSImage(contentsOf: url) {
             return Image(nsImage: ns)
         }
@@ -240,7 +254,32 @@ private struct SmallCard: View {
         VStack(spacing: 8) {
             header
 
-            if provider.ok, let five = provider.fiveH, let week = provider.weekly {
+            if provider.ok, provider.kind == "balance", provider.balance != nil {
+                let stale = provider.isStale
+                if stale {
+                    Text(ProviderPresentation.cachedBalanceMessage())
+                        .font(.system(size: 10))
+                        .foregroundStyle(p.sub)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+
+                Spacer(minLength: 0)
+                Text(ProviderPresentation.balanceAmount(provider.balance))
+                    .font(.system(size: 24, weight: .bold, design: .rounded))
+                    .foregroundStyle(p.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
+                    .opacity(stale ? 0.55 : 1)
+                Text(ProviderPresentation.balanceTrend(provider.burnRate))
+                    .font(.system(size: 11))
+                    .foregroundStyle(p.sub)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.7)
+                    .opacity(stale ? 0.55 : 1)
+                Spacer(minLength: 0)
+            } else if provider.ok, let five = provider.fiveH, let week = provider.weekly {
                 let stale = provider.isStale
                 if stale {
                     Text(ProviderPresentation.cachedMessage())
@@ -315,7 +354,31 @@ private struct MediumColumn: View {
             header
             Spacer(minLength: 0)
 
-            if provider.ok, let five = provider.fiveH, let week = provider.weekly {
+            if provider.ok, provider.kind == "balance", provider.balance != nil {
+                let stale = provider.isStale
+                if stale {
+                    Text(ProviderPresentation.cachedBalanceMessage())
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(p.sub)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                }
+                Spacer(minLength: 0)
+                Text(ProviderPresentation.balanceAmount(provider.balance))
+                    .font(.system(size: 20, weight: .bold, design: .rounded))
+                    .foregroundStyle(p.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.55)
+                    .opacity(stale ? 0.55 : 1)
+                Text(ProviderPresentation.balanceTrend(provider.burnRate))
+                    .font(.system(size: 9.5))
+                    .foregroundStyle(p.sub)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .minimumScaleFactor(0.7)
+                    .opacity(stale ? 0.55 : 1)
+                Spacer(minLength: 0)
+            } else if provider.ok, let five = provider.fiveH, let week = provider.weekly {
                 let stale = provider.isStale
                 if stale {
                     Text(ProviderPresentation.cachedMessage())
@@ -419,6 +482,9 @@ struct QuotaWidgetView: View {
         switch active {
         case "codex": return .codex
         case "kimi": return .kimi
+        case "deepseek": return .deepseek
+        case "siliconflow": return .siliconflow
+        case "openrouter": return .openrouter
         default: return .claude
         }
     }
@@ -428,6 +494,9 @@ struct QuotaWidgetView: View {
         case .claude: return p.claude
         case .codex: return p.codex
         case .kimi: return p.kimi
+        case .deepseek: return p.deepseek
+        case .siliconflow: return p.siliconflow
+        case .openrouter: return p.openrouter
         }
     }
 }
@@ -439,7 +508,7 @@ struct QuotaWidget: Widget {
             QuotaWidgetView(entry: $0)
         }
         .configurationDisplayName("AI Agent Usage")
-        .description("Claude、Codex 与 Kimi Code 用量")
+        .description("Claude、Codex、Kimi 与 API 余额")
         .supportedFamilies([.systemSmall, .systemMedium])
         .contentMarginsDisabled()
     }

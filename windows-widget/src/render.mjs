@@ -1,3 +1,8 @@
+function glyphLogo(letter, color) {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="7" fill="${color}"/><text x="12" y="17" text-anchor="middle" font-size="13" font-weight="700" fill="white" font-family="Segoe UI, sans-serif">${letter}</text></svg>`;
+  return "data:image/svg+xml," + encodeURIComponent(svg);
+}
+
 const TONE = {
   light: { ink: "#26231F", sub: "#9a9286", track: "rgba(0,0,0,.09)", div: "rgba(0,0,0,.06)" },
   dark: { ink: "#ECEAE6", sub: "#8c887f", track: "rgba(255,255,255,.13)", div: "rgba(255,255,255,.07)" }
@@ -27,23 +32,58 @@ const PROVIDERS = {
     tintL: "#F4F7FC",
     tintD: "#181C24",
     logo: "assets/kimi-code.png"
+  },
+  DeepSeek: {
+    key: "deepseek",
+    name: "DeepSeek",
+    kind: "balance",
+    accent: "#4F6D7A",
+    tintL: "#F3F6F7",
+    tintD: "#1A2024",
+    logo: glyphLogo("D", "#4F6D7A")
+  },
+  SiliconFlow: {
+    key: "siliconflow",
+    name: "SiliconFlow",
+    kind: "balance",
+    accent: "#F56C6C",
+    tintL: "#FDF5F5",
+    tintD: "#241A1A",
+    logo: glyphLogo("S", "#F56C6C")
+  },
+  OpenRouter: {
+    key: "openrouter",
+    name: "OpenRouter",
+    kind: "balance",
+    accent: "#8B5CF6",
+    tintL: "#F5F3FD",
+    tintD: "#1E1A2E",
+    logo: glyphLogo("O", "#8B5CF6")
   }
 };
 
 const I18N = {
   zh: {
     cached: "缓存数据 · 等待刷新",
+    cachedBalance: "缓存余额 · 等待刷新",
     rateLimited: "请求受限 · 稍后自动重试",
     networkError: "连接失败 · 检查网络或代理",
     notSignedIn: "未登录 · 请先在 {CLI} 登录",
+    noApiKey: "未配置 API 密钥",
+    trendEstimate: "近 {window} 日约可用 {days} 天",
+    noTrend: "暂无消耗趋势",
     cmdMap: { Claude: "Claude Code", Codex: "Codex CLI", "Kimi Code": "Kimi CLI" },
     resetsSoon: "Resets soon"
   },
   en: {
     cached: "Cached · awaiting refresh",
+    cachedBalance: "Cached balance · awaiting refresh",
     rateLimited: "Rate limited · retrying soon",
     networkError: "Connection failed · check network or proxy",
     notSignedIn: "Not signed in · Log in via {CLI}",
+    noApiKey: "No API key configured",
+    trendEstimate: "≈ {days} days left ({window}d)",
+    noTrend: "No spending trend yet",
     cmdMap: { Claude: "Claude Code", Codex: "Codex CLI", "Kimi Code": "Kimi CLI" },
     resetsSoon: "Resets soon"
   }
@@ -115,8 +155,27 @@ export function providerMessage(name, data = {}) {
   const t = I18N[lang];
   if (data.reason === "rate_limited") return t.rateLimited;
   if (data.reason === "error") return t.networkError;
+  const isBalance = PROVIDERS[name]?.kind === "balance" || data.kind === "balance";
+  if (isBalance) return t.noApiKey;
   const cli = t.cmdMap[name] || name;
   return t.notSignedIn.replace("{CLI}", cli);
+}
+
+function fmtBalance(amount, currency) {
+  const value = Number(amount).toFixed(2);
+  if (currency === "CNY") return `¥${value}`;
+  if (currency === "USD") return `$${value}`;
+  return `${value} ${currency}`;
+}
+
+function balanceTrendText(burnRate) {
+  const lang = locale();
+  const t = I18N[lang];
+  if (!burnRate || burnRate.confidence === "none") return t.noTrend;
+  if (burnRate.estimated_days_left == null) return t.noTrend;
+  return t.trendEstimate
+    .replace("{window}", String(burnRate.window_days ?? 7))
+    .replace("{days}", String(burnRate.estimated_days_left));
 }
 
 function pctFontSize(pct) {
@@ -205,11 +264,59 @@ function providerCard(name, data, nowMs) {
     </section>`;
 }
 
+function balanceCard(name, data) {
+  const pal = PROVIDERS[name];
+  const dark = isDark();
+  const tone = TONE[dark ? "dark" : "light"];
+  const bg = dark ? pal.tintD : pal.tintL;
+  const t = I18N[locale()];
+
+  if (!data?.ok) {
+    return `
+      <section class="provider-card ${pal.key} failed" style="--divln:${tone.div};background:${bg};color:${tone.sub}">
+        <header style="color:${tone.ink}">
+          <img src="${pal.logo}" alt=""/>
+          <b>${pal.name}</b>
+        </header>
+        <p>${providerMessage(name, data)}</p>
+      </section>`;
+  }
+
+  const cached = data.live === false || data.reason === "stale";
+  const balance = data.balance || {};
+  const burnRate = data.burn_rate || {};
+  const trend = balanceTrendText(burnRate);
+
+  return `
+    <section class="provider-card ${pal.key}${cached ? " stale" : ""}" style="--divln:${tone.div};background:${bg};color:${tone.ink}">
+      <div class="details" style="gap:11px">
+        <header>
+          <img src="${pal.logo}" alt=""/>
+          <b>${pal.name}</b>
+        </header>
+        <div style="font-size:26px;font-weight:720;letter-spacing:-.5px;color:${tone.ink}">
+          ${fmtBalance(balance.amount, balance.currency)}
+        </div>
+        ${cached ? `<div class="cached-note" style="color:${tone.sub}">${t.cachedBalance}</div>` : ""}
+        <div style="font-size:12px;color:${tone.sub};opacity:${cached ? 0.55 : 1}">${trend}</div>
+      </div>
+    </section>`;
+}
+
 export function renderToHTML(payload, nowMs = Date.now()) {
+  const card = (name) => {
+    const data = payload?.[PROVIDERS[name].key];
+    return PROVIDERS[name].kind === "balance"
+      ? balanceCard(name, data)
+      : providerCard(name, data, nowMs);
+  };
   return [
-    providerCard("Claude", payload?.claude, nowMs),
-    providerCard("Codex", payload?.codex, nowMs),
-    providerCard("Kimi Code", payload?.kimi, nowMs)
+    card("Claude"),
+    card("Codex"),
+    card("Kimi Code"),
+    card("DeepSeek"),
+    card("SiliconFlow"),
+    card("OpenRouter")
   ].join("");
 }
 
