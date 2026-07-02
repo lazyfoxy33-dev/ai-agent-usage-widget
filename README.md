@@ -188,6 +188,31 @@ it to Applications, open it, then add **AI Agent Usage** from the widget gallery
 To build from source instead, the WidgetKit extension must be signed with your own
 Apple Team and App Group — see [macwidget/README.md](macwidget/README.md).
 
+#### Account settings / 账户设置（macOS app）
+
+在菜单栏点击 QuotaWidget，选择 **Settings...** 打开账户设置：
+
+- **Claude、Codex、Kimi Code** 从本地官方客户端存储自动检测；未配置时点对应行的
+  **Open**（或启用 Codex 的 **Enable Probe**）按提示使用官方客户端。
+- **DeepSeek、SiliconFlow、OpenRouter** 点 **Add Key** 输入 API key；key 会存入
+  macOS Keychain（服务名 `AI Agent Usage Widget`），可随时 **Test** 或 **Remove**。
+- 共享数据层仍支持读取对应 `*_API_KEY` 环境变量，但 macOS app 的 GUI 设置是推荐路径。
+- WidgetKit 扩展只通过 App Group 接收已脱敏的 JSON 契约，永远不会接触原始 key。
+
+In the menu bar, click QuotaWidget and choose **Settings...** to open account
+settings:
+
+- **Claude, Codex, and Kimi Code** are auto-detected from local official-client
+  storage; if unconfigured, click **Open** (or **Enable Probe** for Codex) and
+  follow the official-client setup.
+- For **DeepSeek, SiliconFlow, and OpenRouter**, click **Add Key** to enter an API
+  key; keys are stored in the macOS Keychain (service `AI Agent Usage Widget`)
+  and can be **Test**ed or **Remove**d at any time.
+- The shared data layer still reads the corresponding `*_API_KEY` environment
+  variables, but the macOS app’s GUI settings are the recommended path.
+- The WidgetKit extension only receives the sanitized JSON contract through the
+  App Group and never sees raw keys.
+
 ### Windows Tauri / Windows 桌面组件
 
 Windows 组件是可拖动、置顶、记忆位置的无边框窗口，并带系统托盘与开机自启。
@@ -312,9 +337,10 @@ browser cookies.
 
 ### DeepSeek / SiliconFlow / OpenRouter
 
-API 余额面板通过环境变量读取 API key：
+API 余额面板通过环境变量或 QuotaWidget 的 **Settings...** 读取 API key：
 
-API balance panels read API keys from environment variables:
+API balance panels read API keys from environment variables or from QuotaWidget’s
+**Settings...**:
 
 ```bash
 export DEEPSEEK_API_KEY="..."
@@ -322,13 +348,15 @@ export SILICONFLOW_API_KEY="..."
 export OPENROUTER_API_KEY="..."
 ```
 
-缺少环境变量时对应面板会显示“未配置 API 密钥”。组件不会把 key 写入缓存或命令
-行参数。余额趋势历史只保存时间戳、余额数值和币种，位置在
+macOS 用户在 QuotaWidget 账户设置里添加的 key 会存入 macOS Keychain。缺少 key
+时对应面板会显示“未配置 API 密钥”。组件不会把 key 写入缓存或命令行参数。余额
+趋势历史只保存时间戳、余额数值和币种，位置在
 `~/.cache/usage-widget/*-history.jsonl`。
 
-When an environment variable is missing, the corresponding panel shows that no
-API key is configured. The widget does not write keys to cache files or process
-arguments. Balance trend history stores only timestamp, amount, and currency at
+On macOS, keys added in QuotaWidget’s account settings are stored in the macOS
+Keychain. When a key is missing, the corresponding panel shows that no API key is
+configured. The widget does not write keys to cache files or process arguments.
+Balance trend history stores only timestamp, amount, and currency at
 `~/.cache/usage-widget/*-history.jsonl`.
 
 ## 隐私与安全 / Privacy And Security
@@ -343,6 +371,13 @@ arguments. Balance trend history stores only timestamp, amount, and currency at
   permissions (`0600` for files; macOS updates the Keychain item in place).
 - 令牌不会写入仓库、缓存、日志或命令行参数。
 - Tokens are never written to the repository, cache, logs, or process arguments.
+- QuotaWidget 的 DeepSeek / SiliconFlow / OpenRouter API key 保存在 macOS Keychain，
+  不进入应用沙箱扩展。
+- QuotaWidget stores DeepSeek / SiliconFlow / OpenRouter API keys in the macOS
+  Keychain; they are not exposed to the app sandbox extension.
+- WidgetKit 扩展只读取 App Group 中的 JSON 契约，永远不接触原始 key。
+- The WidgetKit extension only reads the JSON contract from the App Group and
+  never sees raw keys.
 - Claude 用量只发送到 Anthropic；Kimi 用量只发送到 Kimi 官方 API。
 - Claude usage goes only to Anthropic; Kimi usage goes only to Kimi's API.
 - DeepSeek、SiliconFlow、OpenRouter 余额请求只发送到各自官方 API。
