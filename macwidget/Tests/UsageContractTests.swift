@@ -95,4 +95,64 @@ final class UsageContractTests: XCTestCase {
         XCTAssertEqual(provider?.balance?.amount, 110.0)
         XCTAssertNil(UsageFetcher.providerStatus(from: json, providerKey: "siliconflow"))
     }
+
+    func testAccountRowsIncludeAllSixProviders() {
+        let model = AccountSettingsModel(
+            payload: .preview,
+            configuredAPIKeys: [.siliconflow],
+            codexActiveRefresh: false
+        )
+
+        XCTAssertEqual(model.rows.map(\.id), [
+            .claude, .codex, .kimi, .deepseek, .siliconflow, .openrouter
+        ])
+    }
+
+    func testAccountRowsClassifyProviderKinds() {
+        let model = AccountSettingsModel(
+            payload: .preview,
+            configuredAPIKeys: [.deepseek, .openrouter],
+            codexActiveRefresh: false
+        )
+
+        let byID = Dictionary(uniqueKeysWithValues: model.rows.map { ($0.id, $0) })
+        XCTAssertEqual(byID[.claude]?.kind, .localAgent)
+        XCTAssertEqual(byID[.codex]?.kind, .localAgent)
+        XCTAssertEqual(byID[.kimi]?.kind, .localAgent)
+        XCTAssertEqual(byID[.deepseek]?.kind, .apiKey)
+        XCTAssertEqual(byID[.siliconflow]?.kind, .apiKey)
+        XCTAssertEqual(byID[.openrouter]?.kind, .apiKey)
+    }
+
+    func testAccountRowsReflectConfiguredAPIKeysAndStatus() {
+        let model = AccountSettingsModel(
+            payload: .preview,
+            configuredAPIKeys: [.siliconflow],
+            codexActiveRefresh: false
+        )
+
+        let byID = Dictionary(uniqueKeysWithValues: model.rows.map { ($0.id, $0) })
+        XCTAssertFalse(byID[.deepseek]?.configured ?? true)
+        XCTAssertTrue(byID[.siliconflow]?.configured ?? false)
+        XCTAssertFalse(byID[.openrouter]?.configured ?? true)
+        XCTAssertEqual(byID[.siliconflow]?.statusText, ProviderPresentation.cachedBalanceMessage())
+    }
+
+    func testCodexRowReflectsActiveRefreshFlag() {
+        let enabled = AccountSettingsModel(
+            payload: .preview,
+            configuredAPIKeys: [],
+            codexActiveRefresh: true
+        )
+        let disabled = AccountSettingsModel(
+            payload: .preview,
+            configuredAPIKeys: [],
+            codexActiveRefresh: false
+        )
+
+        let enabledRow = enabled.rows.first { $0.id == .codex }
+        let disabledRow = disabled.rows.first { $0.id == .codex }
+        XCTAssertTrue(enabledRow?.configured ?? false)
+        XCTAssertFalse(disabledRow?.configured ?? true)
+    }
 }

@@ -22,6 +22,7 @@
 		D38192171F7B63332CC3F2E0 /* APIKeyStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */; };
 		E1A9D102642B838CEC5E0AC2 /* UsageContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */; };
 		F908CF41E410AF049131EE37 /* QuotaWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5555B59E6BC13C01742BF87E /* QuotaWidget.swift */; };
+		FA82E2D50AF1100A3871F9A1 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 809D8D69348687DB661CCEA0 /* AccountSettingsView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -66,6 +67,7 @@
 		6AC74E158F9E7CF5C7A45A26 /* QuotaWidgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QuotaWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7FB8541A0C552866932C346F /* UsageContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageContractTests.swift; sourceTree = "<group>"; };
 		8060F7384E94F23C12BAF56E /* kimi-code.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "kimi-code.png"; sourceTree = "<group>"; };
+		809D8D69348687DB661CCEA0 /* AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
 		83B2F686AE6622C66E97AB7A /* claude-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "claude-app.png"; sourceTree = "<group>"; };
 		84083F78F49E30915AB023A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageContract.swift; sourceTree = "<group>"; };
@@ -81,6 +83,7 @@
 		188B21B878136247204D3C41 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				809D8D69348687DB661CCEA0 /* AccountSettingsView.swift */,
 				9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */,
 				84083F78F49E30915AB023A6 /* Info.plist */,
 				B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */,
@@ -302,6 +305,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				74CD11898B71BE0D3AE73420 /* APIKeyStore.swift in Sources */,
+				FA82E2D50AF1100A3871F9A1 /* AccountSettingsView.swift in Sources */,
 				5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */,
 				E1A9D102642B838CEC5E0AC2 /* UsageContract.swift in Sources */,
 				572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */,
