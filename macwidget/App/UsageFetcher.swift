@@ -24,13 +24,40 @@ struct UsageFetcher {
             ? development : nil
     }
 
-    static func fetch(timeout: TimeInterval = 30) throws -> String {
+    static func environment(
+        base: [String: String] = ProcessInfo.processInfo.environment,
+        apiKeys: [APIKeyProviderID: String]
+    ) -> [String: String] {
+        var env = base
+        for (provider, key) in apiKeys {
+            env[provider.envName] = key
+        }
+        return env
+    }
+
+    static func providerStatus(from json: String, providerKey: String) -> UsageProvider? {
+        guard let data = json.data(using: .utf8),
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let providerObject = root[providerKey] else {
+            return nil
+        }
+        guard let providerData = try? JSONSerialization.data(withJSONObject: providerObject) else {
+            return nil
+        }
+        return try? JSONDecoder().decode(UsageProvider.self, from: providerData)
+    }
+
+    static func fetch(
+        timeout: TimeInterval = 30,
+        apiKeys: [APIKeyProviderID: String] = [:]
+    ) throws -> String {
         guard let script = scriptPath() else {
             throw UsageFetcherError.missingScript
         }
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
         process.arguments = [script]
+        process.environment = environment(apiKeys: apiKeys)
         let output = Pipe()
         process.standardOutput = output
         process.standardError = Pipe()

@@ -68,4 +68,31 @@ final class UsageContractTests: XCTestCase {
         XCTAssertEqual(ProviderPresentation.balanceAmount(balance), "$24.58")
         XCTAssertFalse(ProviderPresentation.balanceTrend(burn).isEmpty)
     }
+
+    func testFetcherEnvironmentIncludesConfiguredAPIKeys() {
+        let env = UsageFetcher.environment(
+            base: ["PATH": "/usr/bin"],
+            apiKeys: [.deepseek: "deepseek-key", .openrouter: "openrouter-key"]
+        )
+
+        XCTAssertEqual(env["PATH"], "/usr/bin")
+        XCTAssertEqual(env["DEEPSEEK_API_KEY"], "deepseek-key")
+        XCTAssertEqual(env["OPENROUTER_API_KEY"], "openrouter-key")
+        XCTAssertNil(env["SILICONFLOW_API_KEY"])
+    }
+
+    func testProviderStatusFromJSONSanitizesValues() throws {
+        let json = """
+        {
+          "schema_version": 1,
+          "deepseek": {
+            "ok": true, "kind": "balance", "live": true, "fetched_at": 120,
+            "balance": {"amount": 110.0, "currency": "CNY", "available": true, "label": "Balance"}
+          }
+        }
+        """
+        let provider = UsageFetcher.providerStatus(from: json, providerKey: "deepseek")
+        XCTAssertEqual(provider?.balance?.amount, 110.0)
+        XCTAssertNil(UsageFetcher.providerStatus(from: json, providerKey: "siliconflow"))
+    }
 }
