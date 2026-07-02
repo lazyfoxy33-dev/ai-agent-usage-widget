@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 enum AccountProviderID: String, CaseIterable, Identifiable {
     case claude, codex, kimi, deepseek, siliconflow, openrouter
@@ -176,35 +177,167 @@ struct AccountSettingsModel: Equatable {
     }
 }
 
+extension APIKeyProviderID {
+    var name: String {
+        switch self {
+        case .deepseek: return "DeepSeek"
+        case .siliconflow: return "SiliconFlow"
+        case .openrouter: return "OpenRouter"
+        }
+    }
+}
+
+@MainActor
+final class AccountSettingsViewModel: ObservableObject {
+    @Published private(set) var model = AccountSettingsModel()
+    @Published var editingProvider: APIKeyProviderID?
+    @Published var keyInput = ""
+    @Published private(set) var isTesting = false
+
+    private let apiKeyStore: APIKeyStore
+    private let configStore: AppConfigStore
+    private let usageStore: UsageStore
+
+    init(
+        apiKeyStore: APIKeyStore = APIKeyStore(),
+        configStore: AppConfigStore = AppConfigStore(),
+        usageStore: UsageStore = UsageStore()
+    ) {
+        self.apiKeyStore = apiKeyStore
+        self.configStore = configStore
+        self.usageStore = usageStore
+        reload()
+    }
+
+    func reload() {
+        let payload = (try? usageStore.read()).flatMap { json in
+            try? UsagePayload.decode(Data(json.utf8))
+        }
+        let configured = Set(APIKeyProviderID.allCases.filter { provider in
+            (try? apiKeyStore.read(provider)) != nil
+        })
+        let codexActive = configStore.readCodexActiveRefresh()
+
+        model = AccountSettingsModel(
+            payload: payload,
+            configuredAPIKeys: configured,
+            codexActiveRefresh: codexActive
+        )
+    }
+
+    func beginEdit(_ provider: APIKeyProviderID) {
+        keyInput = ""
+        editingProvider = provider
+    }
+
+    func saveKey() {
+        guard let provider = editingProvider, !keyInput.isEmpty else { return }
+        try? apiKeyStore.save(keyInput, for: provider)
+        editingProvider = nil
+        reload()
+    }
+
+    func deleteKey(_ provider: APIKeyProviderID) {
+        try? apiKeyStore.delete(provider)
+        reload()
+    }
+
+    func testProviders() {
+        isTesting = true
+        let apiKeyStore = self.apiKeyStore
+        Task.detached { [weak self] in
+            do {
+                let keys = (try? QuotaWidgetModel.apiKeys(from: apiKeyStore)) ?? [:]
+                let json = try UsageFetcher.fetch(apiKeys: keys)
+                await MainActor.run {
+                    try? self?.usageStore.write(json)
+                    self?.reload()
+                    self?.isTesting = false
+                }
+            } catch {
+                await MainActor.run {
+                    self?.reload()
+                    self?.isTesting = false
+                }
+            }
+        }
+    }
+
+    func toggleCodexProbe() {
+        let newValue = !model.codexActiveRefresh
+        try? configStore.writeCodexActiveRefresh(enabled: newValue)
+        reload()
+    }
+
+    func openLoginHelp(for id: AccountProviderID) {
+        let urlString: String
+        switch id {
+        case .claude: urlString = "https://claude.ai/settings"
+        case .kimi: urlString = "https://kimi.moonshot.cn/"
+        case .codex: urlString = "https://platform.openai.com/"
+        default: return
+        }
+        guard let url = URL(string: urlString) else { return }
+        NSWorkspace.shared.open(url)
+    }
+}
+
 struct AccountSettingsView: View {
-    let model: AccountSettingsModel
+    @StateObject private var viewModel: AccountSettingsViewModel
+
+    init(viewModel: AccountSettingsViewModel) {
+        _viewModel = StateObject(wrappedValue: viewModel)
+    }
 
     var body: some View {
         List {
             Section("Local agent accounts") {
-                ForEach(model.rows.filter { $0.kind == .localAgent }) { row in
-                    AccountRowView(row: row)
+                ForEach(viewModel.model.rows.filter { $0.kind == .localAgent }) { row in
+                    AccountRowView(
+                        row: row,
+                        onToggleProbe: { viewModel.toggleCodexProbe() },
+                        onLoginHelp: { viewModel.openLoginHelp(for: row.id) }
+                    )
                 }
             }
 
             Section("API balance accounts") {
-                ForEach(model.rows.filter { $0.kind == .apiKey }) { row in
-                    AccountRowView(row: row)
+                ForEach(viewModel.model.rows.filter { $0.kind == .apiKey }) { row in
+                    AccountRowView(
+                        row: row,
+                        onAddKey: { row.id.apiKeyID.map(viewModel.beginEdit) },
+                        onRemoveKey: { row.id.apiKeyID.map(viewModel.deleteKey) },
+                        onTest: { viewModel.testProviders() }
+                    )
                 }
             }
 
-            Section {
-                Text("API keys are stored in the macOS Keychain and are never shared with the widget extension.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
         }
         .frame(minWidth: 360, minHeight: 400)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("Test All") { viewModel.testProviders() }
+                    .disabled(viewModel.isTesting)
+            }
+        }
+        .sheet(item: $viewModel.editingProvider) { provider in
+            APIKeySheet(
+                provider: provider,
+                keyInput: $viewModel.keyInput,
+                onSave: viewModel.saveKey
+            )
+        }
+        .onAppear { viewModel.reload() }
     }
 }
 
 struct AccountRowView: View {
     let row: AccountRowState
+    var onAddKey: (() -> Void)?
+    var onRemoveKey: (() -> Void)?
+    var onTest: (() -> Void)?
+    var onToggleProbe: (() -> Void)?
+    var onLoginHelp: (() -> Void)?
 
     var body: some View {
         HStack {
@@ -230,9 +363,46 @@ struct AccountRowView: View {
                     .multilineTextAlignment(.trailing)
             }
 
+            rowActions
+
             StatusIndicator(configured: row.configured)
         }
         .padding(.vertical, 2)
+    }
+
+    @ViewBuilder
+    private var rowActions: some View {
+        switch row.id.kind {
+        case .localAgent:
+            if row.id == .codex {
+                Button(row.configured ? "Disable Probe" : "Enable Probe") {
+                    onToggleProbe?()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else {
+                Button("Open") {
+                    onLoginHelp?()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        case .apiKey:
+            if row.configured {
+                HStack(spacing: 4) {
+                    Button("Test") { onTest?() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    Button("Remove") { onRemoveKey?() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            } else {
+                Button("Add Key") { onAddKey?() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            }
+        }
     }
 }
 
@@ -245,12 +415,46 @@ struct StatusIndicator: View {
     }
 }
 
+struct APIKeySheet: View {
+    let provider: APIKeyProviderID
+    @Binding var keyInput: String
+    let onSave: () -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("\(provider.name) API Key")
+                .font(.headline)
+            SecureField("API Key", text: $keyInput)
+                .textFieldStyle(.roundedBorder)
+            HStack {
+                Spacer()
+                Button("Cancel") { dismiss() }
+                Button("Save") {
+                    onSave()
+                    dismiss()
+                }
+                .disabled(keyInput.isEmpty)
+                .buttonStyle(.borderedProminent)
+            }
+        }
+        .padding()
+        .frame(minWidth: 320)
+    }
+}
+
 #Preview {
     AccountSettingsView(
-        model: AccountSettingsModel(
-            payload: .preview,
-            configuredAPIKeys: [.siliconflow],
-            codexActiveRefresh: false
+        viewModel: AccountSettingsViewModel(
+            apiKeyStore: APIKeyStore(backend: InMemoryCredentialBackend()),
+            configStore: AppConfigStore(
+                baseDirectory: FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            ),
+            usageStore: UsageStore(containerURLProvider: {
+                FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            })
         )
     )
 }

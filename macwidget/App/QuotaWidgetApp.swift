@@ -49,38 +49,66 @@ final class QuotaWidgetModel: ObservableObject {
         }
     }
 
+    nonisolated static func apiKeys(from store: APIKeyStore) throws -> [APIKeyProviderID: String] {
+        var keys: [APIKeyProviderID: String] = [:]
+        for provider in APIKeyProviderID.allCases {
+            if let value = try store.read(provider) {
+                keys[provider] = value
+            }
+        }
+        return keys
+    }
+
     func refresh() {
         status = "正在刷新…"
-        Task.detached {
+        Task.detached { [weak self] in
             do {
-                let json = try UsageFetcher.fetch()
+                let store = APIKeyStore()
+                let keys = (try? QuotaWidgetModel.apiKeys(from: store)) ?? [:]
+                let json = try UsageFetcher.fetch(apiKeys: keys)
                 try UsageStore().write(json)
                 await MainActor.run {
                     WidgetCenter.shared.reloadAllTimelines()
-                    self.status = "已刷新 \(Date().formatted(date: .omitted, time: .shortened))"
+                    self?.status = "已刷新 \(Date().formatted(date: .omitted, time: .shortened))"
                 }
             } catch {
                 await MainActor.run {
-                    self.status = "刷新失败 · 保留上次数据"
+                    self?.status = "刷新失败 · 保留上次数据"
                 }
             }
         }
     }
 }
 
+struct MenuBarContentView: View {
+    @ObservedObject var model: QuotaWidgetModel
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Text(model.status)
+        Divider()
+        Button("Settings...") { openSettings() }
+        Button("立即刷新") { model.refresh() }
+        Divider()
+        Button("退出") { NSApplication.shared.terminate(nil) }
+    }
+}
+
 @main
 struct QuotaWidgetApp: App {
     @StateObject private var model = QuotaWidgetModel()
+    @StateObject private var settingsModel = AccountSettingsViewModel()
 
     var body: some Scene {
         MenuBarExtra("QuotaWidget", systemImage: "gauge.with.dots.needle.67percent") {
-            Text(model.status)
-            Divider()
-            Button("立即刷新") { model.refresh() }
-            Button("退出") { NSApplication.shared.terminate(nil) }
+            MenuBarContentView(model: model)
         }
         .onChange(of: model.status, initial: true) {
             if model.status == "等待首次刷新" { model.start() }
+        }
+
+        Settings {
+            AccountSettingsView(viewModel: settingsModel)
         }
     }
 }

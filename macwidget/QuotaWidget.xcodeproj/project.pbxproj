@@ -17,6 +17,7 @@
 		6F452D2E46ADD0D6463835E4 /* codex-app.png in Resources */ = {isa = PBXBuildFile; fileRef = E6DD29948C08249FDE990314 /* codex-app.png */; };
 		74CD11898B71BE0D3AE73420 /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */; };
 		7F29DEE2E20A48DBBE0CF80C /* kimi-code.png in Resources */ = {isa = PBXBuildFile; fileRef = 8060F7384E94F23C12BAF56E /* kimi-code.png */; };
+		996E6998CA9340194DA5D802 /* AppConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */; };
 		9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10993021F1557349A9B061FA /* UsageStoreTests.swift */; };
 		C325E7E78EF71C2B5C9522EA /* QuotaWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 356B98571E684BBF6525EB00 /* QuotaWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D38192171F7B63332CC3F2E0 /* APIKeyStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */; };
@@ -77,6 +78,7 @@
 		B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuotaWidgetApp.entitlements; sourceTree = "<group>"; };
 		E6DD29948C08249FDE990314 /* codex-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "codex-app.png"; sourceTree = "<group>"; };
 		E928D1CB72EE1ED85B404C9C /* QuotaWidgetApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -85,6 +87,7 @@
 			children = (
 				809D8D69348687DB661CCEA0 /* AccountSettingsView.swift */,
 				9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */,
+				EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */,
 				84083F78F49E30915AB023A6 /* Info.plist */,
 				B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */,
 				229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */,
@@ -306,6 +309,7 @@
 			files = (
 				74CD11898B71BE0D3AE73420 /* APIKeyStore.swift in Sources */,
 				FA82E2D50AF1100A3871F9A1 /* AccountSettingsView.swift in Sources */,
+				996E6998CA9340194DA5D802 /* AppConfigStore.swift in Sources */,
 				5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */,
 				E1A9D102642B838CEC5E0AC2 /* UsageContract.swift in Sources */,
 				572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */,

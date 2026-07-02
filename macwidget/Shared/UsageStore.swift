@@ -1,9 +1,9 @@
 import Foundation
 
-struct UsageStore {
-    private let containerURLProvider: () -> URL?
+struct UsageStore: Sendable {
+    private let containerURLProvider: @Sendable () -> URL?
 
-    init(containerURLProvider: @escaping () -> URL? = UsageStore.defaultContainerURL) {
+    init(containerURLProvider: @escaping @Sendable () -> URL? = UsageStore.defaultContainerURL) {
         self.containerURLProvider = containerURLProvider
     }
 

@@ -17,13 +17,13 @@ enum APIKeyProviderID: String, CaseIterable, Identifiable {
     }
 }
 
-protocol CredentialBackend {
+protocol CredentialBackend: Sendable {
     func read(service: String, account: String) throws -> String?
     func save(_ value: String, service: String, account: String) throws
     func delete(service: String, account: String) throws
 }
 
-struct APIKeyStore {
+struct APIKeyStore: Sendable {
     static let defaultService = "AI Agent Usage Widget"
 
     private let backend: CredentialBackend

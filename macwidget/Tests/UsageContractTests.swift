@@ -155,4 +155,86 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(enabledRow?.configured ?? false)
         XCTAssertFalse(disabledRow?.configured ?? true)
     }
+
+    func testCollectsOnlyConfiguredAPIKeys() throws {
+        let backend = InMemoryCredentialBackend()
+        let store = APIKeyStore(backend: backend)
+        try store.save("sf-key", for: .siliconflow)
+
+        let keys = try QuotaWidgetModel.apiKeys(from: store)
+
+        XCTAssertEqual(keys, [.siliconflow: "sf-key"])
+    }
+
+    @MainActor
+    func testTestProvidersUsesInjectedStores() async throws {
+        // Given: an injected API key store with a DeepSeek key.
+        let apiBackend = InMemoryCredentialBackend()
+        let apiKeyStore = APIKeyStore(backend: apiBackend)
+        try apiKeyStore.save("injected-key", for: .deepseek)
+
+        // Given: an injected usage store in a temp directory.
+        let usageDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let usageStore = UsageStore(containerURLProvider: { usageDirectory })
+
+        // Given: a fake fetch script that validates the injected key is passed
+        // and returns valid usage JSON.
+        let scriptDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: scriptDirectory,
+            withIntermediateDirectories: true
+        )
+        let scriptURL = scriptDirectory.appendingPathComponent("fetch_usage.py")
+        let script = """
+        import json, os, sys
+        key = os.environ.get("DEEPSEEK_API_KEY", "NONE")
+        if key != "injected-key":
+            sys.stderr.write("expected injected-key, got: %s\\n" % key)
+            sys.exit(1)
+        print(json.dumps({"schema_version": 1, "claude": {"ok": False}, "codex": {"ok": False}, "kimi": {"ok": False}, "deepseek": {"ok": True, "kind": "balance", "live": True, "fetched_at": 1, "balance": {"amount": 42.0, "currency": "CNY", "available": True, "label": "Balance"}}, "siliconflow": {"ok": False}, "openrouter": {"ok": False}}))
+        """
+        try script.write(to: scriptURL, atomically: true, encoding: .utf8)
+
+        setenv("QUOTAWIDGET_FETCH", scriptURL.path, 1)
+        defer {
+            unsetenv("QUOTAWIDGET_FETCH")
+            try? FileManager.default.removeItem(at: scriptDirectory)
+            try? FileManager.default.removeItem(at: usageDirectory)
+        }
+
+        let configDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let configStore = AppConfigStore(baseDirectory: configDirectory)
+
+        let viewModel = AccountSettingsViewModel(
+            apiKeyStore: apiKeyStore,
+            configStore: configStore,
+            usageStore: usageStore
+        )
+
+        // When: refresh providers using the injected stores.
+        viewModel.testProviders()
+
+        // Then: wait for the async work to finish while yielding the main actor
+        // so the view model's MainActor continuation can run.
+        let start = Date()
+        while viewModel.isTesting && Date().timeIntervalSince(start) < 5 {
+            await Task.yield()
+            try await Task.sleep(nanoseconds: 10_000_000)
+        }
+
+        XCTAssertFalse(viewModel.isTesting, "testProviders should complete within timeout")
+
+        let deepseekRow = viewModel.model.rows.first { $0.id == .deepseek }
+        XCTAssertNotNil(
+            deepseekRow?.balanceSummary,
+            "Injected usage store should receive the fetched JSON"
+        )
+        XCTAssertTrue(
+            deepseekRow?.balanceSummary?.contains("¥42.00") ?? false,
+            "Injected API key store should supply the key to the fetch"
+        )
+    }
 }
