@@ -19,17 +19,19 @@ MAX_SECONDS = 21600          # cap at 6 h
 RATE_LIMIT_MIN_SECONDS = 3600  # a 429 waits at least 1 h
 
 
-def due(path, now=None):
+def due(path, now=None, scope=None):
     """True if a refresh may be attempted now (no active backoff window)."""
     now = time.time() if now is None else now
     state = _load(path)
+    if scope is not None and state.get("scope") != scope:
+        return True
     try:
         return now >= float(state.get("next_at", 0))
     except (TypeError, ValueError):
         return True
 
 
-def note_failure(path, now=None, rate_limited=False):
+def note_failure(path, now=None, rate_limited=False, scope=None):
     """Record a failed refresh and extend the backoff exponentially."""
     now = time.time() if now is None else now
     state = _load(path)
@@ -40,7 +42,10 @@ def note_failure(path, now=None, rate_limited=False):
     delay = min(MAX_SECONDS, BASE_SECONDS * (2 ** (fails - 1)))
     if rate_limited:
         delay = max(delay, RATE_LIMIT_MIN_SECONDS)
-    _save(path, {"fails": fails, "next_at": int(now + delay)})
+    data = {"fails": fails, "next_at": int(now + delay)}
+    if scope is not None:
+        data["scope"] = scope
+    _save(path, data)
 
 
 def clear(path):

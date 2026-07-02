@@ -8,6 +8,12 @@ from usage import claude
 
 
 class TestClaudeAuth(unittest.TestCase):
+    def test_refresh_token_endpoint_uses_anthropic_api_host(self):
+        self.assertEqual(
+            claude.OAUTH_TOKEN_URL,
+            "https://api.anthropic.com/v1/oauth/token",
+        )
+
     def test_expired_token_detected(self):
         creds = {"accessToken": "tok", "expiresAt": 1000 * 1000}  # ms
         self.assertTrue(claude.is_expired(creds, now=2000))  # now=2000s > 1000s

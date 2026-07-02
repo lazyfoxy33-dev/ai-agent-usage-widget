@@ -22,6 +22,11 @@ class TestRefreshBackoff(unittest.TestCase):
         self.assertFalse(rb.due(self.path, now=1000 + rb.BASE_SECONDS - 1))
         self.assertTrue(rb.due(self.path, now=1000 + rb.BASE_SECONDS))
 
+    def test_different_scope_is_attemptable(self):
+        rb.note_failure(self.path, now=1000, scope="old-endpoint")
+        self.assertFalse(rb.due(self.path, now=1000, scope="old-endpoint"))
+        self.assertTrue(rb.due(self.path, now=1000, scope="new-endpoint"))
+
     def test_backoff_grows_exponentially(self):
         # Two consecutive failures → ~2x BASE, capped at MAX.
         rb.note_failure(self.path, now=0)

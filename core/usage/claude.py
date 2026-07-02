@@ -20,7 +20,7 @@ from . import credential_store
 from . import refresh_backoff
 
 USAGE_URL = "https://api.anthropic.com/api/oauth/usage"
-OAUTH_TOKEN_URL = "https://platform.claude.com/v1/oauth/token"
+OAUTH_TOKEN_URL = "https://api.anthropic.com/v1/oauth/token"
 CLIENT_ID = "9d1c250a-e61b-44d9-88ed-5944d1962f5e"
 REFRESH_LOCK_PATH = os.path.expanduser("~/.cache/usage-widget/claude-oauth")
 # A successful refresh yields an ~8h token (self-limiting); failures escalate via
@@ -269,16 +269,25 @@ def _refresh_creds(creds, now=None):
         refresh_token = active.get("refreshToken")
         if not refresh_token:
             raise ClaudeRefreshUnauthorized("Missing refresh token")
-        if not refresh_backoff.due(REFRESH_BACKOFF_PATH, now):
+        if not refresh_backoff.due(REFRESH_BACKOFF_PATH, now, scope=OAUTH_TOKEN_URL):
             raise ClaudeRefreshThrottled("backing off after a recent failure")
 
         try:
             refreshed = _http_refresh(refresh_token)
         except ClaudeRefreshRateLimited:
-            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH, now, rate_limited=True)
+            refresh_backoff.note_failure(
+                REFRESH_BACKOFF_PATH,
+                now,
+                rate_limited=True,
+                scope=OAUTH_TOKEN_URL,
+            )
             raise
         except Exception:
-            refresh_backoff.note_failure(REFRESH_BACKOFF_PATH, now)
+            refresh_backoff.note_failure(
+                REFRESH_BACKOFF_PATH,
+                now,
+                scope=OAUTH_TOKEN_URL,
+            )
             raise
         refresh_backoff.clear(REFRESH_BACKOFF_PATH)
 
