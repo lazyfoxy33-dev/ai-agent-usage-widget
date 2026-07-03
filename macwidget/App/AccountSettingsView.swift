@@ -193,6 +193,8 @@ final class AccountSettingsViewModel: ObservableObject {
     @Published var editingProvider: APIKeyProviderID?
     @Published var keyInput = ""
     @Published private(set) var isTesting = false
+    @Published private(set) var saveErrorText: String?
+    @Published private(set) var saveStatusText: String?
 
     private let apiKeyStore: APIKeyStore
     private let configStore: AppConfigStore
@@ -227,19 +229,43 @@ final class AccountSettingsViewModel: ObservableObject {
 
     func beginEdit(_ provider: APIKeyProviderID) {
         keyInput = ""
+        saveErrorText = nil
+        saveStatusText = nil
         editingProvider = provider
     }
 
-    func saveKey() {
-        guard let provider = editingProvider, !keyInput.isEmpty else { return }
-        try? apiKeyStore.save(keyInput, for: provider)
-        editingProvider = nil
-        reload()
+    @discardableResult
+    func saveKey() -> Bool {
+        guard let provider = editingProvider else { return false }
+        let trimmedKey = keyInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedKey.isEmpty else {
+            saveErrorText = "请输入 API Key"
+            return false
+        }
+
+        do {
+            try apiKeyStore.save(trimmedKey, for: provider)
+            keyInput = ""
+            editingProvider = nil
+            saveErrorText = nil
+            saveStatusText = "\(provider.name) API Key 已保存"
+            reload()
+            return true
+        } catch {
+            saveErrorText = "保存失败：\(Self.errorDescription(error))"
+            return false
+        }
     }
 
     func deleteKey(_ provider: APIKeyProviderID) {
-        try? apiKeyStore.delete(provider)
-        reload()
+        do {
+            try apiKeyStore.delete(provider)
+            saveErrorText = nil
+            saveStatusText = "\(provider.name) API Key 已移除"
+            reload()
+        } catch {
+            saveErrorText = "移除失败：\(Self.errorDescription(error))"
+        }
     }
 
     func testProviders() {
@@ -267,6 +293,13 @@ final class AccountSettingsViewModel: ObservableObject {
         let newValue = !model.codexActiveRefresh
         try? configStore.writeCodexActiveRefresh(enabled: newValue)
         reload()
+    }
+
+    private static func errorDescription(_ error: Error) -> String {
+        if let described = error as? CustomStringConvertible {
+            return described.description
+        }
+        return error.localizedDescription
     }
 
     func openLoginHelp(for id: AccountProviderID) {
@@ -320,10 +353,19 @@ struct AccountSettingsView: View {
                     .disabled(viewModel.isTesting)
             }
         }
+        .overlay(alignment: .bottomLeading) {
+            if let saveStatusText = viewModel.saveStatusText {
+                Text(saveStatusText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(12)
+            }
+        }
         .sheet(item: $viewModel.editingProvider) { provider in
             APIKeySheet(
                 provider: provider,
                 keyInput: $viewModel.keyInput,
+                errorText: viewModel.saveErrorText,
                 onSave: viewModel.saveKey
             )
         }
@@ -418,7 +460,8 @@ struct StatusIndicator: View {
 struct APIKeySheet: View {
     let provider: APIKeyProviderID
     @Binding var keyInput: String
-    let onSave: () -> Void
+    let errorText: String?
+    let onSave: () -> Bool
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -427,14 +470,21 @@ struct APIKeySheet: View {
                 .font(.headline)
             SecureField("API Key", text: $keyInput)
                 .textFieldStyle(.roundedBorder)
+            if let errorText {
+                Text(errorText)
+                    .font(.caption)
+                    .foregroundStyle(.red)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
             HStack {
                 Spacer()
                 Button("Cancel") { dismiss() }
                 Button("Save") {
-                    onSave()
-                    dismiss()
+                    if onSave() {
+                        dismiss()
+                    }
                 }
-                .disabled(keyInput.isEmpty)
+                .disabled(keyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 .buttonStyle(.borderedProminent)
             }
         }

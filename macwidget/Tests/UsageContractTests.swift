@@ -167,6 +167,54 @@ final class UsageContractTests: XCTestCase {
     }
 
     @MainActor
+    func testSaveKeyReturnsSuccessAndReloadsConfiguredProvider() throws {
+        let backend = InMemoryCredentialBackend()
+        let viewModel = AccountSettingsViewModel(
+            apiKeyStore: APIKeyStore(backend: backend),
+            configStore: AppConfigStore(
+                baseDirectory: FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            ),
+            usageStore: UsageStore(containerURLProvider: {
+                FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            })
+        )
+
+        viewModel.beginEdit(.deepseek)
+        viewModel.keyInput = "  deepseek-key  "
+
+        XCTAssertTrue(viewModel.saveKey())
+        XCTAssertNil(viewModel.editingProvider)
+        XCTAssertEqual(viewModel.saveErrorText, nil)
+        XCTAssertEqual(try backend.read(service: APIKeyStore.defaultService, account: "deepseek"), "deepseek-key")
+        XCTAssertTrue(viewModel.model.configuredAPIKeys.contains(.deepseek))
+    }
+
+    @MainActor
+    func testSaveKeyKeepsSheetOpenAndShowsErrorWhenCredentialStoreFails() {
+        let viewModel = AccountSettingsViewModel(
+            apiKeyStore: APIKeyStore(backend: FailingCredentialBackend()),
+            configStore: AppConfigStore(
+                baseDirectory: FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            ),
+            usageStore: UsageStore(containerURLProvider: {
+                FileManager.default.temporaryDirectory
+                    .appendingPathComponent(UUID().uuidString, isDirectory: true)
+            })
+        )
+
+        viewModel.beginEdit(.openrouter)
+        viewModel.keyInput = "openrouter-key"
+
+        XCTAssertFalse(viewModel.saveKey())
+        XCTAssertEqual(viewModel.editingProvider, .openrouter)
+        XCTAssertEqual(viewModel.saveErrorText, "保存失败：forced failure")
+        XCTAssertFalse(viewModel.model.configuredAPIKeys.contains(.openrouter))
+    }
+
+    @MainActor
     func testSettingsPresenterActivatesAppBeforeOpeningSettingsAndRaisesWindowAfterwards() {
         var events: [String] = []
         let presenter = SettingsPresenter(
@@ -252,4 +300,16 @@ final class UsageContractTests: XCTestCase {
             "Injected API key store should supply the key to the fetch"
         )
     }
+}
+
+private struct FailingCredentialBackend: CredentialBackend {
+    func read(service: String, account: String) throws -> String? { nil }
+    func save(_ value: String, service: String, account: String) throws {
+        throw FailingCredentialError()
+    }
+    func delete(service: String, account: String) throws {}
+}
+
+private struct FailingCredentialError: Error, CustomStringConvertible {
+    var description: String { "forced failure" }
 }
