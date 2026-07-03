@@ -87,10 +87,47 @@ struct MenuBarContentView: View {
     var body: some View {
         Text(model.status)
         Divider()
-        Button("Settings...") { openSettings() }
+        Button("Settings...") { SettingsPresenter.app(openSettings: { openSettings() }).present() }
         Button("立即刷新") { model.refresh() }
         Divider()
         Button("退出") { NSApplication.shared.terminate(nil) }
+    }
+}
+
+@MainActor
+struct SettingsPresenter {
+    var activateApplication: () -> Void
+    var openSettings: () -> Void
+    var raiseSettingsWindow: () -> Void
+    var scheduleAfterOpen: (@escaping @MainActor () -> Void) -> Void
+
+    func present() {
+        activateApplication()
+        openSettings()
+        scheduleAfterOpen {
+            activateApplication()
+            raiseSettingsWindow()
+        }
+    }
+
+    static func app(openSettings: @escaping () -> Void) -> SettingsPresenter {
+        SettingsPresenter(
+            activateApplication: {
+                NSApplication.shared.activate()
+            },
+            openSettings: openSettings,
+            raiseSettingsWindow: {
+                NSApplication.shared.windows
+                    .filter { $0.isVisible && $0.canBecomeKey }
+                    .forEach {
+                        $0.makeKeyAndOrderFront(nil)
+                        $0.orderFrontRegardless()
+                    }
+            },
+            scheduleAfterOpen: { action in
+                DispatchQueue.main.async { action() }
+            }
+        )
     }
 }
 

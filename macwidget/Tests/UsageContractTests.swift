@@ -167,6 +167,21 @@ final class UsageContractTests: XCTestCase {
     }
 
     @MainActor
+    func testSettingsPresenterActivatesAppBeforeOpeningSettingsAndRaisesWindowAfterwards() {
+        var events: [String] = []
+        let presenter = SettingsPresenter(
+            activateApplication: { events.append("activate") },
+            openSettings: { events.append("open") },
+            raiseSettingsWindow: { events.append("raise") },
+            scheduleAfterOpen: { action in action() }
+        )
+
+        presenter.present()
+
+        XCTAssertEqual(events, ["activate", "open", "activate", "raise"])
+    }
+
+    @MainActor
     func testTestProvidersUsesInjectedStores() async throws {
         // Given: an injected API key store with a DeepSeek key.
         let apiBackend = InMemoryCredentialBackend()
