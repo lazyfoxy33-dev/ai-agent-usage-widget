@@ -58,4 +58,18 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         try? FileManager.default.removeItem(at: root)
     }
+
+    func testWidgetKitStatusIsBundledAndReportsSharedStateDetail() {
+        let store = DisplayLayerStore(
+            homeDirectory: URL(fileURLWithPath: "/tmp/home", isDirectory: true),
+            applicationsDirectory: URL(fileURLWithPath: "/tmp/apps", isDirectory: true),
+            processList: { [] }
+        )
+
+        let status = store.status(for: .widgetKit)
+
+        XCTAssertEqual(status.layer, .widgetKit)
+        XCTAssertTrue(status.installed)
+        XCTAssertTrue(status.detail.contains("Bundled"))
+    }
 }

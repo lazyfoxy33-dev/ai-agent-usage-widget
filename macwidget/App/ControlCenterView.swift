@@ -65,12 +65,18 @@ struct DiagnosticsPanel: View {
 
     var body: some View {
         let status = usageStore.status()
-        List {
-            LabeledContent("Shared usage state", value: status.available ? "Available" : "\(status.reason)")
-            ForEach(DisplayLayer.allCases) { layer in
-                let layerStatus = displayStore.status(for: layer)
-                LabeledContent(layer.title, value: layerStatus.detail)
+        VStack(alignment: .leading, spacing: 0) {
+            List {
+                LabeledContent("Shared usage state", value: status.available ? "Available" : "\(status.reason)")
+                ForEach(DisplayLayer.allCases) { layer in
+                    let layerStatus = displayStore.status(for: layer)
+                    LabeledContent(layer.title, value: layerStatus.detail)
+                }
             }
+            Text("If the widget appears blank, verify that QuotaWidget.app is Developer ID signed and that the WidgetKit extension is registered.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .padding()
         }
     }
 }
