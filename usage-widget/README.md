@@ -9,6 +9,8 @@ provider setup, and troubleshooting.
 
 ## 安装 / Install
 
+Recommended installation is through `QuotaWidget.app` > Settings... > Displays. Manual installation remains available for development.
+
 ```bash
 bash install.sh
 ```

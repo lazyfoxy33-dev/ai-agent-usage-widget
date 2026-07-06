@@ -9,6 +9,8 @@ QuotaWidget 是 Claude、Codex 与 Kimi Code 用量的原生 WidgetKit 前端。
 伴侣 app 每三分钟运行共享 Python 数据层，把 JSON 契约写入 App Group，并通知
 WidgetKit 刷新。
 
+`QuotaWidget.app` is the primary macOS entry point. Use **Settings...** to open the control center. The Accounts tab manages local-agent and API-balance providers. The Displays tab installs optional display layers. The WidgetKit extension is bundled with the signed app and reads only App Group state.
+
 ## Download / 下载
 
 Most users don't need to build anything: download the notarized

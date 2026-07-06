@@ -28,6 +28,17 @@ windows-widget/ Windows Tauri 无边框桌面组件 / Windows Tauri desktop widg
 All frontends consume the same JSON from `core/fetch_usage.py` and share the
 same freshness and credential-handling policy.
 
+### macOS Control App
+
+Install `QuotaWidget.app` first. It is the control app for AI Agent Usage on macOS:
+
+- configure provider accounts and API keys
+- refresh usage data
+- write sanitized shared state
+- install or update optional display layers
+
+Display layers do not store API keys.
+
 ## 功能 / Features
 
 - 五小时用量、每周用量和重置倒计时
