@@ -52,8 +52,23 @@ final class UsageContractTests: XCTestCase {
         )
     }
 
-    func testMediumWidgetUsesCompactRing() {
-        XCTAssertLessThanOrEqual(WidgetLayout.mediumRingSize, 56)
+    func testMacWidgetUsesBarPrimaryLayoutSource() throws {
+        let source = try widgetSource()
+        XCTAssertFalse(source.contains("DualRing"), "mac widget should use bar-primary rows, not the old dual-ring view")
+        XCTAssertFalse(source.contains("MetricRow"), "mac widget should use bar-primary rows, not the old metric row view")
+        XCTAssertTrue(source.contains("UsageBarRow"), "mac widget should render usage providers with bar-primary rows")
+        XCTAssertTrue(source.contains("ProviderGridColumn"), "medium widget should use provider columns for all six providers")
+    }
+
+    func testMediumWidgetIncludesAllSixProviders() throws {
+        let source = try widgetSource()
+        let expectedKinds = [
+            ".claude", ".codex", ".kimi", ".deepseek", ".siliconflow", ".openrouter"
+        ]
+
+        for kind in expectedKinds {
+            XCTAssertTrue(source.contains("ProviderGridColumn(kind: \(kind)"), "medium widget is missing \(kind)")
+        }
     }
 
     func testBalancePresentationFormatting() {
@@ -300,6 +315,42 @@ final class UsageContractTests: XCTestCase {
             "Injected API key store should supply the key to the fetch"
         )
     }
+
+    func testAPIKeyStoreUsesStableServiceAndProviderAccounts() {
+        XCTAssertEqual(APIKeyStore.defaultService, "AI Agent Usage Widget")
+        XCTAssertEqual(APIKeyProviderID.deepseek.rawValue, "deepseek")
+        XCTAssertEqual(APIKeyProviderID.siliconflow.rawValue, "siliconflow")
+        XCTAssertEqual(APIKeyProviderID.openrouter.rawValue, "openrouter")
+    }
+
+    func testAccountRowsKeepAPIProvidersInControlApp() {
+        let model = AccountSettingsModel(
+            payload: .preview,
+            configuredAPIKeys: [.deepseek, .siliconflow],
+            codexActiveRefresh: false
+        )
+
+        let apiRows = model.rows.filter { $0.kind == .apiKey }
+        XCTAssertEqual(apiRows.map(\.id), [.deepseek, .siliconflow, .openrouter])
+        XCTAssertEqual(apiRows.map(\.configured), [true, true, false])
+    }
+}
+
+private func widgetSource() throws -> String {
+    var directory = URL(fileURLWithPath: #filePath)
+    while directory.lastPathComponent != "macwidget" {
+        let parent = directory.deletingLastPathComponent()
+        if parent.path == directory.path {
+            throw NSError(
+                domain: "UsageContractTests",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "Could not locate macwidget directory"]
+            )
+        }
+        directory = parent
+    }
+    let url = directory.appendingPathComponent("Widget/QuotaWidget.swift")
+    return try String(contentsOf: url, encoding: .utf8)
 }
 
 private struct FailingCredentialBackend: CredentialBackend {
