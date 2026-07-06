@@ -34,4 +34,28 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         try? FileManager.default.removeItem(at: root)
     }
+
+    func testInstallUbersichtCopiesWidgetIntoExistingDirectories() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let source = root.appendingPathComponent("source", isDirectory: true)
+        let widgets = root.appendingPathComponent("Library/Application Support/Übersicht/widgets", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: widgets, withIntermediateDirectories: true)
+        try "widget".write(to: source.appendingPathComponent("index.jsx"), atomically: true, encoding: .utf8)
+
+        let store = DisplayLayerStore(
+            homeDirectory: root,
+            applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            processList: { [] }
+        )
+
+        try store.installUbersichtWidget(from: source)
+
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: widgets.appendingPathComponent("usage-widget/index.jsx").path
+        ))
+
+        try? FileManager.default.removeItem(at: root)
+    }
 }

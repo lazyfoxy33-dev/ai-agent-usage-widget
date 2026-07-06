@@ -11,6 +11,9 @@ class TestInstall(unittest.TestCase):
     def test_provider_assets_exist(self):
         self.assertTrue(os.path.isfile(os.path.join(ASSETS, "kimi-code.png")))
         self.assertTrue(os.path.isfile(os.path.join(ASSETS, "codex-app.png")))
+        self.assertTrue(os.path.isfile(os.path.join(ASSETS, "deepseek.png")))
+        self.assertTrue(os.path.isfile(os.path.join(ASSETS, "siliconflow.png")))
+        self.assertTrue(os.path.isfile(os.path.join(ASSETS, "openrouter.png")))
 
     def test_installer_copies_assets_directory(self):
         with open(INSTALL) as f:
@@ -18,6 +21,15 @@ class TestInstall(unittest.TestCase):
 
         self.assertIn('rm -rf "$DEST/assets"', source)
         self.assertIn('cp -R "$SRC/assets" "$DEST/"', source)
+
+    def test_installer_supports_ubersicht_unicode_directory_variants(self):
+        with open(INSTALL) as f:
+            source = f.read()
+
+        self.assertIn("BASE_DIRS=(", source)
+        self.assertIn("Übersicht/widgets", source)
+        self.assertIn("Übersicht/widgets", source)
+        self.assertIn("for BASE in", source)
 
     def test_installer_removes_obsolete_refresh_script(self):
         with open(INSTALL) as f:

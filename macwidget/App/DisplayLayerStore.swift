@@ -63,6 +63,23 @@ struct DisplayLayerStore {
         }
     }
 
+    func installUbersichtWidget(from sourceDirectory: URL) throws {
+        let destinations = Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory)
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+        let targets = destinations.isEmpty
+            ? [Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory)[0]]
+            : destinations
+
+        for base in targets {
+            let destination = base.appendingPathComponent("usage-widget", isDirectory: true)
+            if FileManager.default.fileExists(atPath: destination.path) {
+                try FileManager.default.removeItem(at: destination)
+            }
+            try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+            try FileManager.default.copyItem(at: sourceDirectory, to: destination)
+        }
+    }
+
     private static func defaultProcessList() -> [String] {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/ps")
