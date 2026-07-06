@@ -72,4 +72,75 @@ final class DisplayLayerStoreTests: XCTestCase {
         XCTAssertTrue(status.installed)
         XCTAssertTrue(status.detail.contains("Bundled"))
     }
+
+    func testBundledUbersichtInstallUsesDisplayLayerResources() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let resources = root.appendingPathComponent("resources", isDirectory: true)
+        let source = resources
+            .appendingPathComponent("display-layers/usage-widget", isDirectory: true)
+        let core = resources
+            .appendingPathComponent("core/usage", isDirectory: true)
+        try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: core, withIntermediateDirectories: true)
+        try "widget".write(to: source.appendingPathComponent("index.jsx"), atomically: true, encoding: .utf8)
+        try "fetch".write(to: resources.appendingPathComponent("core/fetch_usage.py"), atomically: true, encoding: .utf8)
+        try "module".write(to: core.appendingPathComponent("__init__.py"), atomically: true, encoding: .utf8)
+
+        let store = DisplayLayerStore(
+            homeDirectory: root,
+            applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            resourceDirectory: resources,
+            processList: { [] }
+        )
+
+        try store.installBundledUbersichtWidget()
+
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: root
+                .appendingPathComponent("Library/Application Support/Übersicht/widgets/usage-widget/index.jsx")
+                .path
+        ))
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: root
+                .appendingPathComponent("Library/Application Support/Übersicht/widgets/usage-widget/fetch_usage.py")
+                .path
+        ))
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: root
+                .appendingPathComponent("Library/Application Support/Übersicht/widgets/usage-widget/usage/__init__.py")
+                .path
+        ))
+
+        try? FileManager.default.removeItem(at: root)
+    }
+
+    func testTouchBarInstallCommandUsesBundledInstallerAndConfigurableDestination() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let resources = root.appendingPathComponent("resources", isDirectory: true)
+        let installer = resources
+            .appendingPathComponent("display-layers/touchbar/install.sh")
+        try FileManager.default.createDirectory(at: installer.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try "#!/bin/bash".write(to: installer, atomically: true, encoding: .utf8)
+
+        let store = DisplayLayerStore(
+            homeDirectory: root,
+            applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            resourceDirectory: resources,
+            processList: { [] }
+        )
+
+        let command = try store.touchBarInstallCommand()
+
+        XCTAssertEqual(command.executable.path, "/bin/bash")
+        XCTAssertEqual(command.arguments, ["install.sh"])
+        XCTAssertEqual(command.workingDirectory, installer.deletingLastPathComponent())
+        XCTAssertEqual(
+            command.environment["QUOTABAR_INSTALL_DESTINATION"],
+            root.appendingPathComponent("Applications/QuotaBar.app").path
+        )
+
+        try? FileManager.default.removeItem(at: root)
+    }
 }

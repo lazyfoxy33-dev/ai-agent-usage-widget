@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 enum DisplayLayer: String, CaseIterable, Identifiable {
@@ -24,19 +25,52 @@ struct DisplayLayerStatus: Equatable, Identifiable {
     let detail: String
 }
 
+struct DisplayLayerCommand: Equatable {
+    let executable: URL
+    let arguments: [String]
+    let workingDirectory: URL
+    let environment: [String: String]
+}
+
+enum DisplayLayerStoreError: Error, LocalizedError {
+    case missingBundledUbersichtWidget(URL)
+    case missingBundledTouchBarInstaller(URL)
+    case openFailed(URL)
+
+    var errorDescription: String? {
+        switch self {
+        case .missingBundledUbersichtWidget(let url):
+            return "Bundled Übersicht widget is missing at \(url.path)"
+        case .missingBundledTouchBarInstaller(let url):
+            return "Bundled Touch Bar installer is missing at \(url.path)"
+        case .openFailed(let url):
+            return "Could not open \(url.path)"
+        }
+    }
+}
+
 struct DisplayLayerStore {
     let homeDirectory: URL
     let applicationsDirectory: URL
+    let resourceDirectory: URL
     let processList: () -> [String]
+    let openURL: (URL) -> Bool
+    let runCommand: (DisplayLayerCommand) throws -> Void
 
     init(
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         applicationsDirectory: URL = URL(fileURLWithPath: "/Applications", isDirectory: true),
-        processList: @escaping () -> [String] = DisplayLayerStore.defaultProcessList
+        resourceDirectory: URL = Bundle.main.resourceURL ?? Bundle.main.bundleURL,
+        processList: @escaping () -> [String] = DisplayLayerStore.defaultProcessList,
+        openURL: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) },
+        runCommand: @escaping (DisplayLayerCommand) throws -> Void = DisplayLayerStore.defaultRunCommand
     ) {
         self.homeDirectory = homeDirectory
         self.applicationsDirectory = applicationsDirectory
+        self.resourceDirectory = resourceDirectory
         self.processList = processList
+        self.openURL = openURL
+        self.runCommand = runCommand
     }
 
     static func ubersichtWidgetDirectories(homeDirectory: URL) -> [URL] {
@@ -80,6 +114,78 @@ struct DisplayLayerStore {
         }
     }
 
+    func installBundledUbersichtWidget() throws {
+        let source = resourceDirectory
+            .appendingPathComponent("display-layers/usage-widget", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: source.appendingPathComponent("index.jsx").path) else {
+            throw DisplayLayerStoreError.missingBundledUbersichtWidget(source)
+        }
+        try installUbersichtWidget(from: source)
+        try installBundledCoreIntoUbersichtWidgets()
+    }
+
+    private func installBundledCoreIntoUbersichtWidgets() throws {
+        let core = resourceDirectory.appendingPathComponent("core", isDirectory: true)
+        let fetcher = core.appendingPathComponent("fetch_usage.py")
+        let usagePackage = core.appendingPathComponent("usage", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: fetcher.path) else { return }
+
+        for base in Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory) {
+            let destination = base.appendingPathComponent("usage-widget", isDirectory: true)
+            guard FileManager.default.fileExists(atPath: destination.path) else { continue }
+            let destinationFetcher = destination.appendingPathComponent("fetch_usage.py")
+            if FileManager.default.fileExists(atPath: destinationFetcher.path) {
+                try FileManager.default.removeItem(at: destinationFetcher)
+            }
+            try FileManager.default.copyItem(at: fetcher, to: destinationFetcher)
+
+            let destinationUsage = destination.appendingPathComponent("usage", isDirectory: true)
+            if FileManager.default.fileExists(atPath: destinationUsage.path) {
+                try FileManager.default.removeItem(at: destinationUsage)
+            }
+            if FileManager.default.fileExists(atPath: usagePackage.path) {
+                try FileManager.default.copyItem(at: usagePackage, to: destinationUsage)
+            }
+        }
+    }
+
+    func openUbersichtWidgetsDirectory() throws {
+        let candidates = Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory)
+        let destination = candidates.first { FileManager.default.fileExists(atPath: $0.path) } ?? candidates[0]
+        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
+        guard openURL(destination) else { throw DisplayLayerStoreError.openFailed(destination) }
+    }
+
+    func touchBarInstallCommand() throws -> DisplayLayerCommand {
+        let installer = resourceDirectory
+            .appendingPathComponent("display-layers/touchbar/install.sh")
+        guard FileManager.default.fileExists(atPath: installer.path) else {
+            throw DisplayLayerStoreError.missingBundledTouchBarInstaller(installer)
+        }
+        return DisplayLayerCommand(
+            executable: URL(fileURLWithPath: "/bin/bash"),
+            arguments: ["install.sh"],
+            workingDirectory: installer.deletingLastPathComponent(),
+            environment: [
+                "QUOTABAR_INSTALL_DESTINATION": applicationsDirectory
+                    .appendingPathComponent("QuotaBar.app")
+                    .path
+            ]
+        )
+    }
+
+    func installTouchBar() throws {
+        try runCommand(touchBarInstallCommand())
+    }
+
+    func openTouchBarApp() throws {
+        let app = applicationsDirectory.appendingPathComponent("QuotaBar.app")
+        guard FileManager.default.fileExists(atPath: app.path) else {
+            throw DisplayLayerStoreError.openFailed(app)
+        }
+        guard openURL(app) else { throw DisplayLayerStoreError.openFailed(app) }
+    }
+
     private static func defaultProcessList() -> [String] {
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/bin/ps")
@@ -93,6 +199,19 @@ struct DisplayLayerStore {
             return String(data: data, encoding: .utf8)?.components(separatedBy: .newlines) ?? []
         } catch {
             return []
+        }
+    }
+
+    private static func defaultRunCommand(_ command: DisplayLayerCommand) throws {
+        let task = Process()
+        task.executableURL = command.executable
+        task.arguments = command.arguments
+        task.currentDirectoryURL = command.workingDirectory
+        task.environment = ProcessInfo.processInfo.environment.merging(command.environment) { _, new in new }
+        try task.run()
+        task.waitUntilExit()
+        if task.terminationStatus != 0 {
+            throw CocoaError(.executableLoad)
         }
     }
 }

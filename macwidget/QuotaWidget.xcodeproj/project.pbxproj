@@ -219,6 +219,7 @@
 			buildConfigurationList = DE95DFC9566661B4DA446DBA /* Build configuration list for PBXNativeTarget "QuotaWidgetApp" */;
 			buildPhases = (
 				36893CAD1322C5810D2654EC /* Bundle shared Python core */,
+				A2D00CBE6E01454DAA314DF0 /* Bundle display layers */,
 				851324600138BA9D2C4032E4 /* Sources */,
 				EA6E295663E25C374F7B9AE4 /* Embed Foundation Extensions */,
 			);
@@ -310,6 +311,25 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "set -eu\nDESTINATION=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/core\"\nrm -rf \"$DESTINATION\"\nmkdir -p \"$DESTINATION\"\nditto \"${SRCROOT}/../core\" \"$DESTINATION\"\nfind \"$DESTINATION\" -type d -name __pycache__ -prune -exec rm -rf {} +\nfind \"$DESTINATION\" -type f -name '*.pyc' -delete\n";
+		};
+		A2D00CBE6E01454DAA314DF0 /* Bundle display layers */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle display layers";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\nDESTINATION=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/display-layers\"\nrm -rf \"$DESTINATION\"\nmkdir -p \"$DESTINATION\"\nditto \"${SRCROOT}/../usage-widget\" \"$DESTINATION/usage-widget\"\nditto \"${SRCROOT}/../touchbar\" \"$DESTINATION/touchbar\"\nfind \"$DESTINATION\" -type d \\( -name __pycache__ -o -name .build -o -name build \\) -prune -exec rm -rf {} +\nfind \"$DESTINATION\" -type f \\( -name '*.pyc' -o -name '*.jsonl' \\) -delete\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

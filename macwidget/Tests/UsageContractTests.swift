@@ -335,6 +335,29 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("DisplayLayerStore"))
     }
 
+    func testDisplaysPanelExposesDisplayLayerActions() throws {
+        let source = try sourceFile("App/ControlCenterView.swift")
+
+        XCTAssertTrue(source.contains("DisplayLayerActions"))
+        XCTAssertTrue(source.contains("Install / Update"))
+        XCTAssertTrue(source.contains("Open Folder"))
+        XCTAssertTrue(source.contains("Refresh Timelines"))
+        XCTAssertTrue(source.contains("Open Widget Gallery"))
+        XCTAssertTrue(source.contains("Open App"))
+    }
+
+    func testAppBundlesDisplayLayerInstallSources() throws {
+        let project = try sourceFile("QuotaWidget.xcodeproj/project.pbxproj")
+        let projectYAML = try sourceFile("project.yml")
+
+        XCTAssertTrue(project.contains("Bundle display layers"))
+        XCTAssertTrue(project.contains("../usage-widget"))
+        XCTAssertTrue(project.contains("../touchbar"))
+        XCTAssertTrue(projectYAML.contains("Bundle display layers"))
+        XCTAssertTrue(projectYAML.contains("../usage-widget"))
+        XCTAssertTrue(projectYAML.contains("../touchbar"))
+    }
+
     func testSettingsMenuOpensControlCenter() throws {
         let source = try sourceFile("App/QuotaWidgetApp.swift")
 

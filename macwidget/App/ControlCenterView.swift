@@ -5,6 +5,7 @@ struct ControlCenterView: View {
     let displayStore: DisplayLayerStore
     let usageStore: UsageStore
     let refreshNow: () -> Void
+    let displayActions: DisplayLayerActions
 
     var body: some View {
         TabView {
@@ -14,7 +15,7 @@ struct ControlCenterView: View {
             RefreshPanel(refreshNow: refreshNow)
                 .tabItem { Text("Refresh") }
 
-            DisplaysPanel(displayStore: displayStore)
+            DisplaysPanel(displayStore: displayStore, actions: displayActions)
                 .tabItem { Text("Displays") }
 
             DiagnosticsPanel(usageStore: usageStore, displayStore: displayStore)
@@ -22,6 +23,15 @@ struct ControlCenterView: View {
         }
         .frame(minWidth: 560, minHeight: 460)
     }
+}
+
+struct DisplayLayerActions {
+    let installUbersicht: () throws -> Void
+    let openUbersichtFolder: () throws -> Void
+    let refreshWidgetKit: () -> Void
+    let openWidgetGallery: () throws -> Void
+    let installTouchBar: () throws -> Void
+    let openTouchBar: () throws -> Void
 }
 
 struct RefreshPanel: View {
@@ -42,20 +52,67 @@ struct RefreshPanel: View {
 
 struct DisplaysPanel: View {
     let displayStore: DisplayLayerStore
+    let actions: DisplayLayerActions
+    @State private var resultText: String?
+    @State private var busyLayer: DisplayLayer?
 
     var body: some View {
-        List(DisplayLayer.allCases) { layer in
-            let status = displayStore.status(for: layer)
-            HStack {
-                VStack(alignment: .leading) {
-                    Text(layer.title).font(.headline)
-                    Text(status.detail).font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 0) {
+            List(DisplayLayer.allCases) { layer in
+                let status = displayStore.status(for: layer)
+                HStack(alignment: .center, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(layer.title).font(.headline)
+                        Text(status.detail).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Text(status.installed ? "Installed" : "Not Installed")
+                        .foregroundStyle(status.installed ? .green : .orange)
+                    actionButtons(for: layer)
                 }
-                Spacer()
-                Text(status.installed ? "Installed" : "Not Installed")
-                    .foregroundStyle(status.installed ? .green : .orange)
+            }
+            if let resultText {
+                Text(resultText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding()
             }
         }
+    }
+
+    @ViewBuilder
+    private func actionButtons(for layer: DisplayLayer) -> some View {
+        switch layer {
+        case .ubersicht:
+            Button("Install / Update") { run(layer, "Übersicht updated", actions.installUbersicht) }
+                .disabled(busyLayer != nil)
+            Button("Open Folder") { run(layer, "Übersicht folder opened", actions.openUbersichtFolder) }
+                .disabled(busyLayer != nil)
+        case .widgetKit:
+            Button("Refresh Timelines") {
+                actions.refreshWidgetKit()
+                resultText = "Widget timelines refreshed"
+            }
+            .disabled(busyLayer != nil)
+            Button("Open Widget Gallery") { run(layer, "Widget gallery opened", actions.openWidgetGallery) }
+                .disabled(busyLayer != nil)
+        case .touchBar:
+            Button("Install / Update") { run(layer, "Touch Bar app updated", actions.installTouchBar) }
+                .disabled(busyLayer != nil)
+            Button("Open App") { run(layer, "Touch Bar app opened", actions.openTouchBar) }
+                .disabled(busyLayer != nil)
+        }
+    }
+
+    private func run(_ layer: DisplayLayer, _ success: String, _ action: () throws -> Void) {
+        busyLayer = layer
+        do {
+            try action()
+            resultText = success
+        } catch {
+            resultText = error.localizedDescription
+        }
+        busyLayer = nil
     }
 }
 

@@ -145,11 +145,25 @@ struct QuotaWidgetApp: App {
         }
 
         Settings {
+            let displayStore = DisplayLayerStore()
             ControlCenterView(
                 accountViewModel: settingsModel,
-                displayStore: DisplayLayerStore(),
+                displayStore: displayStore,
                 usageStore: UsageStore(),
-                refreshNow: { model.refresh() }
+                refreshNow: { model.refresh() },
+                displayActions: DisplayLayerActions(
+                    installUbersicht: { try displayStore.installBundledUbersichtWidget() },
+                    openUbersichtFolder: { try displayStore.openUbersichtWidgetsDirectory() },
+                    refreshWidgetKit: { WidgetCenter.shared.reloadAllTimelines() },
+                    openWidgetGallery: {
+                        let settings = URL(fileURLWithPath: "/System/Applications/System Settings.app")
+                        guard NSWorkspace.shared.open(settings) else {
+                            throw DisplayLayerStoreError.openFailed(settings)
+                        }
+                    },
+                    installTouchBar: { try displayStore.installTouchBar() },
+                    openTouchBar: { try displayStore.openTouchBarApp() }
+                )
             )
         }
     }
