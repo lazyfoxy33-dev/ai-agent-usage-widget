@@ -145,7 +145,12 @@ struct QuotaWidgetApp: App {
         }
 
         Settings {
-            AccountSettingsView(viewModel: settingsModel)
+            ControlCenterView(
+                accountViewModel: settingsModel,
+                displayStore: DisplayLayerStore(),
+                usageStore: UsageStore(),
+                refreshNow: { model.refresh() }
+            )
         }
     }
 }

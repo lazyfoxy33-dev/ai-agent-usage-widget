@@ -335,6 +335,14 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("DisplayLayerStore"))
     }
 
+    func testSettingsMenuOpensControlCenter() throws {
+        let source = try sourceFile("App/QuotaWidgetApp.swift")
+
+        XCTAssertTrue(source.contains("ControlCenterView"))
+        XCTAssertTrue(source.contains("Settings..."))
+        XCTAssertTrue(source.contains("SettingsPresenter"))
+    }
+
     func testAccountRowsKeepAPIProvidersInControlApp() {
         let model = AccountSettingsModel(
             payload: .preview,
