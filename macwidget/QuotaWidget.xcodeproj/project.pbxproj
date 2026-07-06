@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		05FAA991A1472BF40CDE5650 /* UsageContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB8541A0C552866932C346F /* UsageContractTests.swift */; };
 		06F0653B013A477ABB548C4A /* DisplayLayerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD363C32152E4801A5233248 /* DisplayLayerStore.swift */; };
+		4761A8400A5F43F080B16BA3 /* ControlCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EE5DF7BBC6C46FF90F0812B /* ControlCenterView.swift */; };
 		B29AA4C48A384488B957898D /* DisplayLayerStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630975C3B44641329DB4E319 /* DisplayLayerStoreTests.swift */; };
 		161768EE7688BF587E93623E /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */; };
 		276472E028BA4ED17D37301C /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */; };
@@ -86,6 +87,7 @@
 		9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStore.swift; sourceTree = "<group>"; };
 		B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuotaWidgetApp.entitlements; sourceTree = "<group>"; };
 		BD363C32152E4801A5233248 /* DisplayLayerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLayerStore.swift; sourceTree = "<group>"; };
+		5EE5DF7BBC6C46FF90F0812B /* ControlCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlCenterView.swift; sourceTree = "<group>"; };
 		E6DD29948C08249FDE990314 /* codex-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "codex-app.png"; sourceTree = "<group>"; };
 		E928D1CB72EE1ED85B404C9C /* QuotaWidgetApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigStore.swift; sourceTree = "<group>"; };
@@ -98,6 +100,7 @@
 				809D8D69348687DB661CCEA0 /* AccountSettingsView.swift */,
 				9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */,
 				EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */,
+				5EE5DF7BBC6C46FF90F0812B /* ControlCenterView.swift */,
 				BD363C32152E4801A5233248 /* DisplayLayerStore.swift */,
 				84083F78F49E30915AB023A6 /* Info.plist */,
 				B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */,
@@ -328,6 +331,7 @@
 				74CD11898B71BE0D3AE73420 /* APIKeyStore.swift in Sources */,
 				FA82E2D50AF1100A3871F9A1 /* AccountSettingsView.swift in Sources */,
 				996E6998CA9340194DA5D802 /* AppConfigStore.swift in Sources */,
+				4761A8400A5F43F080B16BA3 /* ControlCenterView.swift in Sources */,
 				06F0653B013A477ABB548C4A /* DisplayLayerStore.swift in Sources */,
 				5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */,
 				E1A9D102642B838CEC5E0AC2 /* UsageContract.swift in Sources */,

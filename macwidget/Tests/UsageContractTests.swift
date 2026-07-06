@@ -323,6 +323,18 @@ final class UsageContractTests: XCTestCase {
         XCTAssertEqual(APIKeyProviderID.openrouter.rawValue, "openrouter")
     }
 
+    func testControlCenterDefinesExpectedTabs() throws {
+        let source = try sourceFile("App/ControlCenterView.swift")
+
+        XCTAssertTrue(source.contains("TabView"))
+        XCTAssertTrue(source.contains("Accounts"))
+        XCTAssertTrue(source.contains("Refresh"))
+        XCTAssertTrue(source.contains("Displays"))
+        XCTAssertTrue(source.contains("Diagnostics"))
+        XCTAssertTrue(source.contains("AccountSettingsView"))
+        XCTAssertTrue(source.contains("DisplayLayerStore"))
+    }
+
     func testAccountRowsKeepAPIProvidersInControlApp() {
         let model = AccountSettingsModel(
             payload: .preview,
@@ -337,6 +349,10 @@ final class UsageContractTests: XCTestCase {
 }
 
 private func widgetSource() throws -> String {
+    try sourceFile("Widget/QuotaWidget.swift")
+}
+
+private func sourceFile(_ relativePath: String) throws -> String {
     var directory = URL(fileURLWithPath: #filePath)
     while directory.lastPathComponent != "macwidget" {
         let parent = directory.deletingLastPathComponent()
@@ -349,8 +365,7 @@ private func widgetSource() throws -> String {
         }
         directory = parent
     }
-    let url = directory.appendingPathComponent("Widget/QuotaWidget.swift")
-    return try String(contentsOf: url, encoding: .utf8)
+    return try String(contentsOf: directory.appendingPathComponent(relativePath), encoding: .utf8)
 }
 
 private struct FailingCredentialBackend: CredentialBackend {
