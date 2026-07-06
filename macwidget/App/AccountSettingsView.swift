@@ -26,7 +26,7 @@ enum AccountProviderID: String, CaseIterable, Identifiable {
         }
     }
 
-    fileprivate var providerKind: ProviderKind {
+    var providerKind: ProviderKind {
         switch self {
         case .claude: return .claude
         case .codex: return .codex
@@ -37,7 +37,7 @@ enum AccountProviderID: String, CaseIterable, Identifiable {
         }
     }
 
-    fileprivate var apiKeyID: APIKeyProviderID? {
+    var apiKeyID: APIKeyProviderID? {
         switch self {
         case .deepseek: return .deepseek
         case .siliconflow: return .siliconflow
@@ -227,6 +227,11 @@ final class AccountSettingsViewModel: ObservableObject {
         )
     }
 
+    func cancelEdit() {
+        editingProvider = nil
+        saveErrorText = nil
+    }
+
     func beginEdit(_ provider: APIKeyProviderID) {
         keyInput = ""
         saveErrorText = nil
@@ -313,198 +318,4 @@ final class AccountSettingsViewModel: ObservableObject {
         guard let url = URL(string: urlString) else { return }
         NSWorkspace.shared.open(url)
     }
-}
-
-struct AccountSettingsView: View {
-    @StateObject private var viewModel: AccountSettingsViewModel
-
-    init(viewModel: AccountSettingsViewModel) {
-        _viewModel = StateObject(wrappedValue: viewModel)
-    }
-
-    var body: some View {
-        List {
-            Section("Local agent accounts") {
-                ForEach(viewModel.model.rows.filter { $0.kind == .localAgent }) { row in
-                    AccountRowView(
-                        row: row,
-                        onToggleProbe: { viewModel.toggleCodexProbe() },
-                        onLoginHelp: { viewModel.openLoginHelp(for: row.id) }
-                    )
-                }
-            }
-
-            Section("API balance accounts") {
-                ForEach(viewModel.model.rows.filter { $0.kind == .apiKey }) { row in
-                    AccountRowView(
-                        row: row,
-                        onAddKey: { row.id.apiKeyID.map(viewModel.beginEdit) },
-                        onRemoveKey: { row.id.apiKeyID.map(viewModel.deleteKey) },
-                        onTest: { viewModel.testProviders() }
-                    )
-                }
-            }
-
-        }
-        .frame(minWidth: 360, minHeight: 400)
-        .toolbar {
-            ToolbarItem(placement: .cancellationAction) {
-                Button("Test All") { viewModel.testProviders() }
-                    .disabled(viewModel.isTesting)
-            }
-        }
-        .overlay(alignment: .bottomLeading) {
-            if let saveStatusText = viewModel.saveStatusText {
-                Text(saveStatusText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .padding(12)
-            }
-        }
-        .sheet(item: $viewModel.editingProvider) { provider in
-            APIKeySheet(
-                provider: provider,
-                keyInput: $viewModel.keyInput,
-                errorText: viewModel.saveErrorText,
-                onSave: viewModel.saveKey
-            )
-        }
-        .onAppear { viewModel.reload() }
-    }
-}
-
-struct AccountRowView: View {
-    let row: AccountRowState
-    var onAddKey: (() -> Void)?
-    var onRemoveKey: (() -> Void)?
-    var onTest: (() -> Void)?
-    var onToggleProbe: (() -> Void)?
-    var onLoginHelp: (() -> Void)?
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(row.name)
-                    .font(.headline)
-                if let detailText = row.detailText {
-                    Text(detailText)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Text(row.statusText)
-                    .font(.caption)
-                    .foregroundStyle(row.configured ? .primary : .secondary)
-            }
-
-            Spacer()
-
-            if let balanceSummary = row.balanceSummary {
-                Text(balanceSummary)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.trailing)
-            }
-
-            rowActions
-
-            StatusIndicator(configured: row.configured)
-        }
-        .padding(.vertical, 2)
-    }
-
-    @ViewBuilder
-    private var rowActions: some View {
-        switch row.id.kind {
-        case .localAgent:
-            if row.id == .codex {
-                Button(row.configured ? "Disable Probe" : "Enable Probe") {
-                    onToggleProbe?()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            } else {
-                Button("Open") {
-                    onLoginHelp?()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
-        case .apiKey:
-            if row.configured {
-                HStack(spacing: 4) {
-                    Button("Test") { onTest?() }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    Button("Remove") { onRemoveKey?() }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                }
-            } else {
-                Button("Add Key") { onAddKey?() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-            }
-        }
-    }
-}
-
-struct StatusIndicator: View {
-    let configured: Bool
-
-    var body: some View {
-        Image(systemName: configured ? "checkmark.circle.fill" : "exclamationmark.circle")
-            .foregroundStyle(configured ? .green : .orange)
-    }
-}
-
-struct APIKeySheet: View {
-    let provider: APIKeyProviderID
-    @Binding var keyInput: String
-    let errorText: String?
-    let onSave: () -> Bool
-    @Environment(\.dismiss) private var dismiss
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("\(provider.name) API Key")
-                .font(.headline)
-            SecureField("API Key", text: $keyInput)
-                .textFieldStyle(.roundedBorder)
-            if let errorText {
-                Text(errorText)
-                    .font(.caption)
-                    .foregroundStyle(.red)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            HStack {
-                Spacer()
-                Button("Cancel") { dismiss() }
-                Button("Save") {
-                    if onSave() {
-                        dismiss()
-                    }
-                }
-                .disabled(keyInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .buttonStyle(.borderedProminent)
-            }
-        }
-        .padding()
-        .frame(minWidth: 320)
-    }
-}
-
-#Preview {
-    AccountSettingsView(
-        viewModel: AccountSettingsViewModel(
-            apiKeyStore: APIKeyStore(backend: InMemoryCredentialBackend()),
-            configStore: AppConfigStore(
-                baseDirectory: FileManager.default.temporaryDirectory
-                    .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            ),
-            usageStore: UsageStore(containerURLProvider: {
-                FileManager.default.temporaryDirectory
-                    .appendingPathComponent(UUID().uuidString, isDirectory: true)
-            })
-        )
-    )
 }

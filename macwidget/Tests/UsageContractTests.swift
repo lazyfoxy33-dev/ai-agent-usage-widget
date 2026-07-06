@@ -323,16 +323,32 @@ final class UsageContractTests: XCTestCase {
         XCTAssertEqual(APIKeyProviderID.openrouter.rawValue, "openrouter")
     }
 
-    func testControlCenterDefinesExpectedTabs() throws {
+    func testControlCenterHasTwoColumnLayoutWithNavigation() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
 
-        XCTAssertTrue(source.contains("TabView"))
+        XCTAssertFalse(source.contains("TabView"), "should use sidebar layout instead of TabView")
+        XCTAssertTrue(
+            source.contains("ControlSidebar") || source.contains("ControlPage") || source.contains("sidebar"),
+            "should have sidebar/navigation structure"
+        )
         XCTAssertTrue(source.contains("Accounts"))
         XCTAssertTrue(source.contains("Refresh"))
         XCTAssertTrue(source.contains("Displays"))
         XCTAssertTrue(source.contains("Diagnostics"))
-        XCTAssertTrue(source.contains("AccountSettingsView"))
-        XCTAssertTrue(source.contains("DisplayLayerStore"))
+    }
+
+    func testControlCenterContainsGroupLabelsAndProviders() throws {
+        let source = try sourceFile("App/ControlCenterView.swift")
+
+        XCTAssertTrue(source.contains("Local Agents"), "should show Local Agents group")
+        XCTAssertTrue(source.contains("API Balance"), "should show API Balance group")
+
+        XCTAssertTrue(source.contains("Claude"), "should show Claude provider")
+        XCTAssertTrue(source.contains("Codex"), "should show Codex provider")
+        XCTAssertTrue(source.contains("Kimi Code"), "should show Kimi Code provider")
+        XCTAssertTrue(source.contains("DeepSeek"), "should show DeepSeek provider")
+        XCTAssertTrue(source.contains("SiliconFlow"), "should show SiliconFlow provider")
+        XCTAssertTrue(source.contains("OpenRouter"), "should show OpenRouter provider")
     }
 
     func testDisplaysPanelExposesDisplayLayerActions() throws {
