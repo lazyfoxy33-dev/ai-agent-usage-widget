@@ -1,16 +1,16 @@
-const SCRIPT = "$HOME/Library/Application Support/Übersicht/widgets/usage-widget/fetch_usage.py";
-export const command = `/usr/bin/python3 "${SCRIPT}"`;
+const SHARED_USAGE_DEFAULT = "$HOME/Library/Group Containers/group.dev.lazyfoxy.QuotaWidget/Library/Application Support/usage.json";
+const SCRIPT_DIRS = [
+  "$HOME/Library/Application Support/Übersicht/widgets/usage-widget",
+  "$HOME/Library/Application Support/Übersicht/widgets/usage-widget"
+];
+const FETCHER_DIRS = SCRIPT_DIRS.map((d) => `"${d}"`).join(" ");
+export const command = `/bin/sh -lc 'shared="\${QUOTAWIDGET_SHARED_USAGE:-${SHARED_USAGE_DEFAULT}}"; if [ -f "$shared" ]; then cat "$shared"; exit 0; fi; for d in ${FETCHER_DIRS}; do if [ -f "$d/fetch_usage.py" ]; then exec /usr/bin/python3 "$d/fetch_usage.py"; fi; done; exit 1'`;
 export const refreshFrequency = 60000;
 
 const TONE = {
   light: { ink: "#26231F", sub: "#9a9286", track: "rgba(0,0,0,.09)", div: "rgba(0,0,0,.06)" },
   dark: { ink: "#ECEAE6", sub: "#8c887f", track: "rgba(255,255,255,.13)", div: "rgba(255,255,255,.07)" }
 };
-
-function glyphLogo(letter, color) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 27 27"><rect width="27" height="27" rx="7" fill="${color}"/><text x="13.5" y="18.5" text-anchor="middle" font-size="14" font-weight="700" fill="white" font-family="-apple-system, BlinkMacSystemFont, sans-serif">${letter}</text></svg>`;
-  return "data:image/svg+xml," + encodeURIComponent(svg);
-}
 
 const PROVIDERS = {
   claude: { name: "Claude", accent: "#D97757", tintL: "#FAF7F3", tintD: "#211F1C" },
@@ -80,6 +80,15 @@ function emphasis(accent, used, isDark) {
   return rgbToHex(r * f, g * f, b * f);
 }
 
+function rgba(hex, alpha) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function dangerTrack(accent, tone, isDark) {
+  return `linear-gradient(90deg,${tone.track} 0 82%,${rgba(accent, isDark ? 0.26 : 0.15)} 82% 100%)`;
+}
+
 function sl(label) {
   return label === "Weekly" ? "Wk" : label;
 }
@@ -116,33 +125,30 @@ function balanceTrendText(burnRate) {
     .replace("{days}", String(burnRate.estimated_days_left));
 }
 
-function pctFontSize(pct) {
-  return pct >= 100 ? 14 : 18;
+function soonestWindow(wins) {
+  return wins.reduce((best, win) => {
+    if (!best) return win;
+    if (!win.resetsAt) return best;
+    if (!best.resetsAt) return win;
+    return win.resetsAt < best.resetsAt ? win : best;
+  }, null);
 }
 
-function ring(pal, tone, fivePct, weekPct, isDark) {
-  const R1 = 38, R2 = 27, C1 = 2 * Math.PI * R1, C2 = 2 * Math.PI * R2;
-  const off = (c, p) => c * (1 - Math.min(100, Math.max(0, p)) / 100);
-  const cWeek = emphasis(pal.accent, weekPct, isDark);
-  const cFive = emphasis(pal.accent, fivePct, isDark);
-  const urgent = fivePct >= weekPct ? { pct: fivePct, label: "5H" } : { pct: weekPct, label: "Wk" };
+function usageBarRow(w, pal, tone, isDark) {
+  const clamped = Math.min(100, Math.max(0, w.pct));
+  const color = emphasis(pal.accent, w.pct, isDark);
   return (
-    <div style={{ width: 88, height: 88, position: "relative", flex: "none" }}>
-      <svg width="88" height="88" viewBox="0 0 88 88" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="44" cy="44" r={R1} fill="none" stroke={tone.track} strokeWidth="6.5" />
-        <circle cx="44" cy="44" r={R1} fill="none" stroke={cWeek} strokeWidth="6.5" strokeLinecap="round" strokeDasharray={C1} strokeDashoffset={off(C1, weekPct)} />
-        <circle cx="44" cy="44" r={R2} fill="none" stroke={tone.track} strokeWidth="6.5" />
-        <circle cx="44" cy="44" r={R2} fill="none" stroke={cFive} strokeWidth="6.5" strokeLinecap="round" strokeDasharray={C2} strokeDashoffset={off(C2, fivePct)} />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", lineHeight: 1, transform: "translateY(-1px)" }}>
-        <span style={{ fontSize: pctFontSize(urgent.pct), fontWeight: 720, letterSpacing: "-.5px", color: emphasis(pal.accent, urgent.pct, isDark) }}>{urgent.pct}%</span>
-        <span style={{ fontSize: 8, marginTop: 3, letterSpacing: ".5px", color: tone.sub, fontWeight: 600 }}>{sl(urgent.label).toUpperCase()}</span>
-      </div>
+    <div key={w.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ width: 46, flex: "none", fontSize: 12, fontWeight: 600, color: tone.ink }}>{sl(w.label)}</span>
+      <span style={{ flex: 1, height: 7, borderRadius: 4, overflow: "hidden", position: "relative", background: dangerTrack(pal.accent, tone, isDark) }}>
+        <span style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${clamped}%`, borderRadius: 4, background: pal.accent }} />
+      </span>
+      <span style={{ width: 38, textAlign: "right", fontSize: 13, fontWeight: 700, color: color }}>{w.pct}%</span>
     </div>
   );
 }
 
-function panel(name, glyph, pal, data) {
+function usagePanel(name, glyph, pal, data) {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const tone = TONE[isDark ? "dark" : "light"];
   const bg = isDark ? pal.tintD : pal.tintL;
@@ -177,36 +183,22 @@ function panel(name, glyph, pal, data) {
     { label: "5H", pct: (data.five_h && data.five_h.pct) || 0, resetsAt: data.five_h && data.five_h.resets_at },
     { label: "Weekly", pct: (data.weekly && data.weekly.pct) || 0, resetsAt: data.weekly && data.weekly.resets_at }
   ];
-  const row = (w) => {
-    const color = emphasis(pal.accent, w.pct, isDark);
-    const dur = fmtDuration(w.resetsAt);
-    return (
-      <div key={w.label} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-        <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, flex: "none" }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: tone.ink }}>{sl(w.label)}</span>
-        <span style={{ marginLeft: "auto", fontSize: 10.5, color: tone.sub, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
-          <span style={{ fontSize: 10, opacity: 0.75 }}>↻</span>{dur || t.resetsSoon}
-        </span>
-        <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 700, color: color, minWidth: 34, textAlign: "right" }}>{w.pct}%</span>
-      </div>
-    );
-  };
+  const reset = soonestWindow(wins);
+  const resetText = reset && fmtDuration(reset.resetsAt) ? `${sl(reset.label)} ${fmtDuration(reset.resetsAt)}` : t.resetsSoon;
 
   return (
-    <div style={{ padding: "17px 18px 16px", display: "flex", alignItems: "center", gap: 17, background: bg, color: tone.ink }}>
-      <div style={{ opacity: cached ? 0.55 : 1 }}>{ring(pal, tone, wins[0].pct, wins[1].pct, isDark)}</div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {glyph}
-            <span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span>
-          </div>
-          {cached && <span style={{ fontSize: 9.5, color: tone.sub, marginLeft: 32 }}>{t.cached}</span>}
-        </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 9, opacity: cached ? 0.55 : 1 }}>
-          {row(wins[0])}
-          {row(wins[1])}
-        </div>
+    <div style={{ padding: "17px 18px 16px", display: "flex", flexDirection: "column", gap: 11, background: bg, color: tone.ink }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {glyph}
+        <span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span>
+        <span style={{ marginLeft: "auto", fontSize: 10.5, color: tone.sub, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
+          <span style={{ fontSize: 10, opacity: 0.75 }}>↻</span>{resetText}
+        </span>
+      </div>
+      {cached && <span style={{ fontSize: 9.5, color: tone.sub, marginTop: -4 }}>{t.cached}</span>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 9, opacity: cached ? 0.55 : 1 }}>
+        {usageBarRow(wins[0], pal, tone, isDark)}
+        {usageBarRow(wins[1], pal, tone, isDark)}
       </div>
     </div>
   );
@@ -266,13 +258,13 @@ const kimiGlyph = (
   <img src="/usage-widget/assets/kimi-code.png" width="27" height="27" alt="Kimi Code" style={ICON_STYLE} />
 );
 const deepseekGlyph = (
-  <img src={glyphLogo("D", PROVIDERS.deepseek.accent)} width="27" height="27" alt="DeepSeek" style={ICON_STYLE} />
+  <img src="/usage-widget/assets/deepseek.png" width="27" height="27" alt="DeepSeek" style={ICON_STYLE} />
 );
 const siliconflowGlyph = (
-  <img src={glyphLogo("S", PROVIDERS.siliconflow.accent)} width="27" height="27" alt="SiliconFlow" style={ICON_STYLE} />
+  <img src="/usage-widget/assets/siliconflow.png" width="27" height="27" alt="SiliconFlow" style={ICON_STYLE} />
 );
 const openrouterGlyph = (
-  <img src={glyphLogo("O", PROVIDERS.openrouter.accent)} width="27" height="27" alt="OpenRouter" style={ICON_STYLE} />
+  <img src="/usage-widget/assets/openrouter.png" width="27" height="27" alt="OpenRouter" style={ICON_STYLE} />
 );
 
 export const className = `
@@ -291,11 +283,11 @@ export const render = ({ output }) => {
   const divColor = isDark ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.06)";
   return (
     <div>
-      {panel("Claude", claudeGlyph, PROVIDERS.claude, data.claude)}
+      {usagePanel("Claude", claudeGlyph, PROVIDERS.claude, data.claude)}
       <div style={{ height: 1, background: divColor }} />
-      {panel("Codex", codexGlyph, PROVIDERS.codex, data.codex)}
+      {usagePanel("Codex", codexGlyph, PROVIDERS.codex, data.codex)}
       <div style={{ height: 1, background: divColor }} />
-      {panel("Kimi Code", kimiGlyph, PROVIDERS.kimi, data.kimi)}
+      {usagePanel("Kimi Code", kimiGlyph, PROVIDERS.kimi, data.kimi)}
       <div style={{ height: 1, background: divColor }} />
       {balancePanel("DeepSeek", deepseekGlyph, PROVIDERS.deepseek, data.deepseek)}
       <div style={{ height: 1, background: divColor }} />
