@@ -1,10 +1,55 @@
 import Foundation
 
+struct UsageStoreStatus: Equatable {
+    enum Reason: Equatable {
+        case ok
+        case missingContainer
+        case missingUsageFile
+    }
+
+    let available: Bool
+    let reason: Reason
+    let usagePath: String?
+    let modifiedAt: Date?
+}
+
 struct UsageStore: Sendable {
     private let containerURLProvider: @Sendable () -> URL?
 
     init(containerURLProvider: @escaping @Sendable () -> URL? = UsageStore.defaultContainerURL) {
         self.containerURLProvider = containerURLProvider
+    }
+
+    func status() -> UsageStoreStatus {
+        guard let container = containerURLProvider() else {
+            return UsageStoreStatus(
+                available: false,
+                reason: .missingContainer,
+                usagePath: nil,
+                modifiedAt: nil
+            )
+        }
+
+        let url = container
+            .appendingPathComponent("Library/Application Support", isDirectory: true)
+            .appendingPathComponent("usage.json")
+
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return UsageStoreStatus(
+                available: false,
+                reason: .missingUsageFile,
+                usagePath: url.path,
+                modifiedAt: nil
+            )
+        }
+
+        let attrs = try? FileManager.default.attributesOfItem(atPath: url.path)
+        return UsageStoreStatus(
+            available: true,
+            reason: .ok,
+            usagePath: url.path,
+            modifiedAt: attrs?[.modificationDate] as? Date
+        )
     }
 
     func read() throws -> String {
