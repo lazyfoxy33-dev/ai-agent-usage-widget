@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		05FAA991A1472BF40CDE5650 /* UsageContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB8541A0C552866932C346F /* UsageContractTests.swift */; };
+		06F0653B013A477ABB548C4A /* DisplayLayerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD363C32152E4801A5233248 /* DisplayLayerStore.swift */; };
+		B29AA4C48A384488B957898D /* DisplayLayerStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 630975C3B44641329DB4E319 /* DisplayLayerStoreTests.swift */; };
 		161768EE7688BF587E93623E /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */; };
 		276472E028BA4ED17D37301C /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */; };
 		3FDA6A06400A345CEC17A77C /* UsageContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */; };
@@ -15,6 +17,9 @@
 		5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */; };
 		6F42E7D510DD5460675285E5 /* claude-app.png in Resources */ = {isa = PBXBuildFile; fileRef = 83B2F686AE6622C66E97AB7A /* claude-app.png */; };
 		6F452D2E46ADD0D6463835E4 /* codex-app.png in Resources */ = {isa = PBXBuildFile; fileRef = E6DD29948C08249FDE990314 /* codex-app.png */; };
+		72D4B645AA0D4C4C9E622B0A /* deepseek.png in Resources */ = {isa = PBXBuildFile; fileRef = 5D03A2B9881F4B0E8D06D111 /* deepseek.png */; };
+		72D4B646AA0D4C4C9E622B0A /* siliconflow.png in Resources */ = {isa = PBXBuildFile; fileRef = 5D03A2BA881F4B0E8D06D111 /* siliconflow.png */; };
+		72D4B647AA0D4C4C9E622B0A /* openrouter.png in Resources */ = {isa = PBXBuildFile; fileRef = 5D03A2BB881F4B0E8D06D111 /* openrouter.png */; };
 		74CD11898B71BE0D3AE73420 /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */; };
 		7F29DEE2E20A48DBBE0CF80C /* kimi-code.png in Resources */ = {isa = PBXBuildFile; fileRef = 8060F7384E94F23C12BAF56E /* kimi-code.png */; };
 		996E6998CA9340194DA5D802 /* AppConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */; };
@@ -60,6 +65,7 @@
 /* Begin PBXFileReference section */
 		10993021F1557349A9B061FA /* UsageStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStoreTests.swift; sourceTree = "<group>"; };
 		229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaWidgetApp.swift; sourceTree = "<group>"; };
+		630975C3B44641329DB4E319 /* DisplayLayerStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLayerStoreTests.swift; sourceTree = "<group>"; };
 		356B98571E684BBF6525EB00 /* QuotaWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = QuotaWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		4396386870ACF13B0387F84A /* UsageFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageFetcher.swift; sourceTree = "<group>"; };
 		4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStoreTests.swift; sourceTree = "<group>"; };
@@ -67,6 +73,9 @@
 		624505EF7B507DA6493E915F /* QuotaWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuotaWidgetExtension.entitlements; sourceTree = "<group>"; };
 		6AC74E158F9E7CF5C7A45A26 /* QuotaWidgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QuotaWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7FB8541A0C552866932C346F /* UsageContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageContractTests.swift; sourceTree = "<group>"; };
+		5D03A2B9881F4B0E8D06D111 /* deepseek.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "deepseek.png"; sourceTree = "<group>"; };
+		5D03A2BA881F4B0E8D06D111 /* siliconflow.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "siliconflow.png"; sourceTree = "<group>"; };
+		5D03A2BB881F4B0E8D06D111 /* openrouter.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "openrouter.png"; sourceTree = "<group>"; };
 		8060F7384E94F23C12BAF56E /* kimi-code.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "kimi-code.png"; sourceTree = "<group>"; };
 		809D8D69348687DB661CCEA0 /* AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
 		83B2F686AE6622C66E97AB7A /* claude-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "claude-app.png"; sourceTree = "<group>"; };
@@ -76,6 +85,7 @@
 		96C53A22270DB9251D0B7127 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStore.swift; sourceTree = "<group>"; };
 		B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuotaWidgetApp.entitlements; sourceTree = "<group>"; };
+		BD363C32152E4801A5233248 /* DisplayLayerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLayerStore.swift; sourceTree = "<group>"; };
 		E6DD29948C08249FDE990314 /* codex-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "codex-app.png"; sourceTree = "<group>"; };
 		E928D1CB72EE1ED85B404C9C /* QuotaWidgetApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigStore.swift; sourceTree = "<group>"; };
@@ -88,6 +98,7 @@
 				809D8D69348687DB661CCEA0 /* AccountSettingsView.swift */,
 				9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */,
 				EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */,
+				BD363C32152E4801A5233248 /* DisplayLayerStore.swift */,
 				84083F78F49E30915AB023A6 /* Info.plist */,
 				B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */,
 				229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */,
@@ -113,6 +124,9 @@
 				83B2F686AE6622C66E97AB7A /* claude-app.png */,
 				E6DD29948C08249FDE990314 /* codex-app.png */,
 				8060F7384E94F23C12BAF56E /* kimi-code.png */,
+				5D03A2B9881F4B0E8D06D111 /* deepseek.png */,
+				5D03A2BA881F4B0E8D06D111 /* siliconflow.png */,
+				5D03A2BB881F4B0E8D06D111 /* openrouter.png */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -151,6 +165,7 @@
 			isa = PBXGroup;
 			children = (
 				4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */,
+				630975C3B44641329DB4E319 /* DisplayLayerStoreTests.swift */,
 				7FB8541A0C552866932C346F /* UsageContractTests.swift */,
 				10993021F1557349A9B061FA /* UsageStoreTests.swift */,
 			);
@@ -265,6 +280,9 @@
 				6F42E7D510DD5460675285E5 /* claude-app.png in Resources */,
 				6F452D2E46ADD0D6463835E4 /* codex-app.png in Resources */,
 				7F29DEE2E20A48DBBE0CF80C /* kimi-code.png in Resources */,
+				72D4B645AA0D4C4C9E622B0A /* deepseek.png in Resources */,
+				72D4B646AA0D4C4C9E622B0A /* siliconflow.png in Resources */,
+				72D4B647AA0D4C4C9E622B0A /* openrouter.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -310,6 +328,7 @@
 				74CD11898B71BE0D3AE73420 /* APIKeyStore.swift in Sources */,
 				FA82E2D50AF1100A3871F9A1 /* AccountSettingsView.swift in Sources */,
 				996E6998CA9340194DA5D802 /* AppConfigStore.swift in Sources */,
+				06F0653B013A477ABB548C4A /* DisplayLayerStore.swift in Sources */,
 				5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */,
 				E1A9D102642B838CEC5E0AC2 /* UsageContract.swift in Sources */,
 				572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */,
@@ -322,6 +341,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D38192171F7B63332CC3F2E0 /* APIKeyStoreTests.swift in Sources */,
+				B29AA4C48A384488B957898D /* DisplayLayerStoreTests.swift in Sources */,
 				05FAA991A1472BF40CDE5650 /* UsageContractTests.swift in Sources */,
 				9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */,
 			);
