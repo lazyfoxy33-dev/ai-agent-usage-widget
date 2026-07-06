@@ -6,7 +6,7 @@ cd "$(dirname "$0")"
 ./build.sh
 
 BUILD_APP="$PWD/QuotaBar.app"
-INSTALL_APP="$HOME/Applications/QuotaBar.app"
+INSTALL_APP="${QUOTABAR_INSTALL_DESTINATION:-$HOME/Applications/QuotaBar.app}"
 PLIST="$HOME/Library/LaunchAgents/com.quotabar.app.plist"
 LABEL="com.quotabar.app"
 GUI_DOMAIN="gui/$(id -u)"
