@@ -130,6 +130,7 @@ enum ProviderPresentation {
         let rateLimited: String
         let notSignedIn: String
         let noApiKey: String
+        let balanceUnavailable: String
         let cached: String
         let cachedBalance: String
         let cmdMap: [String: String]
@@ -139,6 +140,7 @@ enum ProviderPresentation {
         rateLimited: "请求受限 · 稍后自动重试",
         notSignedIn: "未登录 · 请先在 {CLI} 登录",
         noApiKey: "未配置 API Key · 请在 {CLI} 添加",
+        balanceUnavailable: "余额口径异常 · 请到后台核对",
         cached: "缓存数据 · 等待刷新",
         cachedBalance: "缓存余额 · 等待刷新",
         cmdMap: [
@@ -155,6 +157,7 @@ enum ProviderPresentation {
         rateLimited: "Rate limited · retrying soon",
         notSignedIn: "Not signed in · Log in via {CLI}",
         noApiKey: "API key not set · Add it in {CLI}",
+        balanceUnavailable: "Balance unavailable · check provider console",
         cached: "Cached · awaiting refresh",
         cachedBalance: "Cached balance · awaiting refresh",
         cmdMap: [
@@ -185,6 +188,8 @@ enum ProviderPresentation {
         switch provider.reason {
         case "rate_limited":
             return strings.rateLimited
+        case "balance_unavailable":
+            return strings.balanceUnavailable
         default:
             let cli = strings.cmdMap[kind.rawValue] ?? kind.rawValue
             if isBalanceProvider(kind, provider: provider) {

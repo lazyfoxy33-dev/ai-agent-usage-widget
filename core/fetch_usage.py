@@ -3,9 +3,31 @@
 import json
 import os
 import time
+from importlib import import_module
 
-from usage import codex, claude, kimi, deepseek, siliconflow, openrouter
 from usage import cache
+
+
+class _LazyUsageModule:
+    def __init__(self, name):
+        self._name = name
+        self._module = None
+
+    def _load(self):
+        if self._module is None:
+            self._module = import_module(f"usage.{self._name}")
+        return self._module
+
+    def __getattr__(self, name):
+        return getattr(self._load(), name)
+
+
+codex = _LazyUsageModule("codex")
+claude = _LazyUsageModule("claude")
+kimi = _LazyUsageModule("kimi")
+deepseek = _LazyUsageModule("deepseek")
+siliconflow = _LazyUsageModule("siliconflow")
+openrouter = _LazyUsageModule("openrouter")
 
 CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/claude.json")
 KIMI_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/kimi.json")
@@ -15,6 +37,7 @@ SILICONFLOW_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/siliconflow.j
 OPENROUTER_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/openrouter.json")
 CACHE_TTL = 300  # 5 min
 CODEX_FRESH_TTL = 1800  # 30 min
+API_KEY_SCOPE = "api-key"
 
 
 def _fresh_result(data, fetched_at):
@@ -42,6 +65,9 @@ def _provider_with_cache(path, fetch):
         result = _fresh_result(result, fetched_at)
         cache.write(path, result, now=fetched_at)
         return result
+
+    if result.get("reason") == "balance_unavailable":
+        return _failed_result(result)
 
     stale = cache.read_stale_entry(path)
     if stale is None:
@@ -120,12 +146,22 @@ def _ensure_contract(data):
     return result
 
 
-def build_payload():
+def _local_agent_skipped():
+    return {
+        "ok": False,
+        "reason": "manual_refresh_required",
+        "fetched_at": None,
+        "live": False,
+    }
+
+
+def build_payload(scope=None):
+    api_key_only = scope == API_KEY_SCOPE
     return json.dumps({
         "schema_version": 1,
-        "claude": _ensure_contract(claude_with_cache()),
-        "codex": _ensure_contract(codex_result()),
-        "kimi": _ensure_contract(kimi_with_cache()),
+        "claude": _ensure_contract(_local_agent_skipped() if api_key_only else claude_with_cache()),
+        "codex": _ensure_contract(_local_agent_skipped() if api_key_only else codex_result()),
+        "kimi": _ensure_contract(_local_agent_skipped() if api_key_only else kimi_with_cache()),
         "deepseek": _ensure_contract(deepseek_with_cache()),
         "siliconflow": _ensure_contract(siliconflow_with_cache()),
         "openrouter": _ensure_contract(openrouter_with_cache()),
@@ -133,4 +169,4 @@ def build_payload():
 
 
 if __name__ == "__main__":
-    print(build_payload())
+    print(build_payload(os.environ.get("AI_AGENT_USAGE_PROVIDER_SCOPE")))

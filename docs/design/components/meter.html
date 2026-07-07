@@ -1,6 +1,6 @@
 <!-- @dsCard group="Components" name="Meter — bar & ring" subtitle="条形(主)· 同心环(备)· 告急同色加深" -->
 <!doctype html><html><head><meta charset="utf-8">
-<link rel="stylesheet" href="_widget.css">
+<link rel="stylesheet" href="_widget.css?v=balance-providers">
 <style>
   html,body{margin:0;padding:0}
   body{display:flex;gap:30px;flex-wrap:wrap;align-items:flex-start;justify-content:center;
@@ -15,7 +15,7 @@
   <div class="frame"><div class="flabel"><b>条形</b> · 主形态</div><div class="plate"><div class="single" id="bar"></div></div></div>
   <div class="frame"><div class="flabel"><b>同心环</b> · 备选 · 中心=最告急窗口</div><div class="plate"><div class="single" id="ring"></div></div></div>
   <div class="frame"><div class="flabel"><b>告急表达</b> · 品牌填充 + 同色加深 + 危险区</div><div class="plate"><div class="single" id="sem"></div></div></div>
-<script src="_widget.js"></script>
+<script src="_widget.js?v=balance-providers"></script>
 <script>
   const theme='light';
   function mount(id, html){ const el=document.getElementById(id); el.style.setProperty('--divln',UW.TONE[theme].div); el.innerHTML=html; }

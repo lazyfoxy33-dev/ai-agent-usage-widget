@@ -1,4 +1,9 @@
 import json
+import os
+import subprocess
+import sys
+import tempfile
+import textwrap
 import unittest
 from unittest import mock
 import fetch_usage
@@ -97,6 +102,25 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(result["fetched_at"], 1000)
         self.assertFalse(result["live"])
         self.assertEqual(result["balance"]["amount"], 5.0)
+
+    def test_balance_unavailable_does_not_use_stale_cache(self):
+        stale = {"ok": True, "kind": "balance",
+                 "balance": {"amount": -70.639, "currency": "CNY",
+                             "available": True, "label": "Balance"},
+                 "burn_rate": {"confidence": "none",
+                               "reason": "insufficient_history"}}
+        stale_entry = {"ts": 1000, "data": stale}
+        with mock.patch.object(fetch_usage.cache, "read_entry", return_value=None), \
+             mock.patch.object(fetch_usage.siliconflow, "fetch_siliconflow",
+                               return_value={"ok": False, "kind": "balance", "reason": "balance_unavailable"}), \
+             mock.patch.object(fetch_usage.cache, "read_stale_entry",
+                               return_value=stale_entry) as read_stale:
+            result = fetch_usage.siliconflow_with_cache()
+
+        read_stale.assert_not_called()
+        self.assertEqual(result["reason"], "balance_unavailable")
+        self.assertFalse(result["ok"])
+        self.assertNotIn("balance", result)
 
     def test_kimi_success_is_written_to_separate_cache(self):
         result = {"ok": True, "five_h": {"pct": 34, "resets_at": 3},
@@ -198,3 +222,64 @@ class TestFetch(unittest.TestCase):
             result = fetch_usage.codex_result(now=5000)
 
         self.assertEqual(result["five_h"]["pct"], 80)  # from the log fallback
+
+    def test_api_key_scope_skips_local_agent_fetches(self):
+        with mock.patch.dict(fetch_usage.os.environ, {"QUOTAWIDGET_SHARED_USAGE": "/tmp/missing-usage.json"}), \
+             mock.patch.object(fetch_usage, "claude_with_cache") as claude_fetch, \
+             mock.patch.object(fetch_usage, "codex_result") as codex_fetch, \
+             mock.patch.object(fetch_usage, "kimi_with_cache") as kimi_fetch, \
+             mock.patch.object(fetch_usage, "deepseek_with_cache",
+                               return_value={"ok": False, "kind": "balance", "reason": "missing_api_key"}), \
+             mock.patch.object(fetch_usage, "siliconflow_with_cache",
+                               return_value={"ok": False, "kind": "balance", "reason": "missing_api_key"}), \
+             mock.patch.object(fetch_usage, "openrouter_with_cache",
+                               return_value={"ok": False, "kind": "balance", "reason": "missing_api_key"}):
+            payload = json.loads(fetch_usage.build_payload(scope=fetch_usage.API_KEY_SCOPE))
+
+        claude_fetch.assert_not_called()
+        codex_fetch.assert_not_called()
+        kimi_fetch.assert_not_called()
+        self.assertEqual(payload["claude"]["reason"], "manual_refresh_required")
+        self.assertEqual(payload["codex"]["reason"], "manual_refresh_required")
+        self.assertEqual(payload["kimi"]["reason"], "manual_refresh_required")
+        self.assertEqual(payload["deepseek"]["reason"], "missing_api_key")
+
+    def test_api_key_scope_does_not_import_local_agent_modules(self):
+        with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as f:
+            f.write(textwrap.dedent("""
+                import importlib.abc
+                import os
+                import sys
+
+                class BlockLocalAgents(importlib.abc.MetaPathFinder):
+                    def find_spec(self, fullname, path=None, target=None):
+                        if fullname in {"usage.claude", "usage.codex", "usage.kimi"}:
+                            raise RuntimeError(f"blocked import: {fullname}")
+                        return None
+
+                sys.meta_path.insert(0, BlockLocalAgents())
+                os.environ["AI_AGENT_USAGE_PROVIDER_SCOPE"] = "api-key"
+                import fetch_usage
+
+                print(fetch_usage.build_payload(os.environ["AI_AGENT_USAGE_PROVIDER_SCOPE"]))
+            """))
+            script = f.name
+
+        try:
+            env = dict(os.environ, PYTHONPATH=os.getcwd())
+            completed = subprocess.run(
+                [sys.executable, script],
+                cwd=os.getcwd(),
+                env=env,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                check=True,
+            )
+        finally:
+            os.unlink(script)
+
+        payload = json.loads(completed.stdout)
+        self.assertEqual(payload["claude"]["reason"], "manual_refresh_required")
+        self.assertEqual(payload["codex"]["reason"], "manual_refresh_required")
+        self.assertEqual(payload["kimi"]["reason"], "manual_refresh_required")

@@ -1,8 +1,3 @@
-function glyphLogo(letter, color) {
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><rect width="24" height="24" rx="7" fill="${color}"/><text x="12" y="17" text-anchor="middle" font-size="13" font-weight="700" fill="white" font-family="Segoe UI, sans-serif">${letter}</text></svg>`;
-  return "data:image/svg+xml," + encodeURIComponent(svg);
-}
-
 const TONE = {
   light: { ink: "#26231F", sub: "#9a9286", track: "rgba(0,0,0,.09)", div: "rgba(0,0,0,.06)" },
   dark: { ink: "#ECEAE6", sub: "#8c887f", track: "rgba(255,255,255,.13)", div: "rgba(255,255,255,.07)" }
@@ -40,7 +35,7 @@ const PROVIDERS = {
     accent: "#4F6D7A",
     tintL: "#F3F6F7",
     tintD: "#1A2024",
-    logo: glyphLogo("D", "#4F6D7A")
+    logo: "assets/deepseek.png"
   },
   SiliconFlow: {
     key: "siliconflow",
@@ -49,7 +44,7 @@ const PROVIDERS = {
     accent: "#F56C6C",
     tintL: "#FDF5F5",
     tintD: "#241A1A",
-    logo: glyphLogo("S", "#F56C6C")
+    logo: "assets/siliconflow.png"
   },
   OpenRouter: {
     key: "openrouter",
@@ -58,7 +53,7 @@ const PROVIDERS = {
     accent: "#8B5CF6",
     tintL: "#F5F3FD",
     tintD: "#1E1A2E",
-    logo: glyphLogo("O", "#8B5CF6")
+    logo: "assets/openrouter.png"
   }
 };
 
@@ -130,6 +125,15 @@ function emphasis(accent, used, dark) {
   return rgbToHex(r * f, g * f, b * f);
 }
 
+function rgba(hex, alpha) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function dangerTrack(accent, tone, dark) {
+  return `linear-gradient(90deg,${tone.track} 0 82%,${rgba(accent, dark ? 0.26 : 0.15)} 82% 100%)`;
+}
+
 function sl(label) {
   return label === "Weekly" ? "Wk" : label;
 }
@@ -178,43 +182,24 @@ function balanceTrendText(burnRate) {
     .replace("{days}", String(burnRate.estimated_days_left));
 }
 
-function pctFontSize(pct) {
-  return pct >= 100 ? 14 : 18;
+function soonestWindow(wins) {
+  return wins.reduce((best, win) => {
+    if (!best) return win;
+    if (!win.resetsAt) return best;
+    if (!best.resetsAt) return win;
+    return win.resetsAt < best.resetsAt ? win : best;
+  }, null);
 }
 
-function ring(pal, tone, fivePct, weekPct, dark) {
-  const R1 = 38, R2 = 27;
-  const C1 = 2 * Math.PI * R1;
-  const C2 = 2 * Math.PI * R2;
-  const off = (c, p) => c * (1 - clampPct(p) / 100);
-  const cWeek = emphasis(pal.accent, weekPct, dark);
-  const cFive = emphasis(pal.accent, fivePct, dark);
-  const urgent = fivePct >= weekPct ? { pct: fivePct, label: "5H" } : { pct: weekPct, label: "Wk" };
+function usageBarRow(w, pal, tone, dark) {
+  const clamped = clampPct(w.pct);
+  const color = emphasis(pal.accent, w.pct, dark);
   return `
-    <div class="ring">
-      <svg viewBox="0 0 88 88" aria-hidden="true">
-        <circle class="track" cx="44" cy="44" r="38" stroke="${tone.track}"/>
-        <circle class="progress" cx="44" cy="44" r="38" stroke="${cWeek}"
-          stroke-dasharray="${C1}" stroke-dashoffset="${off(C1, weekPct)}"/>
-        <circle class="track" cx="44" cy="44" r="27" stroke="${tone.track}"/>
-        <circle class="progress" cx="44" cy="44" r="27" stroke="${cFive}"
-          stroke-dasharray="${C2}" stroke-dashoffset="${off(C2, fivePct)}"/>
-      </svg>
-      <div class="ring-value">
-        <strong style="font-size:${pctFontSize(urgent.pct)}px;color:${emphasis(pal.accent, urgent.pct, dark)}">${urgent.pct}%</strong>
-        <span style="color:${tone.sub}">${sl(urgent.label).toUpperCase()}</span>
-      </div>
-    </div>`;
-}
-
-function row(w, accent, tone, dark, nowMs) {
-  const color = emphasis(accent, w.pct, dark);
-  const dur = countdown(w.resetsAt, nowMs);
-  return `
-    <div class="row">
-      <span class="dot" style="background:${color}"></span>
+    <div class="row usage-bar">
       <span class="lbl" style="color:${tone.ink}">${sl(w.label)}</span>
-      ${dur ? `<span class="row-reset" style="color:${tone.sub}">↻ ${dur}</span>` : ""}
+      <span class="bar-track" style="background:${dangerTrack(pal.accent, tone, dark)}">
+        <span class="bar-fill" style="width:${clamped}%;background:${pal.accent}"></span>
+      </span>
       <span class="val" style="color:${color}">${w.pct}%</span>
     </div>`;
 }
@@ -241,24 +226,26 @@ function providerCard(name, data, nowMs) {
     { label: "5H", pct: clampPct(data.five_h?.pct), resetsAt: data.five_h?.resets_at },
     { label: "Weekly", pct: clampPct(data.weekly?.pct), resetsAt: data.weekly?.resets_at }
   ];
+  const reset = soonestWindow(wins);
+  const resetText = reset && countdown(reset.resetsAt, nowMs)
+    ? `${sl(reset.label)} ${countdown(reset.resetsAt, nowMs)}`
+    : t.resetsSoon;
 
   const cached = data.live === false || data.reason === "stale"
     || data.five_h?.stale === true || data.weekly?.stale === true;
 
   return `
     <section class="provider-card ${pal.key}${cached ? " stale" : ""}" style="--divln:${tone.div};background:${bg};color:${tone.ink}">
-      <div class="ring-wrap" style="opacity:${cached ? 0.55 : 1}">
-        ${ring(pal, tone, wins[0].pct, wins[1].pct, dark)}
-      </div>
       <div class="details">
         <header>
           <img src="${pal.logo}" alt=""/>
           <b>${pal.name}</b>
+          <span class="reset" style="color:${tone.sub}">↻ ${resetText}</span>
         </header>
         ${cached ? `<div class="cached-note" style="color:${tone.sub}">${t.cached}</div>` : ""}
         <div class="rows" style="opacity:${cached ? 0.55 : 1}">
-          ${row(wins[0], pal.accent, tone, dark, nowMs)}
-          ${row(wins[1], pal.accent, tone, dark, nowMs)}
+          ${usageBarRow(wins[0], pal, tone, dark)}
+          ${usageBarRow(wins[1], pal, tone, dark)}
         </div>
       </div>
     </section>`;

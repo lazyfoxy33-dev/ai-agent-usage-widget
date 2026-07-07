@@ -8,6 +8,11 @@ enum UsageFetcherError: Error {
 }
 
 struct UsageFetcher {
+    enum ProviderScope: String {
+        case all
+        case apiKeyOnly = "api-key"
+    }
+
     static func scriptPath() -> String? {
         if let override = ProcessInfo.processInfo.environment["QUOTAWIDGET_FETCH"] {
             return override
@@ -26,11 +31,15 @@ struct UsageFetcher {
 
     static func environment(
         base: [String: String] = ProcessInfo.processInfo.environment,
-        apiKeys: [APIKeyProviderID: String]
+        apiKeys: [APIKeyProviderID: String],
+        providerScope: ProviderScope = .all
     ) -> [String: String] {
         var env = base
         for (provider, key) in apiKeys {
             env[provider.envName] = key
+        }
+        if providerScope != .all {
+            env["AI_AGENT_USAGE_PROVIDER_SCOPE"] = providerScope.rawValue
         }
         return env
     }
@@ -47,9 +56,38 @@ struct UsageFetcher {
         return try? JSONDecoder().decode(UsageProvider.self, from: providerData)
     }
 
+    static func preservingLocalAgentProviders(existing existingJSON: String?, in refreshedJSON: String) -> String {
+        let localAgentKeys = ["claude", "codex", "kimi"]
+        guard
+            let existingJSON,
+            let existingData = existingJSON.data(using: .utf8),
+            let refreshedData = refreshedJSON.data(using: .utf8),
+            let existingRoot = try? JSONSerialization.jsonObject(with: existingData) as? [String: Any],
+            var refreshedRoot = try? JSONSerialization.jsonObject(with: refreshedData) as? [String: Any]
+        else {
+            return refreshedJSON
+        }
+
+        for key in localAgentKeys {
+            if let existingProvider = existingRoot[key] as? [String: Any] {
+                refreshedRoot[key] = existingProvider
+            }
+        }
+
+        guard
+            JSONSerialization.isValidJSONObject(refreshedRoot),
+            let data = try? JSONSerialization.data(withJSONObject: refreshedRoot, options: [.sortedKeys]),
+            let json = String(data: data, encoding: .utf8)
+        else {
+            return refreshedJSON
+        }
+        return json
+    }
+
     static func fetch(
         timeout: TimeInterval = 30,
-        apiKeys: [APIKeyProviderID: String] = [:]
+        apiKeys: [APIKeyProviderID: String] = [:],
+        providerScope: ProviderScope = .all
     ) throws -> String {
         guard let script = scriptPath() else {
             throw UsageFetcherError.missingScript
@@ -57,7 +95,7 @@ struct UsageFetcher {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
         process.arguments = [script]
-        process.environment = environment(apiKeys: apiKeys)
+        process.environment = environment(apiKeys: apiKeys, providerScope: providerScope)
         let output = Pipe()
         process.standardOutput = output
         process.standardError = Pipe()

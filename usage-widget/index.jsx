@@ -28,6 +28,7 @@ const I18N = {
     rateLimited: "请求受限 · 稍后自动重试",
     networkError: "连接失败 · 检查网络或代理",
     noApiKey: "未配置 API 密钥",
+    balanceUnavailable: "余额口径异常 · 请到后台核对",
     trendEstimate: "近 {window} 日约可用 {days} 天",
     noTrend: "暂无消耗趋势",
     notSignedIn: "未登录 · 请先在 {CLI} 登录",
@@ -40,6 +41,7 @@ const I18N = {
     rateLimited: "Rate limited · retrying soon",
     networkError: "Connection failed · check network or proxy",
     noApiKey: "No API key configured",
+    balanceUnavailable: "Balance unavailable · check provider console",
     trendEstimate: "≈ {days} days left ({window}d)",
     noTrend: "No spending trend yet",
     notSignedIn: "Not signed in · Log in via {CLI}",
@@ -214,9 +216,11 @@ function balancePanel(name, glyph, pal, data) {
     const reason = data && data.reason;
     const msg = reason === "rate_limited"
       ? t.rateLimited
-      : reason === "error"
-        ? t.networkError
-        : t.noApiKey;
+      : reason === "balance_unavailable"
+        ? t.balanceUnavailable
+        : reason === "error"
+          ? t.networkError
+          : t.noApiKey;
     return (
       <div style={{ padding: "17px 18px", background: bg, color: tone.sub, fontSize: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

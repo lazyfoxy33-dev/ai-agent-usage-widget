@@ -46,7 +46,7 @@
           "enum": ["quota", "balance"]
         },
         "reason": {
-          "enum": ["expired", "error", "no_data", "stale", "rate_limited"]
+          "enum": ["expired", "error", "no_data", "stale", "rate_limited", "balance_unavailable"]
         },
         "upstream_reason": {
           "enum": ["expired", "error", "no_data", "rate_limited"]

@@ -10,7 +10,6 @@ final class QuotaWidgetModel: ObservableObject {
 
     init() {
         self.lastUsed = UserDefaults.standard.string(forKey: "lastUsedProvider")
-        startForegroundTracking()
     }
 
     func startForegroundTracking() {
@@ -42,11 +41,7 @@ final class QuotaWidgetModel: ObservableObject {
     }
 
     func start() {
-        refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 180, repeats: true) {
-            [weak self] _ in
-            Task { @MainActor in self?.refresh() }
-        }
+        status = "已启动 · 手动刷新"
     }
 
     nonisolated static func apiKeys(from store: APIKeyStore) throws -> [APIKeyProviderID: String] {
@@ -59,14 +54,18 @@ final class QuotaWidgetModel: ObservableObject {
         return keys
     }
 
-    func refresh() {
+    func refresh(providerScope: UsageFetcher.ProviderScope = .apiKeyOnly) {
         status = "正在刷新…"
         Task.detached { [weak self] in
             do {
                 let store = APIKeyStore()
                 let keys = (try? QuotaWidgetModel.apiKeys(from: store)) ?? [:]
-                let json = try UsageFetcher.fetch(apiKeys: keys)
-                try UsageStore().write(json)
+                let json = try UsageFetcher.fetch(apiKeys: keys, providerScope: providerScope)
+                let usageStore = UsageStore()
+                let merged = providerScope == .apiKeyOnly
+                    ? UsageFetcher.preservingLocalAgentProviders(existing: try? usageStore.read(), in: json)
+                    : json
+                try usageStore.write(merged)
                 await MainActor.run {
                     WidgetCenter.shared.reloadAllTimelines()
                     self?.status = "已刷新 \(Date().formatted(date: .omitted, time: .shortened))"
@@ -78,6 +77,10 @@ final class QuotaWidgetModel: ObservableObject {
             }
         }
     }
+
+    func refreshAPIKeyProviders() {
+        refresh(providerScope: .apiKeyOnly)
+    }
 }
 
 struct MenuBarContentView: View {
@@ -88,7 +91,7 @@ struct MenuBarContentView: View {
         Text(model.status)
         Divider()
         Button("Settings...") { SettingsPresenter.app(openSettings: { openSettings() }).present() }
-        Button("立即刷新") { model.refresh() }
+        Button("立即刷新") { model.refreshAPIKeyProviders() }
         Divider()
         Button("退出") { NSApplication.shared.terminate(nil) }
     }
@@ -120,6 +123,7 @@ struct SettingsPresenter {
                 NSApplication.shared.windows
                     .filter { $0.isVisible && $0.canBecomeKey }
                     .forEach {
+                        $0.collectionBehavior.insert(.canJoinAllSpaces)
                         $0.makeKeyAndOrderFront(nil)
                         $0.orderFrontRegardless()
                     }
@@ -134,7 +138,7 @@ struct SettingsPresenter {
 @main
 struct QuotaWidgetApp: App {
     @StateObject private var model = QuotaWidgetModel()
-    @StateObject private var settingsModel = AccountSettingsViewModel()
+    @StateObject private var settingsModel = AccountSettingsViewModel(autoload: false)
 
     var body: some Scene {
         MenuBarExtra("QuotaWidget", systemImage: "gauge.with.dots.needle.67percent") {
@@ -150,7 +154,7 @@ struct QuotaWidgetApp: App {
                 accountViewModel: settingsModel,
                 displayStore: displayStore,
                 usageStore: UsageStore(),
-                refreshNow: { model.refresh() },
+                refreshNow: { model.refreshAPIKeyProviders() },
                 displayActions: DisplayLayerActions(
                     installUbersicht: { try displayStore.installBundledUbersichtWidget() },
                     openUbersichtFolder: { try displayStore.openUbersichtWidgetsDirectory() },

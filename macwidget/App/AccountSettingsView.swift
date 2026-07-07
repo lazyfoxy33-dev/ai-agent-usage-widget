@@ -203,12 +203,15 @@ final class AccountSettingsViewModel: ObservableObject {
     init(
         apiKeyStore: APIKeyStore = APIKeyStore(),
         configStore: AppConfigStore = AppConfigStore(),
-        usageStore: UsageStore = UsageStore()
+        usageStore: UsageStore = UsageStore(),
+        autoload: Bool = true
     ) {
         self.apiKeyStore = apiKeyStore
         self.configStore = configStore
         self.usageStore = usageStore
-        reload()
+        if autoload {
+            reload()
+        }
     }
 
     func reload() {
@@ -279,9 +282,13 @@ final class AccountSettingsViewModel: ObservableObject {
         Task.detached { [weak self] in
             do {
                 let keys = (try? QuotaWidgetModel.apiKeys(from: apiKeyStore)) ?? [:]
-                let json = try UsageFetcher.fetch(apiKeys: keys)
+                let json = try UsageFetcher.fetch(apiKeys: keys, providerScope: .apiKeyOnly)
                 await MainActor.run {
-                    try? self?.usageStore.write(json)
+                    let merged = UsageFetcher.preservingLocalAgentProviders(
+                        existing: try? self?.usageStore.read(),
+                        in: json
+                    )
+                    try? self?.usageStore.write(merged)
                     self?.reload()
                     self?.isTesting = false
                 }

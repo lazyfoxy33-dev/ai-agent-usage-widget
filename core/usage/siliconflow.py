@@ -8,9 +8,16 @@ import os
 from . import api_key_http
 from . import balance_history
 
-API_URL = "https://api.siliconflow.com/v1/user/info"
+API_URLS = [
+    "https://api.siliconflow.com/v1/user/info",
+    "https://api.siliconflow.cn/v1/user/info",
+]
 HISTORY_PATH = "~/.cache/usage-widget/siliconflow-history.jsonl"
 DEFAULT_CURRENCY = "CNY"
+
+
+class BalanceUnavailableError(ValueError):
+    """SiliconFlow returned a balance value that should not be displayed."""
 
 
 def _as_float(value):
@@ -39,11 +46,15 @@ def parse_siliconflow_info(payload, now=None):
     currency = data.get("currency") or DEFAULT_CURRENCY
     status = data.get("status", "active")
 
+    amount = _as_float(total_balance)
+    if amount < 0:
+        raise BalanceUnavailableError("SiliconFlow returned a negative API balance")
+
     return {
         "ok": True,
         "kind": "balance",
         "balance": {
-            "amount": _as_float(total_balance),
+            "amount": amount,
             "currency": str(currency).upper(),
             "available": str(status).lower() in ("active", "normal", "ok"),
             "label": "Balance",
@@ -57,9 +68,27 @@ def fetch_siliconflow(now=None):
     if not token:
         return {"ok": False, "kind": "balance", "reason": "no_data"}
 
+    last_auth_error = False
+    last_rate_limit = False
     try:
-        payload = api_key_http.bearer_get_json(API_URL, token)
+        payload = None
+        for url in API_URLS:
+            try:
+                payload = api_key_http.bearer_get_json(url, token)
+                break
+            except api_key_http.ApiAuthError:
+                last_auth_error = True
+            except api_key_http.ApiRateLimitError:
+                last_rate_limit = True
+        if payload is None:
+            if last_rate_limit:
+                return {"ok": False, "kind": "balance", "reason": "rate_limited"}
+            if last_auth_error:
+                return {"ok": False, "kind": "balance", "reason": "expired"}
+            return {"ok": False, "kind": "balance", "reason": "error"}
         result = parse_siliconflow_info(payload)
+    except BalanceUnavailableError:
+        return {"ok": False, "kind": "balance", "reason": "balance_unavailable"}
     except api_key_http.ApiAuthError:
         return {"ok": False, "kind": "balance", "reason": "expired"}
     except api_key_http.ApiRateLimitError:

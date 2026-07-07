@@ -1,6 +1,6 @@
 <!-- @dsCard group="Components" name="Provider panel" subtitle="单家面板 · 条形 · 浅/暗品牌色调" -->
 <!doctype html><html><head><meta charset="utf-8">
-<link rel="stylesheet" href="_widget.css">
+<link rel="stylesheet" href="_widget.css?v=balance-providers">
 <style>
   html,body{margin:0;padding:0}
   body{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start;justify-content:center;
@@ -17,7 +17,7 @@
 </style></head><body>
   <div class="col" id="lightCol"></div>
   <div class="col" id="darkCol"></div>
-<script src="_widget.js"></script>
+<script src="_widget.js?v=balance-providers"></script>
 <script>
   function build(provider, theme){
     const w = document.createElement('div');
@@ -34,8 +34,7 @@
     const plate = document.createElement('div');
     plate.className = 'plate ' + theme;
     plate.style.display='flex'; plate.style.flexDirection='column'; plate.style.gap='16px';
-    UW.P.forEach(p=> plate.appendChild(build(p, theme)));
-    plate.appendChild(build(UW.CREDIT, theme));
+    UW.ALL.forEach(p=> plate.appendChild(build(p, theme)));
     wrap.appendChild(plate);
   }
   col('lightCol','light'); col('darkCol','dark');

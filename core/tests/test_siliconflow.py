@@ -56,6 +56,11 @@ class TestParseSiliconFlowInfo(unittest.TestCase):
         with self.assertRaises(ValueError):
             siliconflow.parse_siliconflow_info({"data": {"status": "active"}})
 
+    def test_negative_total_balance_is_not_displayable(self):
+        payload = {"data": {"balance": "0", "chargeBalance": "-70.639", "totalBalance": "-70.639", "status": "normal"}}
+        with self.assertRaises(siliconflow.BalanceUnavailableError):
+            siliconflow.parse_siliconflow_info(payload)
+
 
 class TestFetchSiliconFlow(unittest.TestCase):
     def setUp(self):
@@ -87,6 +92,21 @@ class TestFetchSiliconFlow(unittest.TestCase):
             result = siliconflow.fetch_siliconflow()
         self.assertEqual(result, {"ok": False, "kind": "balance", "reason": "expired"})
 
+    def test_cn_endpoint_is_used_when_com_rejects_key(self):
+        os.environ["SILICONFLOW_API_KEY"] = "test-token"
+        payload = {"data": {"totalBalance": "66.00", "status": "normal"}}
+        with mock.patch.object(
+            siliconflow.api_key_http,
+            "bearer_get_json",
+            side_effect=[siliconflow.api_key_http.ApiAuthError("403"), payload],
+        ) as request, mock.patch.object(siliconflow, "HISTORY_PATH", self.history_path):
+            result = siliconflow.fetch_siliconflow(now=86400 * 8)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["balance"]["amount"], 66.0)
+        self.assertEqual(request.call_args_list[0].args[0], "https://api.siliconflow.com/v1/user/info")
+        self.assertEqual(request.call_args_list[1].args[0], "https://api.siliconflow.cn/v1/user/info")
+
     def test_rate_limit_maps_to_rate_limited(self):
         os.environ["SILICONFLOW_API_KEY"] = "test-token"
         with mock.patch.object(siliconflow.api_key_http, "bearer_get_json",
@@ -100,6 +120,14 @@ class TestFetchSiliconFlow(unittest.TestCase):
                                side_effect=RuntimeError("boom")):
             result = siliconflow.fetch_siliconflow()
         self.assertEqual(result, {"ok": False, "kind": "balance", "reason": "error"})
+
+    def test_negative_api_balance_maps_to_unavailable(self):
+        os.environ["SILICONFLOW_API_KEY"] = "test-token"
+        payload = {"data": {"balance": "0", "chargeBalance": "-70.639", "totalBalance": "-70.639", "status": "normal"}}
+        with mock.patch.object(siliconflow.api_key_http, "bearer_get_json", return_value=payload), \
+             mock.patch.object(siliconflow, "HISTORY_PATH", self.history_path):
+            result = siliconflow.fetch_siliconflow()
+        self.assertEqual(result, {"ok": False, "kind": "balance", "reason": "balance_unavailable"})
 
     def test_successful_fetch_records_history(self):
         os.environ["SILICONFLOW_API_KEY"] = "test-token"
