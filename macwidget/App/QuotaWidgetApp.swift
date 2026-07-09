@@ -7,9 +7,11 @@ final class QuotaWidgetModel: ObservableObject {
     @Published var status = "等待首次刷新"
     private var timer: Timer?
     private var lastUsed: String?
+    private var hasStarted = false
 
     init() {
         self.lastUsed = UserDefaults.standard.string(forKey: "lastUsedProvider")
+        startForegroundTracking()
     }
 
     func startForegroundTracking() {
@@ -28,7 +30,6 @@ final class QuotaWidgetModel: ObservableObject {
         if let tag { lastUsed = tag; UserDefaults.standard.set(tag, forKey: "lastUsedProvider") }
         let active = tag ?? lastUsed ?? "claude"
         try? UsageStore().writeActive(active)
-        WidgetCenter.shared.reloadAllTimelines()
     }
 
     private func providerTag(_ app: NSRunningApplication?) -> String? {
@@ -41,36 +42,81 @@ final class QuotaWidgetModel: ObservableObject {
     }
 
     func start() {
+        guard !hasStarted else { return }
+        hasStarted = true
         status = "已启动 · 手动刷新"
     }
 
     nonisolated static func apiKeys(from store: APIKeyStore) throws -> [APIKeyProviderID: String] {
-        var keys: [APIKeyProviderID: String] = [:]
-        for provider in APIKeyProviderID.allCases {
-            if let value = try store.read(provider) {
-                keys[provider] = value
-            }
+        try store.readAll()
+    }
+
+    private nonisolated static var isRunningUnitTests: Bool {
+        ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+    }
+
+    nonisolated static func siliconFlowConsoleProvider(
+        from consoleSession: StoredSiliconFlowConsoleSession?
+    ) async -> UsageProvider {
+        if let consoleSession, consoleSession.isConfigured {
+            return await SiliconFlowConsoleSessionProvider(
+                session: consoleSession
+            ).fetchBalance()
         }
-        return keys
+        if let consoleSession,
+           consoleSession.cookieHeader?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
+           consoleSession.subjectID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            return UsageProvider(
+                ok: false,
+                reason: "invalid_subject",
+                kind: "balance",
+                source: "console_session",
+                live: false
+            )
+        }
+        return UsageProvider(
+            ok: false,
+            reason: "login_required",
+            kind: "balance",
+            source: "console_session",
+            live: false
+        )
+    }
+
+    nonisolated static func refreshUsagePayload(
+        providerScope: UsageFetcher.ProviderScope = .all
+    ) async throws {
+        let credentials = (try? AppCredentialBundleStore().snapshot())
+            ?? AppCredentialSnapshot(apiKeys: [:], siliconFlowConsoleSession: nil)
+        let usageStore = UsageStore()
+        let existing = providerScope == .apiKeyOnly ? try? usageStore.read() : nil
+        var json = try UsageFetcher.fetch(
+            apiKeys: credentials.apiKeys,
+            providerScope: providerScope
+        )
+        let consoleProvider = await siliconFlowConsoleProvider(
+            from: credentials.siliconFlowConsoleSession
+        )
+        json = try UsageFetcher.replacingSiliconFlowProvider(
+            in: json,
+            consoleProvider: consoleProvider
+        )
+        if providerScope == .apiKeyOnly {
+            json = UsageFetcher.preservingLocalAgentProviders(existing: existing, in: json)
+        }
+        try usageStore.write(json)
     }
 
     func refresh(providerScope: UsageFetcher.ProviderScope = .apiKeyOnly) {
         status = "正在刷新…"
         Task.detached { [weak self] in
             do {
-                let store = APIKeyStore()
-                let keys = (try? QuotaWidgetModel.apiKeys(from: store)) ?? [:]
-                let json = try UsageFetcher.fetch(apiKeys: keys, providerScope: providerScope)
-                let usageStore = UsageStore()
-                let merged = providerScope == .apiKeyOnly
-                    ? UsageFetcher.preservingLocalAgentProviders(existing: try? usageStore.read(), in: json)
-                    : json
-                try usageStore.write(merged)
+                try await Self.refreshUsagePayload(providerScope: providerScope)
                 await MainActor.run {
-                    WidgetCenter.shared.reloadAllTimelines()
                     self?.status = "已刷新 \(Date().formatted(date: .omitted, time: .shortened))"
                 }
             } catch {
+                NSLog("[QuotaWidget] refresh failed: %@", String(describing: error))
                 await MainActor.run {
                     self?.status = "刷新失败 · 保留上次数据"
                 }
@@ -80,6 +126,23 @@ final class QuotaWidgetModel: ObservableObject {
 
     func refreshAPIKeyProviders() {
         refresh(providerScope: .apiKeyOnly)
+    }
+
+    func refreshAllProviders() {
+        refresh(providerScope: .all)
+    }
+}
+
+final class QuotaWidgetAppDelegate: NSObject, NSApplicationDelegate {
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        Task.detached {
+            do {
+                try await QuotaWidgetModel.refreshUsagePayload()
+                NSLog("[QuotaWidget] launch refresh completed")
+            } catch {
+                NSLog("[QuotaWidget] launch refresh failed: %@", String(describing: error))
+            }
+        }
     }
 }
 
@@ -116,6 +179,7 @@ struct SettingsPresenter {
     static func app(openSettings: @escaping () -> Void) -> SettingsPresenter {
         SettingsPresenter(
             activateApplication: {
+                NSApplication.shared.setActivationPolicy(.regular)
                 NSApplication.shared.activate()
             },
             openSettings: openSettings,
@@ -137,6 +201,7 @@ struct SettingsPresenter {
 
 @main
 struct QuotaWidgetApp: App {
+    @NSApplicationDelegateAdaptor(QuotaWidgetAppDelegate.self) private var appDelegate
     @StateObject private var model = QuotaWidgetModel()
     @StateObject private var settingsModel = AccountSettingsViewModel(autoload: false)
 
@@ -149,12 +214,14 @@ struct QuotaWidgetApp: App {
         }
 
         Settings {
-            let displayStore = DisplayLayerStore()
+            let displayStore = DisplayLayerStore(
+                installStateDirectory: DisplayLayerStore.defaultInstallStateDirectory()
+            )
             ControlCenterView(
                 accountViewModel: settingsModel,
                 displayStore: displayStore,
                 usageStore: UsageStore(),
-                refreshNow: { model.refreshAPIKeyProviders() },
+                refreshNow: { model.refreshAllProviders() },
                 displayActions: DisplayLayerActions(
                     installUbersicht: { try displayStore.installBundledUbersichtWidget() },
                     openUbersichtFolder: { try displayStore.openUbersichtWidgetsDirectory() },

@@ -49,28 +49,36 @@ enum DisplayLayerStoreError: Error, LocalizedError {
     }
 }
 
-struct DisplayLayerStore {
+struct DisplayLayerStore: Sendable {
     let homeDirectory: URL
     let applicationsDirectory: URL
     let resourceDirectory: URL
-    let processList: () -> [String]
-    let openURL: (URL) -> Bool
-    let runCommand: (DisplayLayerCommand) throws -> Void
+    let installStateDirectory: URL?
+    let processList: @Sendable () -> [String]
+    let openURL: @Sendable (URL) -> Bool
+    let runCommand: @Sendable (DisplayLayerCommand) throws -> Void
 
     init(
         homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         applicationsDirectory: URL = URL(fileURLWithPath: "/Applications", isDirectory: true),
         resourceDirectory: URL = Bundle.main.resourceURL ?? Bundle.main.bundleURL,
-        processList: @escaping () -> [String] = DisplayLayerStore.defaultProcessList,
-        openURL: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) },
-        runCommand: @escaping (DisplayLayerCommand) throws -> Void = DisplayLayerStore.defaultRunCommand
+        installStateDirectory: URL? = nil,
+        processList: @escaping @Sendable () -> [String] = DisplayLayerStore.defaultProcessList,
+        openURL: @escaping @Sendable (URL) -> Bool = { NSWorkspace.shared.open($0) },
+        runCommand: @escaping @Sendable (DisplayLayerCommand) throws -> Void = DisplayLayerStore.defaultRunCommand
     ) {
         self.homeDirectory = homeDirectory
         self.applicationsDirectory = applicationsDirectory
         self.resourceDirectory = resourceDirectory
+        self.installStateDirectory = installStateDirectory
         self.processList = processList
         self.openURL = openURL
         self.runCommand = runCommand
+    }
+
+    static func defaultInstallStateDirectory() -> URL {
+        AppConfigStore.defaultDirectory()
+            .appendingPathComponent("display-layers", isDirectory: true)
     }
 
     static func ubersichtWidgetDirectories(homeDirectory: URL) -> [URL] {
@@ -83,9 +91,11 @@ struct DisplayLayerStore {
     func status(for layer: DisplayLayer) -> DisplayLayerStatus {
         switch layer {
         case .ubersicht:
-            let installed = Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory).contains { base in
-                FileManager.default.fileExists(atPath: base.appendingPathComponent("usage-widget/index.jsx").path)
-            }
+            let installed = installStateDirectory == nil
+                ? Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory).contains { base in
+                    FileManager.default.fileExists(atPath: base.appendingPathComponent("usage-widget/index.jsx").path)
+                }
+                : isRecordedInstalled(.ubersicht)
             let running = processList().contains { $0.localizedCaseInsensitiveContains("Übersicht") || $0.localizedCaseInsensitiveContains("Übersicht") }
             return DisplayLayerStatus(layer: layer, installed: installed, running: running, detail: installed ? "Installed" : "Not installed")
         case .widgetKit:
@@ -111,6 +121,7 @@ struct DisplayLayerStore {
         try FileManager.default.createDirectory(at: targetBase, withIntermediateDirectories: true)
         try FileManager.default.copyItem(at: sourceDirectory, to: destination)
         try removePackagedUbersichtArtifacts(from: destination)
+        try recordInstalled(.ubersicht)
     }
 
     func installBundledUbersichtWidget() throws {
@@ -182,6 +193,7 @@ struct DisplayLayerStore {
 
     func installTouchBar() throws {
         try runCommand(touchBarInstallCommand())
+        try recordInstalled(.touchBar)
     }
 
     func openTouchBarApp() throws {
@@ -206,6 +218,21 @@ struct DisplayLayerStore {
         } catch {
             return []
         }
+    }
+
+    private func isRecordedInstalled(_ layer: DisplayLayer) -> Bool {
+        guard let installStateDirectory else { return false }
+        return FileManager.default.fileExists(atPath: markerURL(for: layer, in: installStateDirectory).path)
+    }
+
+    private func recordInstalled(_ layer: DisplayLayer) throws {
+        guard let installStateDirectory else { return }
+        try FileManager.default.createDirectory(at: installStateDirectory, withIntermediateDirectories: true)
+        try Data().write(to: markerURL(for: layer, in: installStateDirectory), options: [.atomic])
+    }
+
+    private func markerURL(for layer: DisplayLayer, in directory: URL) -> URL {
+        directory.appendingPathComponent("\(layer.rawValue).installed")
     }
 
     private static func defaultRunCommand(_ command: DisplayLayerCommand) throws {

@@ -40,7 +40,6 @@ enum AccountProviderID: String, CaseIterable, Identifiable {
     var apiKeyID: APIKeyProviderID? {
         switch self {
         case .deepseek: return .deepseek
-        case .siliconflow: return .siliconflow
         case .openrouter: return .openrouter
         default: return nil
         }
@@ -66,15 +65,18 @@ struct AccountSettingsModel: Equatable {
     let payload: UsagePayload?
     let configuredAPIKeys: Set<APIKeyProviderID>
     let codexActiveRefresh: Bool
+    let siliconFlowConsoleConfigured: Bool
 
     init(
         payload: UsagePayload? = nil,
         configuredAPIKeys: Set<APIKeyProviderID> = [],
-        codexActiveRefresh: Bool = false
+        codexActiveRefresh: Bool = false,
+        siliconFlowConsoleConfigured: Bool = false
     ) {
         self.payload = payload
         self.configuredAPIKeys = configuredAPIKeys
         self.codexActiveRefresh = codexActiveRefresh
+        self.siliconFlowConsoleConfigured = siliconFlowConsoleConfigured
     }
 
     var rows: [AccountRowState] {
@@ -118,9 +120,11 @@ struct AccountSettingsModel: Equatable {
             return provider?.ok == true
         case .codex:
             return codexActiveRefresh
-        case .deepseek, .siliconflow, .openrouter:
+        case .deepseek, .openrouter:
             guard let apiKeyID = id.apiKeyID else { return false }
             return configuredAPIKeys.contains(apiKeyID)
+        case .siliconflow:
+            return siliconFlowConsoleConfigured
         }
     }
 
@@ -155,7 +159,11 @@ struct AccountSettingsModel: Equatable {
     private func detailText(for id: AccountProviderID) -> String? {
         switch id.kind {
         case .localAgent: return "Local Agent"
-        case .apiKey: return "API Key"
+        case .apiKey:
+            if id == .siliconflow {
+                return "Console Session"
+            }
+            return "API Key"
         }
     }
 
@@ -181,7 +189,6 @@ extension APIKeyProviderID {
     var name: String {
         switch self {
         case .deepseek: return "DeepSeek"
-        case .siliconflow: return "SiliconFlow"
         case .openrouter: return "OpenRouter"
         }
     }
@@ -197,16 +204,19 @@ final class AccountSettingsViewModel: ObservableObject {
     @Published private(set) var saveStatusText: String?
 
     private let apiKeyStore: APIKeyStore
+    private let siliconFlowConsoleStore: SiliconFlowConsoleSessionStore
     private let configStore: AppConfigStore
     private let usageStore: UsageStore
 
     init(
         apiKeyStore: APIKeyStore = APIKeyStore(),
+        siliconFlowConsoleStore: SiliconFlowConsoleSessionStore = SiliconFlowConsoleSessionStore(),
         configStore: AppConfigStore = AppConfigStore(),
         usageStore: UsageStore = UsageStore(),
         autoload: Bool = true
     ) {
         self.apiKeyStore = apiKeyStore
+        self.siliconFlowConsoleStore = siliconFlowConsoleStore
         self.configStore = configStore
         self.usageStore = usageStore
         if autoload {
@@ -218,15 +228,16 @@ final class AccountSettingsViewModel: ObservableObject {
         let payload = (try? usageStore.read()).flatMap { json in
             try? UsagePayload.decode(Data(json.utf8))
         }
-        let configured = Set(APIKeyProviderID.allCases.filter { provider in
-            (try? apiKeyStore.read(provider)) != nil
-        })
+        let configuredAPIKeys = (try? apiKeyStore.readAll()) ?? [:]
+        let configured = Set(configuredAPIKeys.keys)
         let codexActive = configStore.readCodexActiveRefresh()
+        let consoleSession = try? siliconFlowConsoleStore.readSession()
 
         model = AccountSettingsModel(
             payload: payload,
             configuredAPIKeys: configured,
-            codexActiveRefresh: codexActive
+            codexActiveRefresh: codexActive,
+            siliconFlowConsoleConfigured: consoleSession?.isConfigured == true
         )
     }
 
@@ -276,13 +287,58 @@ final class AccountSettingsViewModel: ObservableObject {
         }
     }
 
+    func saveSiliconFlowConsoleSession(cookieHeader: String, subjectID: String) -> Bool {
+        let trimmed = cookieHeader.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            saveErrorText = "未找到 SiliconFlow 登录会话"
+            return false
+        }
+        let trimmedSubjectID = subjectID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard StoredSiliconFlowConsoleSession.isValidSubjectID(trimmedSubjectID) else {
+            saveErrorText = "未找到 SiliconFlow 账户标识"
+            return false
+        }
+        do {
+            try siliconFlowConsoleStore.saveCookieHeader(trimmed)
+            try siliconFlowConsoleStore.saveSubjectID(trimmedSubjectID)
+            saveErrorText = nil
+            saveStatusText = "SiliconFlow Console Session 已保存"
+            reload()
+            return true
+        } catch {
+            saveErrorText = "保存失败：\(Self.errorDescription(error))"
+            return false
+        }
+    }
+
+    func deleteSiliconFlowConsoleSession() {
+        do {
+            try siliconFlowConsoleStore.deleteCookieHeader()
+            try siliconFlowConsoleStore.deleteSubjectID()
+            saveErrorText = nil
+            saveStatusText = "SiliconFlow Console Session 已移除"
+            reload()
+        } catch {
+            saveErrorText = "移除失败：\(Self.errorDescription(error))"
+        }
+    }
+
     func testProviders() {
         isTesting = true
         let apiKeyStore = self.apiKeyStore
+        let siliconFlowConsoleStore = self.siliconFlowConsoleStore
         Task.detached { [weak self] in
             do {
                 let keys = (try? QuotaWidgetModel.apiKeys(from: apiKeyStore)) ?? [:]
-                let json = try UsageFetcher.fetch(apiKeys: keys, providerScope: .apiKeyOnly)
+                var json = try UsageFetcher.fetch(apiKeys: keys, providerScope: .apiKeyOnly)
+                let consoleSession = try? siliconFlowConsoleStore.readSession()
+                let consoleProvider = await QuotaWidgetModel.siliconFlowConsoleProvider(
+                    from: consoleSession
+                )
+                json = try UsageFetcher.replacingSiliconFlowProvider(
+                    in: json,
+                    consoleProvider: consoleProvider
+                )
                 await MainActor.run {
                     let merged = UsageFetcher.preservingLocalAgentProviders(
                         existing: try? self?.usageStore.read(),

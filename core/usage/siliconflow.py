@@ -28,6 +28,13 @@ def _as_float(value):
     raise ValueError(f"Cannot convert {type(value).__name__} to float")
 
 
+def _normalize_console_amount(key, value):
+    amount = _as_float(value)
+    if key == "balance" and amount >= 1_000_000_000:
+        return amount / 1_000_000_000_000
+    return amount
+
+
 def parse_siliconflow_info(payload, now=None):
     """Map SiliconFlow /v1/user/info JSON -> a balance provider dict."""
     if not isinstance(payload, dict):
@@ -37,27 +44,93 @@ def parse_siliconflow_info(payload, now=None):
     if not isinstance(data, dict):
         raise ValueError("SiliconFlow response missing data")
 
-    total_balance = data.get("totalBalance")
-    if total_balance is None:
-        total_balance = data.get("balance")
-    if total_balance is None:
-        raise ValueError("SiliconFlow response missing totalBalance")
-
     currency = data.get("currency") or DEFAULT_CURRENCY
     status = data.get("status", "active")
 
-    amount = _as_float(total_balance)
-    if amount < 0:
-        raise BalanceUnavailableError("SiliconFlow returned a negative API balance")
+    positive_amounts = []
+    zero_amounts = []
+    saw_balance_field = False
+    saw_negative = False
+    for key in ("totalBalance", "chargeBalance", "balance"):
+        balance_value = data.get(key)
+        if balance_value is None:
+            continue
+        saw_balance_field = True
+        candidate = _as_float(balance_value)
+        if candidate > 0:
+            positive_amounts.append(candidate)
+        elif candidate == 0:
+            zero_amounts.append(candidate)
+        else:
+            saw_negative = True
+
+    if positive_amounts:
+        amount = max(positive_amounts)
+    elif zero_amounts and not saw_negative:
+        amount = 0
+    else:
+        if saw_balance_field:
+            raise BalanceUnavailableError("SiliconFlow returned a negative API balance")
+        raise ValueError("SiliconFlow response missing balance")
 
     return {
         "ok": True,
         "kind": "balance",
+        "source": "api_key",
         "balance": {
             "amount": amount,
             "currency": str(currency).upper(),
             "available": str(status).lower() in ("active", "normal", "ok"),
             "label": "Balance",
+        },
+    }
+
+
+def parse_console_profile(payload):
+    """Map SiliconFlow console wallet profile JSON -> a balance provider dict.
+
+    The console-session provider is intentionally separate from API-key fetches:
+    the wallet endpoint is authenticated by a SiliconFlow web console session.
+    This parser accepts only the already-sanitized response body.
+    """
+    if not isinstance(payload, dict):
+        raise ValueError("SiliconFlow console response is not an object")
+
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        raise ValueError("SiliconFlow console response missing data")
+
+    financial_info = data.get("financialInfo")
+    if not isinstance(financial_info, dict):
+        raise ValueError("SiliconFlow console response missing financialInfo")
+
+    amount = None
+    saw_balance_field = False
+    for key in ("chargeBalance", "availableBalance", "balance", "totalBalance"):
+        balance_value = financial_info.get(key)
+        if balance_value is None:
+            continue
+        saw_balance_field = True
+        candidate = _normalize_console_amount(key, balance_value)
+        if candidate >= 0:
+            amount = candidate
+            break
+
+    if amount is None:
+        if saw_balance_field:
+            raise BalanceUnavailableError("SiliconFlow returned a negative console balance")
+        raise ValueError("SiliconFlow console response missing balance")
+
+    currency = financial_info.get("currency") or DEFAULT_CURRENCY
+    return {
+        "ok": True,
+        "kind": "balance",
+        "source": "console_session",
+        "balance": {
+            "amount": amount,
+            "currency": str(currency).upper(),
+            "available": True,
+            "label": "Console Balance",
         },
     }
 

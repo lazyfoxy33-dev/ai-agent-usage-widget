@@ -33,7 +33,6 @@ class TestFetch(unittest.TestCase):
                                     "available": True, "label": "Balance"},
                         "burn_rate": {"confidence": "none",
                                       "reason": "insufficient_history"}}
-        siliconflow_res = {"ok": False, "kind": "balance", "reason": "no_data"}
         openrouter_res = {"ok": True, "kind": "balance",
                           "balance": {"amount": 75.42, "currency": "USD",
                                       "available": True, "label": "Balance"},
@@ -44,10 +43,10 @@ class TestFetch(unittest.TestCase):
              mock.patch.object(fetch_usage.codex, "fetch_codex_live",
                                return_value={"ok": False, "reason": "error"}), \
              mock.patch.object(fetch_usage.codex, "parse_codex", return_value=codex_res), \
+             mock.patch.object(fetch_usage.codex, "maybe_active_refresh"), \
              mock.patch.object(fetch_usage, "claude_with_cache", return_value=claude_res), \
              mock.patch.object(fetch_usage, "kimi_with_cache", return_value=kimi_res), \
              mock.patch.object(fetch_usage, "deepseek_with_cache", return_value=deepseek_res), \
-             mock.patch.object(fetch_usage, "siliconflow_with_cache", return_value=siliconflow_res), \
              mock.patch.object(fetch_usage, "openrouter_with_cache", return_value=openrouter_res):
             out = json.loads(fetch_usage.build_payload())
         self.assertEqual(out["schema_version"], 1)
@@ -64,7 +63,8 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(out["kimi"]["weekly"]["pct"], 8)
         self.assertEqual(out["deepseek"]["kind"], "balance")
         self.assertEqual(out["deepseek"]["balance"]["currency"], "CNY")
-        self.assertEqual(out["siliconflow"]["reason"], "no_data")
+        self.assertEqual(out["siliconflow"]["reason"], "login_required")
+        self.assertEqual(out["siliconflow"]["source"], "console_session")
         self.assertEqual(out["openrouter"]["burn_rate"]["confidence"], "high")
 
     def test_balance_provider_success_is_written_to_separate_cache(self):
@@ -111,16 +111,26 @@ class TestFetch(unittest.TestCase):
                                "reason": "insufficient_history"}}
         stale_entry = {"ts": 1000, "data": stale}
         with mock.patch.object(fetch_usage.cache, "read_entry", return_value=None), \
-             mock.patch.object(fetch_usage.siliconflow, "fetch_siliconflow",
+             mock.patch.object(fetch_usage.deepseek, "fetch_deepseek",
                                return_value={"ok": False, "kind": "balance", "reason": "balance_unavailable"}), \
              mock.patch.object(fetch_usage.cache, "read_stale_entry",
                                return_value=stale_entry) as read_stale:
-            result = fetch_usage.siliconflow_with_cache()
+            result = fetch_usage.deepseek_with_cache()
 
         read_stale.assert_not_called()
         self.assertEqual(result["reason"], "balance_unavailable")
         self.assertFalse(result["ok"])
         self.assertNotIn("balance", result)
+        self.assertFalse(result["live"])
+
+    def test_siliconflow_requires_console_session(self):
+        result = fetch_usage.siliconflow_console_required()
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["reason"], "login_required")
+        self.assertEqual(result["kind"], "balance")
+        self.assertEqual(result["source"], "console_session")
+        self.assertFalse(result["live"])
 
     def test_kimi_success_is_written_to_separate_cache(self):
         result = {"ok": True, "five_h": {"pct": 34, "resets_at": 3},
@@ -230,8 +240,8 @@ class TestFetch(unittest.TestCase):
              mock.patch.object(fetch_usage, "kimi_with_cache") as kimi_fetch, \
              mock.patch.object(fetch_usage, "deepseek_with_cache",
                                return_value={"ok": False, "kind": "balance", "reason": "missing_api_key"}), \
-             mock.patch.object(fetch_usage, "siliconflow_with_cache",
-                               return_value={"ok": False, "kind": "balance", "reason": "missing_api_key"}), \
+             mock.patch.object(fetch_usage, "siliconflow_console_required",
+                               return_value={"ok": False, "kind": "balance", "source": "console_session", "reason": "login_required"}), \
              mock.patch.object(fetch_usage, "openrouter_with_cache",
                                return_value={"ok": False, "kind": "balance", "reason": "missing_api_key"}):
             payload = json.loads(fetch_usage.build_payload(scope=fetch_usage.API_KEY_SCOPE))
@@ -243,6 +253,8 @@ class TestFetch(unittest.TestCase):
         self.assertEqual(payload["codex"]["reason"], "manual_refresh_required")
         self.assertEqual(payload["kimi"]["reason"], "manual_refresh_required")
         self.assertEqual(payload["deepseek"]["reason"], "missing_api_key")
+        self.assertEqual(payload["siliconflow"]["reason"], "login_required")
+        self.assertEqual(payload["siliconflow"]["source"], "console_session")
 
     def test_api_key_scope_does_not_import_local_agent_modules(self):
         with tempfile.NamedTemporaryFile("w", suffix=".py", delete=False) as f:

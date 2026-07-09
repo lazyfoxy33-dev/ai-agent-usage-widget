@@ -35,6 +35,28 @@ final class DisplayLayerStoreTests: XCTestCase {
         try? FileManager.default.removeItem(at: root)
     }
 
+    func testDisplayStatusUsesRecordedUbersichtInstallStateWhenConfigured() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let state = root.appendingPathComponent("state", isDirectory: true)
+        try FileManager.default.createDirectory(at: state, withIntermediateDirectories: true)
+        try Data().write(to: state.appendingPathComponent("ubersicht.installed"))
+
+        let store = DisplayLayerStore(
+            homeDirectory: root.appendingPathComponent("home", isDirectory: true),
+            applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            installStateDirectory: state,
+            processList: { [] }
+        )
+
+        let status = store.status(for: .ubersicht)
+
+        XCTAssertTrue(status.installed)
+        XCTAssertEqual(status.detail, "Installed")
+
+        try? FileManager.default.removeItem(at: root)
+    }
+
     func testInstallUbersichtCopiesWidgetIntoExistingDirectories() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -64,6 +86,7 @@ final class DisplayLayerStoreTests: XCTestCase {
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         let source = root.appendingPathComponent("source", isDirectory: true)
         let widgets = root.appendingPathComponent("Library/Application Support/Übersicht/widgets", isDirectory: true)
+        let state = root.appendingPathComponent("state", isDirectory: true)
         try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
         try FileManager.default.createDirectory(
             at: source.appendingPathComponent("dist/ai-agent-usage.widget", isDirectory: true),
@@ -80,6 +103,7 @@ final class DisplayLayerStoreTests: XCTestCase {
         let store = DisplayLayerStore(
             homeDirectory: root,
             applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            installStateDirectory: state,
             processList: { [] }
         )
 
@@ -90,6 +114,9 @@ final class DisplayLayerStoreTests: XCTestCase {
         ))
         XCTAssertFalse(FileManager.default.fileExists(
             atPath: widgets.appendingPathComponent("usage-widget/dist/ai-agent-usage.widget/index.jsx").path
+        ))
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: state.appendingPathComponent("ubersicht.installed").path
         ))
 
         try? FileManager.default.removeItem(at: root)

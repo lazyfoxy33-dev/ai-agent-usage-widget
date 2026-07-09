@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 // Providers: Claude, Codex, Kimi Code, DeepSeek, SiliconFlow, OpenRouter
 
@@ -198,6 +199,7 @@ extension UsageStoreStatus.Reason: CustomStringConvertible {
 struct AccountsPage: View {
     @ObservedObject var viewModel: AccountSettingsViewModel
     let refreshNow: () -> Void
+    @State private var showingSiliconFlowConsoleLogin = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -221,12 +223,21 @@ struct AccountsPage: View {
 
                     ProviderSection(title: "API Balance", subtitle: "Keys stay in macOS Keychain") {
                         ForEach(viewModel.model.rows.filter { $0.kind == .apiKey }) { row in
-                            ProviderRow(
-                                row: row,
-                                onAddKey: row.id.apiKeyID.map { id in { viewModel.beginEdit(id) } },
-                                onRemoveKey: row.id.apiKeyID.map { id in { viewModel.deleteKey(id) } },
-                                onTest: { viewModel.testProviders() }
-                            )
+                            if row.id == .siliconflow {
+                                SiliconFlowProviderRow(
+                                    row: row,
+                                    consoleConfigured: viewModel.model.siliconFlowConsoleConfigured,
+                                    onConnectConsole: { showingSiliconFlowConsoleLogin = true },
+                                    onDisconnectConsole: { viewModel.deleteSiliconFlowConsoleSession() }
+                                )
+                            } else {
+                                ProviderRow(
+                                    row: row,
+                                    onAddKey: row.id.apiKeyID.map { id in { viewModel.beginEdit(id) } },
+                                    onRemoveKey: row.id.apiKeyID.map { id in { viewModel.deleteKey(id) } },
+                                    onTest: { viewModel.testProviders() }
+                                )
+                            }
                         }
 
                         if let editingProvider = viewModel.editingProvider {
@@ -245,6 +256,20 @@ struct AccountsPage: View {
                 }
                 .padding(20)
             }
+        }
+        .sheet(isPresented: $showingSiliconFlowConsoleLogin) {
+            SiliconFlowConsoleLoginSheet(
+                onSave: { session in
+                    if viewModel.saveSiliconFlowConsoleSession(
+                        cookieHeader: session.cookieHeader,
+                        subjectID: session.subjectID
+                    ) {
+                        showingSiliconFlowConsoleLogin = false
+                        refreshNow()
+                    }
+                },
+                onCancel: { showingSiliconFlowConsoleLogin = false }
+            )
         }
     }
 }
@@ -578,6 +603,318 @@ struct APIKeyInlineEditor: View {
     }
 }
 
+struct SiliconFlowProviderRow: View {
+    let row: AccountRowState
+    let consoleConfigured: Bool
+    let onConnectConsole: () -> Void
+    let onDisconnectConsole: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ProviderLogo(id: .siliconflow)
+                .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 7) {
+                HStack(spacing: 8) {
+                    Text(row.name)
+                        .font(.system(size: 14, weight: .bold))
+                    Tag(text: sourceLabel)
+                }
+                Text(row.statusText)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    SourceOptionBadge(title: "Console", active: consoleConfigured, preferred: true)
+                }
+            }
+
+            Spacer()
+
+            if let balanceSummary = row.balanceSummary {
+                Text(balanceSummary)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            ProviderStatus(configured: row.configured)
+
+            HStack(spacing: 8) {
+                if consoleConfigured {
+                    Button("Reconnect", action: onConnectConsole)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                } else {
+                    Button("Connect Console", action: onConnectConsole)
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                }
+
+                if consoleConfigured {
+                    Button("Disconnect", action: onDisconnectConsole)
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .frame(minHeight: 78)
+        .background(Color.white)
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.black.opacity(0.04)),
+            alignment: .bottom
+        )
+    }
+
+    private var sourceLabel: String {
+        "Console"
+    }
+}
+
+struct SourceOptionBadge: View {
+    let title: String
+    let active: Bool
+    let preferred: Bool
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(active ? Color.green : Color.secondary.opacity(0.35))
+                .frame(width: 6, height: 6)
+            Text(preferred ? "\(title) · selected" : title)
+                .font(.system(size: 10.5, weight: preferred ? .semibold : .regular))
+        }
+        .padding(.horizontal, 7)
+        .padding(.vertical, 3)
+        .background(preferred ? Color.blue.opacity(0.09) : Color(nsColor: .controlBackgroundColor))
+        .foregroundStyle(active ? .primary : .secondary)
+        .cornerRadius(999)
+    }
+}
+
+final class SiliconFlowWebViewHolder: ObservableObject {
+    weak var webView: WKWebView?
+}
+
+struct SiliconFlowConsoleSessionSnapshot {
+    let cookieHeader: String
+    let subjectID: String
+}
+
+struct SiliconFlowConsoleLoginSheet: View {
+    let onSave: (SiliconFlowConsoleSessionSnapshot) -> Void
+    let onCancel: () -> Void
+    @StateObject private var holder = SiliconFlowWebViewHolder()
+    @State private var statusText = "Log in to SiliconFlow, then save the current session."
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("SiliconFlow Console")
+                        .font(.headline)
+                    Text(statusText)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Cancel", action: onCancel)
+                Button("Save Session") {
+                    saveCurrentSession()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(14)
+
+            Divider()
+
+            SiliconFlowConsoleWebView(holder: holder)
+                .frame(width: 920, height: 640)
+        }
+    }
+
+    private func saveCurrentSession() {
+        let script = """
+        (() => {
+          const candidates = [];
+          const valid = (value) => /^[A-Za-z0-9_-]{8,80}$/.test(String(value || "").trim());
+          const push = (value) => {
+            const trimmed = String(value || "").trim();
+            if (valid(trimmed) && !candidates.includes(trimmed)) candidates.push(trimmed);
+          };
+          const visit = (value, seen = new Set(), trusted = false) => {
+            if (!value || seen.has(value)) return;
+            seen.add(value);
+            if (typeof value === "string") {
+              if (trusted) push(value);
+              try {
+                const url = new URL(value, location.href);
+                push(url.searchParams.get("SubjectId") || url.searchParams.get("subjectId"));
+              } catch {}
+              return;
+            }
+            if (Array.isArray(value)) {
+              value.forEach((item) => visit(item, seen, trusted));
+              return;
+            }
+            if (typeof value === "object") {
+              Object.entries(value).forEach(([key, nested]) => {
+                if (/^subject_?id$/i.test(key)) push(nested);
+                visit(nested, seen, trusted || /^subjectInfo$/i.test(key));
+              });
+            }
+          };
+          const collect = (value) => {
+            try {
+              const url = new URL(value, location.href);
+              push(url.searchParams.get("SubjectId") || url.searchParams.get("subjectId"));
+              const parts = url.pathname.split("/").filter(Boolean);
+              const meIndex = parts.indexOf("me");
+              if (meIndex >= 0) push(parts[meIndex + 1]);
+            } catch {}
+          };
+          push(window.SF_SUBJECT_ID);
+          try { push(window.subjectInfo && window.subjectInfo.subjectId); } catch {}
+          collect(location.href);
+          try { (window.__quotaWidgetSubjectCandidates || []).forEach((item) => visit(item)); } catch {}
+          try {
+            performance.getEntriesByType("resource").forEach((entry) => {
+              collect(entry.name);
+            });
+          } catch {}
+          document.querySelectorAll("a[href]").forEach((anchor) => collect(anchor.href));
+          const scanStorage = (storage) => {
+            Object.keys(storage).forEach((key) => {
+              const raw = storage.getItem(key);
+              visit(raw);
+              try { visit(JSON.parse(raw)); } catch {}
+            });
+          };
+          try { scanStorage(localStorage); } catch {}
+          try { scanStorage(sessionStorage); } catch {}
+          visit(window.__NEXT_DATA__);
+          return candidates[0] || "";
+        })()
+        """
+        holder.webView?.evaluateJavaScript(script) { value, _ in
+            let subjectID = (value as? String)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+                saveSession(cookies: cookies, subjectID: subjectID)
+            }
+        } ?? WKWebsiteDataStore.default().httpCookieStore.getAllCookies { cookies in
+            saveSession(cookies: cookies, subjectID: "")
+        }
+    }
+
+    private func saveSession(cookies: [HTTPCookie], subjectID: String) {
+            let siliconFlowCookies = cookies.filter { cookie in
+                let domain = cookie.domain.lowercased()
+                return domain == "siliconflow.cn" || domain.hasSuffix(".siliconflow.cn")
+            }
+            let header = HTTPCookie.requestHeaderFields(with: siliconFlowCookies)["Cookie"] ?? ""
+            DispatchQueue.main.async {
+                if header.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    statusText = "No SiliconFlow session found yet."
+                } else if !StoredSiliconFlowConsoleSession.isValidSubjectID(
+                    subjectID.trimmingCharacters(in: .whitespacesAndNewlines)
+                ) {
+                    statusText = "No SiliconFlow account id found yet."
+                } else {
+                    onSave(SiliconFlowConsoleSessionSnapshot(
+                        cookieHeader: header,
+                        subjectID: subjectID
+                    ))
+                }
+            }
+    }
+}
+
+struct SiliconFlowConsoleWebView: NSViewRepresentable {
+    @ObservedObject var holder: SiliconFlowWebViewHolder
+
+    func makeNSView(context: Context) -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .default()
+        configuration.userContentController.addUserScript(Self.subjectCaptureScript())
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        holder.webView = webView
+        if let url = URL(string: "https://cloud.siliconflow.cn/me/expensebill?tab=balance") {
+            webView.load(URLRequest(url: url))
+        }
+        return webView
+    }
+
+    func updateNSView(_ nsView: WKWebView, context: Context) {}
+
+    private static func subjectCaptureScript() -> WKUserScript {
+        let source = """
+        (() => {
+          if (window.__quotaWidgetSubjectCaptureInstalled) return;
+          window.__quotaWidgetSubjectCaptureInstalled = true;
+          window.__quotaWidgetSubjectCandidates = window.__quotaWidgetSubjectCandidates || [];
+          const valid = (value) => /^[A-Za-z0-9_-]{8,80}$/.test(String(value || "").trim());
+          const push = (value) => {
+            const trimmed = String(value || "").trim();
+            if (valid(trimmed) && !window.__quotaWidgetSubjectCandidates.includes(trimmed)) {
+              window.__quotaWidgetSubjectCandidates.push(trimmed);
+            }
+          };
+          const visit = (value, seen = new Set(), trusted = false) => {
+            if (!value || seen.has(value)) return;
+            seen.add(value);
+            if (typeof value === "string") {
+              try {
+                const url = new URL(value, location.href);
+                push(url.searchParams.get("SubjectId") || url.searchParams.get("subjectId"));
+              } catch {
+                if (trusted) push(value);
+              }
+              return;
+            }
+            if (Array.isArray(value)) {
+              value.forEach((item) => visit(item, seen, trusted));
+              return;
+            }
+            if (typeof value === "object") {
+              Object.entries(value).forEach(([key, nested]) => {
+                if (/^subject_?id$/i.test(key)) push(nested);
+                visit(nested, seen, trusted || /^subjectInfo$/i.test(key));
+              });
+            }
+          };
+          const pushGlobals = () => {
+            push(window.SF_SUBJECT_ID);
+            try { push(window.subjectInfo && window.subjectInfo.subjectId); } catch {}
+          };
+          pushGlobals();
+          setTimeout(pushGlobals, 500);
+          const originalFetch = window.fetch;
+          if (typeof originalFetch === "function") {
+            window.fetch = function(...args) {
+              visit(args[0]);
+              return originalFetch.apply(this, args).then((response) => {
+                try {
+                  response.clone().json().then((json) => visit(json)).catch(() => {});
+                } catch {}
+                return response;
+              });
+            };
+          }
+          const originalOpen = XMLHttpRequest.prototype.open;
+          XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+            visit(url);
+            return originalOpen.call(this, method, url, ...rest);
+          };
+        })();
+        """
+        return WKUserScript(source: source, injectionTime: .atDocumentStart, forMainFrameOnly: false)
+    }
+}
+
 // MARK: - Refresh Page
 
 struct RefreshPage: View {
@@ -620,12 +957,12 @@ struct RefreshPage: View {
 // MARK: - Displays Page
 
 struct DisplayLayerActions {
-    let installUbersicht: () throws -> Void
-    let openUbersichtFolder: () throws -> Void
-    let refreshWidgetKit: () -> Void
-    let openWidgetGallery: () throws -> Void
-    let installTouchBar: () throws -> Void
-    let openTouchBar: () throws -> Void
+    let installUbersicht: @Sendable () throws -> Void
+    let openUbersichtFolder: @Sendable () throws -> Void
+    let refreshWidgetKit: @Sendable () -> Void
+    let openWidgetGallery: @Sendable () throws -> Void
+    let installTouchBar: @Sendable () throws -> Void
+    let openTouchBar: @Sendable () throws -> Void
 }
 
 struct DisplaysPage: View {
@@ -633,16 +970,13 @@ struct DisplaysPage: View {
     let actions: DisplayLayerActions
     @State private var resultText: String?
     @State private var busyLayer: DisplayLayer?
+    @State private var statuses: [DisplayLayer: DisplayLayerStatus]
 
-    @State private var ubersichtStatus: DisplayLayerStatus = DisplayLayerStatus(
-        layer: .ubersicht, installed: false, running: false, detail: "Managed manually"
-    )
-    @State private var widgetKitStatus: DisplayLayerStatus = DisplayLayerStatus(
-        layer: .widgetKit, installed: true, running: false, detail: "Bundled with QuotaWidget.app"
-    )
-    @State private var touchBarStatus: DisplayLayerStatus = DisplayLayerStatus(
-        layer: .touchBar, installed: false, running: false, detail: "Checking..."
-    )
+    init(displayStore: DisplayLayerStore, actions: DisplayLayerActions) {
+        self.displayStore = displayStore
+        self.actions = actions
+        _statuses = State(initialValue: Self.currentStatuses(from: displayStore))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -668,7 +1002,7 @@ struct DisplaysPage: View {
                         DisplayCard(
                             title: "Übersicht Widget",
                             description: "Desktop widget reads shared state first, then falls back to bundled fetcher.",
-                            status: ubersichtStatus,
+                            status: status(for: .ubersicht),
                             actions: {
                                 HStack(spacing: 8) {
                                     Button("Install / Update") { run(.ubersicht, "Übersicht updated", actions.installUbersicht) }
@@ -683,7 +1017,7 @@ struct DisplaysPage: View {
                         DisplayCard(
                             title: "macOS Widget",
                             description: "Bundled WidgetKit extension. Use refresh when timelines look stale.",
-                            status: widgetKitStatus,
+                            status: status(for: .widgetKit),
                             actions: {
                                 HStack(spacing: 8) {
                                     Button("Refresh Timelines") {
@@ -701,7 +1035,7 @@ struct DisplaysPage: View {
                         DisplayCard(
                             title: "Touch Bar / Bar",
                             description: "Small always-on display for the current provider and balance state.",
-                            status: touchBarStatus,
+                            status: status(for: .touchBar),
                             actions: {
                                 HStack(spacing: 8) {
                                     Button("Install / Update") { run(.touchBar, "Touch Bar app updated", actions.installTouchBar) }
@@ -723,27 +1057,53 @@ struct DisplaysPage: View {
                 .padding(24)
             }
         }
-        .task {
-            DispatchQueue.global(qos: .userInitiated).async {
-                let w = displayStore.status(for: .widgetKit)
-                let t = displayStore.status(for: .touchBar)
-                DispatchQueue.main.async {
-                    widgetKitStatus = w
-                    touchBarStatus = t
-                }
+        .onAppear(perform: refreshStatuses)
+    }
+
+    private func run(_ layer: DisplayLayer, _ success: String, _ action: @escaping @Sendable () throws -> Void) {
+        busyLayer = layer
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result: String
+            do {
+                try action()
+                result = success
+            } catch {
+                result = error.localizedDescription
+            }
+            DispatchQueue.main.async {
+                resultText = result
+                busyLayer = nil
+                refreshStatuses()
             }
         }
     }
 
-    private func run(_ layer: DisplayLayer, _ success: String, _ action: () throws -> Void) {
-        busyLayer = layer
-        do {
-            try action()
-            resultText = success
-        } catch {
-            resultText = error.localizedDescription
+    private func refreshStatuses() {
+        let store = displayStore
+        DispatchQueue.global(qos: .userInitiated).async {
+            let updated = Dictionary(uniqueKeysWithValues: DisplayLayer.allCases.map {
+                ($0, store.status(for: $0))
+            })
+            DispatchQueue.main.async {
+                statuses = updated
+            }
         }
-        busyLayer = nil
+    }
+
+    private func status(for layer: DisplayLayer) -> DisplayLayerStatus {
+        statuses[layer] ?? Self.defaultStatus(for: layer)
+    }
+
+    private static func defaultStatuses() -> [DisplayLayer: DisplayLayerStatus] {
+        Dictionary(uniqueKeysWithValues: DisplayLayer.allCases.map { ($0, defaultStatus(for: $0)) })
+    }
+
+    private static func currentStatuses(from store: DisplayLayerStore) -> [DisplayLayer: DisplayLayerStatus] {
+        Dictionary(uniqueKeysWithValues: DisplayLayer.allCases.map { ($0, store.status(for: $0)) })
+    }
+
+    private static func defaultStatus(for layer: DisplayLayer) -> DisplayLayerStatus {
+        DisplayLayerStatus(layer: layer, installed: false, running: false, detail: "Checking...")
     }
 }
 

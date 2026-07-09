@@ -90,10 +90,14 @@ class TestWidgetSource(unittest.TestCase):
         self.assertNotIn("glyphLogo(\"S\"", self.source)
         self.assertNotIn("glyphLogo(\"O\"", self.source)
 
-    def test_command_supports_ubersicht_unicode_directory_variants(self):
-        self.assertIn("Übersicht/widgets/usage-widget", self.source)
-        self.assertIn("Übersicht/widgets/usage-widget", self.source)
-        self.assertIn("for d in", self.source)
+    def test_command_reads_only_control_app_shared_state_at_runtime(self):
+        self.assertNotIn("Übersicht/widgets/usage-widget", self.source)
+        self.assertNotIn("Übersicht/widgets/usage-widget", self.source)
+        self.assertNotIn("FETCHER_DIRS", self.source)
+        self.assertNotIn("for d in", self.source)
+        self.assertIn("QUOTAWIDGET_SHARED_USAGE", self.source)
+        self.assertIn("group.dev.lazyfoxy.QuotaWidget", self.source)
+        self.assertIn("usage.json", self.source)
 
     def test_old_design_tokens_are_removed(self):
         self.assertNotIn('soft: "#A78BFA"', self.source)
