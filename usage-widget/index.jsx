@@ -1,10 +1,5 @@
 const SHARED_USAGE_DEFAULT = "$HOME/Library/Group Containers/group.dev.lazyfoxy.QuotaWidget/Library/Application Support/usage.json";
-const SCRIPT_DIRS = [
-  "$HOME/Library/Application Support/Übersicht/widgets/usage-widget",
-  "$HOME/Library/Application Support/Übersicht/widgets/usage-widget"
-];
-const FETCHER_DIRS = SCRIPT_DIRS.map((d) => `"${d}"`).join(" ");
-export const command = `/bin/sh -lc 'shared="\${QUOTAWIDGET_SHARED_USAGE:-${SHARED_USAGE_DEFAULT}}"; if [ -f "$shared" ]; then cat "$shared"; exit 0; fi; for d in ${FETCHER_DIRS}; do if [ -f "$d/fetch_usage.py" ]; then exec /usr/bin/python3 "$d/fetch_usage.py"; fi; done; exit 1'`;
+export const command = `/bin/sh -lc 'shared="\${QUOTAWIDGET_SHARED_USAGE:-${SHARED_USAGE_DEFAULT}}"; if [ -f "$shared" ]; then cat "$shared"; exit 0; fi; printf "%s\\n" "{}"; exit 0'`;
 export const refreshFrequency = 60000;
 
 const TONE = {
@@ -28,6 +23,9 @@ const I18N = {
     rateLimited: "请求受限 · 稍后自动重试",
     networkError: "连接失败 · 检查网络或代理",
     noApiKey: "未配置 API 密钥",
+    balanceUnavailable: "余额口径异常 · 请到后台核对",
+    loginRequired: "需要重新登录后台",
+    invalidSubject: "SiliconFlow 账户标识失效 · 请重新连接",
     trendEstimate: "近 {window} 日约可用 {days} 天",
     noTrend: "暂无消耗趋势",
     notSignedIn: "未登录 · 请先在 {CLI} 登录",
@@ -40,6 +38,9 @@ const I18N = {
     rateLimited: "Rate limited · retrying soon",
     networkError: "Connection failed · check network or proxy",
     noApiKey: "No API key configured",
+    balanceUnavailable: "Balance unavailable · check provider console",
+    loginRequired: "Sign in to provider console again",
+    invalidSubject: "SiliconFlow account id expired · reconnect",
     trendEstimate: "≈ {days} days left ({window}d)",
     noTrend: "No spending trend yet",
     notSignedIn: "Not signed in · Log in via {CLI}",
@@ -212,11 +213,20 @@ function balancePanel(name, glyph, pal, data) {
 
   if (!data || !data.ok) {
     const reason = data && data.reason;
-    const msg = reason === "rate_limited"
-      ? t.rateLimited
-      : reason === "error"
-        ? t.networkError
-        : t.noApiKey;
+    let msg;
+    if (reason === "rate_limited") {
+      msg = t.rateLimited;
+    } else if (reason === "error") {
+      msg = t.networkError;
+    } else if (reason === "balance_unavailable") {
+      msg = t.balanceUnavailable;
+    } else if (reason === "login_required") {
+      msg = t.loginRequired;
+    } else if (reason === "invalid_subject") {
+      msg = t.invalidSubject;
+    } else {
+      msg = t.noApiKey;
+    }
     return (
       <div style={{ padding: "17px 18px", background: bg, color: tone.sub, fontSize: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>

@@ -33,6 +33,26 @@ class TestParseSiliconFlowInfo(unittest.TestCase):
         result = siliconflow.parse_siliconflow_info(payload)
         self.assertEqual(result["balance"]["amount"], 15.0)
 
+    def test_charge_balance_used_when_total_is_negative(self):
+        payload = {"data": {
+            "balance": "-70.00",
+            "chargeBalance": "96.3866",
+            "totalBalance": "-70.00",
+            "status": "normal"
+        }}
+        result = siliconflow.parse_siliconflow_info(payload)
+        self.assertEqual(result["balance"]["amount"], 96.3866)
+
+    def test_largest_non_negative_balance_field_is_used(self):
+        payload = {"data": {
+            "balance": "0.00",
+            "chargeBalance": "96.3866",
+            "totalBalance": "0.00",
+            "status": "normal"
+        }}
+        result = siliconflow.parse_siliconflow_info(payload)
+        self.assertEqual(result["balance"]["amount"], 96.3866)
+
     def test_status_inactive(self):
         payload = {"data": {"totalBalance": "5.00", "status": "inactive"}}
         result = siliconflow.parse_siliconflow_info(payload)
@@ -55,6 +75,61 @@ class TestParseSiliconFlowInfo(unittest.TestCase):
     def test_missing_balance(self):
         with self.assertRaises(ValueError):
             siliconflow.parse_siliconflow_info({"data": {"status": "active"}})
+
+    def test_negative_api_balance_is_not_displayable(self):
+        payload = {"data": {"totalBalance": "-70.00", "status": "normal"}}
+        with self.assertRaises(siliconflow.BalanceUnavailableError):
+            siliconflow.parse_siliconflow_info(payload)
+
+
+class TestParseSiliconFlowConsoleProfile(unittest.TestCase):
+    def test_financial_info_balance(self):
+        payload = {
+            "data": {
+                "financialInfo": {
+                    "balance": "96.38",
+                    "currency": "CNY",
+                }
+            }
+        }
+
+        result = siliconflow.parse_console_profile(payload)
+
+        self.assertEqual(result["source"], "console_session")
+        self.assertEqual(result["balance"]["amount"], 96.38)
+        self.assertEqual(result["balance"]["label"], "Console Balance")
+
+    def test_console_balance_prefers_positive_recharge_balance(self):
+        payload = {
+            "data": {
+                "financialInfo": {
+                    "balance": None,
+                    "totalBalance": "-70.00",
+                    "chargeBalance": "96.38",
+                    "currency": "CNY",
+                }
+            }
+        }
+
+        result = siliconflow.parse_console_profile(payload)
+
+        self.assertEqual(result["balance"]["amount"], 96.38)
+
+    def test_console_balance_normalizes_raw_balance_units(self):
+        payload = {"data": {"financialInfo": {"balance": "81208061100000"}}}
+
+        result = siliconflow.parse_console_profile(payload)
+
+        self.assertAlmostEqual(result["balance"]["amount"], 81.2080611)
+
+    def test_rejects_missing_financial_info(self):
+        with self.assertRaises(ValueError):
+            siliconflow.parse_console_profile({"data": {}})
+
+    def test_rejects_negative_console_balance(self):
+        payload = {"data": {"financialInfo": {"balance": "-1"}}}
+        with self.assertRaises(siliconflow.BalanceUnavailableError):
+            siliconflow.parse_console_profile(payload)
 
 
 class TestFetchSiliconFlow(unittest.TestCase):
@@ -100,6 +175,13 @@ class TestFetchSiliconFlow(unittest.TestCase):
                                side_effect=RuntimeError("boom")):
             result = siliconflow.fetch_siliconflow()
         self.assertEqual(result, {"ok": False, "kind": "balance", "reason": "error"})
+
+    def test_negative_balance_maps_to_unavailable(self):
+        os.environ["SILICONFLOW_API_KEY"] = "test-token"
+        payload = {"data": {"totalBalance": "-70.00", "status": "normal"}}
+        with mock.patch.object(siliconflow.api_key_http, "bearer_get_json", return_value=payload):
+            result = siliconflow.fetch_siliconflow()
+        self.assertEqual(result, {"ok": False, "kind": "balance", "reason": "balance_unavailable"})
 
     def test_successful_fetch_records_history(self):
         os.environ["SILICONFLOW_API_KEY"] = "test-token"

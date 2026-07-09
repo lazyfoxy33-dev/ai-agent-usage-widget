@@ -4,14 +4,13 @@ import json
 import os
 import time
 
-from usage import codex, claude, kimi, deepseek, siliconflow, openrouter
+from usage import codex, claude, kimi, deepseek, openrouter
 from usage import cache
 
 CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/claude.json")
 KIMI_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/kimi.json")
 CODEX_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/codex.json")
 DEEPSEEK_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/deepseek.json")
-SILICONFLOW_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/siliconflow.json")
 OPENROUTER_CACHE_PATH = os.path.expanduser("~/.cache/usage-widget/openrouter.json")
 CACHE_TTL = 300  # 5 min
 CODEX_FRESH_TTL = 1800  # 30 min
@@ -42,6 +41,8 @@ def _provider_with_cache(path, fetch):
         result = _fresh_result(result, fetched_at)
         cache.write(path, result, now=fetched_at)
         return result
+    if result.get("reason") == "balance_unavailable":
+        return _failed_result(result)
 
     stale = cache.read_stale_entry(path)
     if stale is None:
@@ -77,8 +78,14 @@ def deepseek_with_cache():
     return _provider_with_cache(DEEPSEEK_CACHE_PATH, deepseek.fetch_deepseek)
 
 
-def siliconflow_with_cache():
-    return _provider_with_cache(SILICONFLOW_CACHE_PATH, siliconflow.fetch_siliconflow)
+def siliconflow_console_required():
+    return {
+        "ok": False,
+        "reason": "login_required",
+        "kind": "balance",
+        "source": "console_session",
+        "live": False,
+    }
 
 
 def openrouter_with_cache():
@@ -127,7 +134,7 @@ def build_payload():
         "codex": _ensure_contract(codex_result()),
         "kimi": _ensure_contract(kimi_with_cache()),
         "deepseek": _ensure_contract(deepseek_with_cache()),
-        "siliconflow": _ensure_contract(siliconflow_with_cache()),
+        "siliconflow": _ensure_contract(siliconflow_console_required()),
         "openrouter": _ensure_contract(openrouter_with_cache()),
     })
 

@@ -28,9 +28,10 @@ contract version is `1`.
   "siliconflow": {
     "ok": false,
     "kind": "balance",
+    "source": "console_session",
     "fetched_at": null,
     "live": false,
-    "reason": "no_data"
+    "reason": "login_required"
   },
   "openrouter": {
     "ok": true,
@@ -52,6 +53,17 @@ contract version is `1`.
   Codex, and Kimi.
 - `kind=balance`: account balance with an optional recent-spend estimate for
   DeepSeek, SiliconFlow, and OpenRouter.
+
+## 数据来源 / Source
+
+- `source=api_key`：使用 provider 的公开 API Key 接口。
+- `source=console_session`：使用主 app 内保存的 provider 后台网页登录态。该值只出现在
+  共享 payload 中；cookie 或 session token 不会写入共享 payload。
+
+- `source=api_key`: data came from the provider's public API-key endpoint.
+- `source=console_session`: data came from a provider console web session kept
+  inside the main app. Only the sanitized payload contains this marker; cookies
+  or session tokens are never written to the shared payload.
 
 
 ## 新鲜度 / Freshness
@@ -83,27 +95,41 @@ minutes. Expired cache fallbacks are always `live=false`.
 - `no_data`：没有可读取的本地或远端数据。
 - `error`：其他网络、解析或系统错误。
 - `stale`：显示的是过期缓存。
+- `balance_unavailable`：上游返回的余额口径不适合展示。
+- `login_required`：后台网页登录态缺失或过期，需要用户重新登录。
 
 - `expired`: credentials are missing, expired, or rejected.
 - `rate_limited`: the provider returned HTTP 429.
 - `no_data`: no local or remote usage data is available.
 - `error`: another network, parsing, or system error occurred.
 - `stale`: displayed values came from an expired cache.
+- `balance_unavailable`: the upstream balance semantics are unsafe to display.
+- `login_required`: a provider console web session is missing or expired.
 
 ## 余额提供商配置 / Balance Provider Setup
 
-余额提供商通过环境变量读取 API 密钥（不读取命令行参数）：
+余额提供商通过环境变量读取 API 密钥（不读取命令行参数）。SiliconFlow 只使用
+macOS 主 app 的 Console Session Provider：
 
 - `DEEPSEEK_API_KEY`
-- `SILICONFLOW_API_KEY`
 - `OPENROUTER_API_KEY`
+
+SiliconFlow 由 macOS 主 app 启用 Console Session Provider。该模式
+使用 app 自己的 WebKit 登录态读取 SiliconFlow 后台余额，并只把裁剪后的余额结果写入
+共享 payload。WidgetKit、Übersicht 和其他展示层不得读取或接收网页登录态。
 
 Balance providers read API keys from environment variables (never from command
-line arguments):
+line arguments). SiliconFlow only uses the macOS main app's Console Session
+Provider:
 
 - `DEEPSEEK_API_KEY`
-- `SILICONFLOW_API_KEY`
 - `OPENROUTER_API_KEY`
+
+SiliconFlow uses the Console Session Provider in the macOS main app. That mode
+uses the app-owned WebKit session to read the SiliconFlow console
+balance and writes only the sanitized balance result into the shared payload.
+WidgetKit, Übersicht, and other display layers must not read or receive web
+session credentials.
 
 机器可读定义见 `contract.schema.json`。
 

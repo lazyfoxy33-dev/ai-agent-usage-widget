@@ -47,6 +47,40 @@ struct UsageFetcher {
         return try? JSONDecoder().decode(UsageProvider.self, from: providerData)
     }
 
+    static func replacingProvider(
+        in json: String,
+        providerKey: String,
+        provider: UsageProvider
+    ) throws -> String {
+        guard let data = json.data(using: .utf8),
+              var root = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            throw UsageFetcherError.invalidOutput
+        }
+        let providerData = try JSONEncoder().encode(provider)
+        guard let providerObject = try JSONSerialization.jsonObject(with: providerData) as? [String: Any] else {
+            throw UsageFetcherError.invalidOutput
+        }
+        root[providerKey] = providerObject
+
+        let output = try JSONSerialization.data(withJSONObject: root)
+        guard let merged = String(data: output, encoding: .utf8),
+              (try? UsagePayload.decode(output)) != nil else {
+            throw UsageFetcherError.invalidOutput
+        }
+        return merged
+    }
+
+    static func replacingSiliconFlowProvider(
+        in json: String,
+        consoleProvider: UsageProvider
+    ) throws -> String {
+        return try replacingProvider(
+            in: json,
+            providerKey: "siliconflow",
+            provider: consoleProvider
+        )
+    }
+
     static func fetch(
         timeout: TimeInterval = 30,
         apiKeys: [APIKeyProviderID: String] = [:]

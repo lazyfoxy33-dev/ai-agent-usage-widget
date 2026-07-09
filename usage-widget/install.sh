@@ -30,4 +30,7 @@ for DEST in "${DESTS[@]}"; do
   echo "Installed to: $DEST"
 done
 
+mkdir -p "$HOME/.config/ai-agent-usage-widget/display-layers"
+: > "$HOME/.config/ai-agent-usage-widget/display-layers/ubersicht.installed"
+
 echo "打开（或重启）Übersicht 即可看到组件。"

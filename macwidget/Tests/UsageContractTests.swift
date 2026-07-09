@@ -46,9 +46,11 @@ final class UsageContractTests: XCTestCase {
 
     func testProviderMessageMatchesSharedFailureLanguage() {
         let provider = UsageProvider(ok: false, reason: "rate_limited")
-        XCTAssertEqual(
-            ProviderPresentation.message(for: .claude, provider: provider),
-            "请求受限 · 稍后自动重试"
+        XCTAssertTrue(
+            [
+                "请求受限 · 稍后自动重试",
+                "Rate limited · retrying soon"
+            ].contains(ProviderPresentation.message(for: .claude, provider: provider))
         )
     }
 
@@ -84,6 +86,42 @@ final class UsageContractTests: XCTestCase {
         XCTAssertFalse(ProviderPresentation.balanceTrend(burn).isEmpty)
     }
 
+    func testDecodesProviderSource() throws {
+        let json = """
+        {
+          "ok": true,
+          "kind": "balance",
+          "source": "console_session",
+          "balance": {"amount": 0, "currency": "CNY", "available": true, "label": "Console Balance"}
+        }
+        """
+
+        let provider = try JSONDecoder().decode(UsageProvider.self, from: Data(json.utf8))
+
+        XCTAssertEqual(provider.source, "console_session")
+    }
+
+    func testBalanceUnavailableAndLoginRequiredMessages() {
+        XCTAssertTrue(
+            [
+                "余额口径异常 · 请到后台核对",
+                "Balance unavailable · check provider console"
+            ].contains(ProviderPresentation.message(
+                for: .siliconflow,
+                provider: UsageProvider(ok: false, reason: "balance_unavailable", kind: "balance")
+            ))
+        )
+        XCTAssertTrue(
+            [
+                "需要重新登录 SiliconFlow 后台",
+                "Sign in to SiliconFlow console again"
+            ].contains(ProviderPresentation.message(
+                for: .siliconflow,
+                provider: UsageProvider(ok: false, reason: "login_required", kind: "balance")
+            ))
+        )
+    }
+
     func testFetcherEnvironmentIncludesConfiguredAPIKeys() {
         let env = UsageFetcher.environment(
             base: ["PATH": "/usr/bin"],
@@ -111,10 +149,184 @@ final class UsageContractTests: XCTestCase {
         XCTAssertNil(UsageFetcher.providerStatus(from: json, providerKey: "siliconflow"))
     }
 
+    func testReplacingProviderPreservesSharedPayloadShape() throws {
+        let json = """
+        {
+          "schema_version": 1,
+          "claude": {"ok": false},
+          "codex": {"ok": false},
+          "kimi": {"ok": false},
+          "deepseek": {"ok": false},
+          "siliconflow": {"ok": false, "kind": "balance", "reason": "balance_unavailable"},
+          "openrouter": {"ok": false}
+        }
+        """
+        let consoleProvider = UsageProvider(
+            ok: true,
+            kind: "balance",
+            source: "console_session",
+            live: true,
+            balance: BalanceInfo(amount: 0, currency: "CNY", available: true, label: "Console Balance")
+        )
+
+        let merged = try UsageFetcher.replacingProvider(
+            in: json,
+            providerKey: "siliconflow",
+            provider: consoleProvider
+        )
+        let decoded = try UsagePayload.decode(Data(merged.utf8))
+
+        XCTAssertTrue(decoded.siliconflow.ok)
+        XCTAssertEqual(decoded.siliconflow.source, "console_session")
+        XCTAssertEqual(decoded.siliconflow.balance?.label, "Console Balance")
+    }
+
+    func testSiliconFlowConsoleFailureDoesNotFallbackToAPIKeyBalance() throws {
+        let json = """
+        {
+          "schema_version": 1,
+          "claude": {"ok": false},
+          "codex": {"ok": false},
+          "kimi": {"ok": false},
+          "deepseek": {"ok": false},
+          "siliconflow": {
+            "ok": true,
+            "kind": "balance",
+            "source": "api_key",
+            "live": true,
+            "balance": {"amount": 12, "currency": "CNY", "available": true, "label": "Balance"}
+          },
+          "openrouter": {"ok": false}
+        }
+        """
+        let consoleProvider = UsageProvider(
+            ok: false,
+            reason: "error",
+            kind: "balance",
+            source: "console_session",
+            live: false
+        )
+
+        let merged = try UsageFetcher.replacingSiliconFlowProvider(
+            in: json,
+            consoleProvider: consoleProvider
+        )
+        let decoded = try UsagePayload.decode(Data(merged.utf8))
+
+        XCTAssertFalse(decoded.siliconflow.ok)
+        XCTAssertEqual(decoded.siliconflow.source, "console_session")
+        XCTAssertNil(decoded.siliconflow.balance)
+    }
+
+    func testSiliconFlowConsoleSuccessOverridesAPIKeyBalance() throws {
+        let json = """
+        {
+          "schema_version": 1,
+          "claude": {"ok": false},
+          "codex": {"ok": false},
+          "kimi": {"ok": false},
+          "deepseek": {"ok": false},
+          "siliconflow": {"ok": false, "kind": "balance", "reason": "balance_unavailable"},
+          "openrouter": {"ok": false}
+        }
+        """
+        let consoleProvider = UsageProvider(
+            ok: true,
+            kind: "balance",
+            source: "console_session",
+            live: true,
+            balance: BalanceInfo(amount: 96, currency: "CNY", available: true, label: "Console Balance")
+        )
+
+        let merged = try UsageFetcher.replacingSiliconFlowProvider(
+            in: json,
+            consoleProvider: consoleProvider
+        )
+        let decoded = try UsagePayload.decode(Data(merged.utf8))
+
+        XCTAssertTrue(decoded.siliconflow.ok)
+        XCTAssertEqual(decoded.siliconflow.source, "console_session")
+        XCTAssertEqual(decoded.siliconflow.balance?.amount, 96)
+    }
+
+    func testSiliconFlowZeroConsoleDoesNotFallbackToPositiveAPIKeyBalance() throws {
+        let json = """
+        {
+          "schema_version": 1,
+          "claude": {"ok": false},
+          "codex": {"ok": false},
+          "kimi": {"ok": false},
+          "deepseek": {"ok": false},
+          "siliconflow": {
+            "ok": true,
+            "kind": "balance",
+            "source": "api_key",
+            "live": true,
+            "balance": {"amount": 88, "currency": "CNY", "available": true, "label": "Balance"}
+          },
+          "openrouter": {"ok": false}
+        }
+        """
+        let consoleProvider = UsageProvider(
+            ok: true,
+            kind: "balance",
+            source: "console_session",
+            live: true,
+            balance: BalanceInfo(amount: 0, currency: "CNY", available: true, label: "Console Balance")
+        )
+
+        let merged = try UsageFetcher.replacingSiliconFlowProvider(
+            in: json,
+            consoleProvider: consoleProvider
+        )
+        let decoded = try UsagePayload.decode(Data(merged.utf8))
+
+        XCTAssertTrue(decoded.siliconflow.ok)
+        XCTAssertEqual(decoded.siliconflow.source, "console_session")
+        XCTAssertEqual(decoded.siliconflow.balance?.amount, 0)
+    }
+
+    func testSiliconFlowZeroConsoleKeepsZeroWhenAPIKeyIsAlsoZero() throws {
+        let json = """
+        {
+          "schema_version": 1,
+          "claude": {"ok": false},
+          "codex": {"ok": false},
+          "kimi": {"ok": false},
+          "deepseek": {"ok": false},
+          "siliconflow": {
+            "ok": true,
+            "kind": "balance",
+            "source": "api_key",
+            "live": true,
+            "balance": {"amount": 0, "currency": "CNY", "available": true, "label": "Balance"}
+          },
+          "openrouter": {"ok": false}
+        }
+        """
+        let consoleProvider = UsageProvider(
+            ok: true,
+            kind: "balance",
+            source: "console_session",
+            live: true,
+            balance: BalanceInfo(amount: 0, currency: "CNY", available: true, label: "Console Balance")
+        )
+
+        let merged = try UsageFetcher.replacingSiliconFlowProvider(
+            in: json,
+            consoleProvider: consoleProvider
+        )
+        let decoded = try UsagePayload.decode(Data(merged.utf8))
+
+        XCTAssertTrue(decoded.siliconflow.ok)
+        XCTAssertEqual(decoded.siliconflow.source, "console_session")
+        XCTAssertEqual(decoded.siliconflow.balance?.amount, 0)
+    }
+
     func testAccountRowsIncludeAllSixProviders() {
         let model = AccountSettingsModel(
             payload: .preview,
-            configuredAPIKeys: [.siliconflow],
+            configuredAPIKeys: [],
             codexActiveRefresh: false
         )
 
@@ -142,8 +354,9 @@ final class UsageContractTests: XCTestCase {
     func testAccountRowsReflectConfiguredAPIKeysAndStatus() {
         let model = AccountSettingsModel(
             payload: .preview,
-            configuredAPIKeys: [.siliconflow],
-            codexActiveRefresh: false
+            configuredAPIKeys: [],
+            codexActiveRefresh: false,
+            siliconFlowConsoleConfigured: true
         )
 
         let byID = Dictionary(uniqueKeysWithValues: model.rows.map { ($0.id, $0) })
@@ -174,11 +387,12 @@ final class UsageContractTests: XCTestCase {
     func testCollectsOnlyConfiguredAPIKeys() throws {
         let backend = InMemoryCredentialBackend()
         let store = APIKeyStore(backend: backend)
-        try store.save("sf-key", for: .siliconflow)
+        try store.save("deepseek-key", for: .deepseek)
+        try store.save("openrouter-key", for: .openrouter)
 
         let keys = try QuotaWidgetModel.apiKeys(from: store)
 
-        XCTAssertEqual(keys, [.siliconflow: "sf-key"])
+        XCTAssertEqual(keys, [.deepseek: "deepseek-key", .openrouter: "openrouter-key"])
     }
 
     @MainActor
@@ -202,7 +416,12 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(viewModel.saveKey())
         XCTAssertNil(viewModel.editingProvider)
         XCTAssertEqual(viewModel.saveErrorText, nil)
-        XCTAssertEqual(try backend.read(service: APIKeyStore.defaultService, account: "deepseek"), "deepseek-key")
+        let rawBundle = try XCTUnwrap(backend.read(
+            service: AppCredentialBundleStore.service,
+            account: AppCredentialBundleStore.account
+        ))
+        let bundle = try JSONDecoder().decode(AppCredentialBundle.self, from: Data(rawBundle.utf8))
+        XCTAssertEqual(bundle.apiKeys["deepseek"], "deepseek-key")
         XCTAssertTrue(viewModel.model.configuredAPIKeys.contains(.deepseek))
     }
 
@@ -318,9 +537,156 @@ final class UsageContractTests: XCTestCase {
 
     func testAPIKeyStoreUsesStableServiceAndProviderAccounts() {
         XCTAssertEqual(APIKeyStore.defaultService, "AI Agent Usage Widget")
+        XCTAssertEqual(APIKeyProviderID.allCases, [.deepseek, .openrouter])
         XCTAssertEqual(APIKeyProviderID.deepseek.rawValue, "deepseek")
-        XCTAssertEqual(APIKeyProviderID.siliconflow.rawValue, "siliconflow")
         XCTAssertEqual(APIKeyProviderID.openrouter.rawValue, "openrouter")
+    }
+
+    func testSiliconFlowConsoleSessionStoreUsesSeparateNamespace() throws {
+        let backend = InMemoryCredentialBackend()
+        let store = SiliconFlowConsoleSessionStore(backend: backend)
+
+        try store.saveCookieHeader("sf_session=test")
+        try store.saveSubjectID("subject-test-123456")
+
+        XCTAssertEqual(try store.readCookieHeader(), "sf_session=test")
+        XCTAssertEqual(try store.readSubjectID(), "subject-test-123456")
+        XCTAssertNil(try backend.read(service: APIKeyStore.defaultService, account: "siliconflow-console"))
+    }
+
+    func testSiliconFlowConsoleSessionRejectsTooShortSubjectID() {
+        let session = StoredSiliconFlowConsoleSession(
+            cookieHeader: "sf_session=test",
+            subjectID: "short"
+        )
+
+        XCTAssertFalse(session.isConfigured)
+    }
+
+    func testSiliconFlowConsoleProviderAllowlist() {
+        XCTAssertTrue(SiliconFlowConsoleSessionProvider.isAllowedProfileURL(
+            URL(string: "https://cloud.siliconflow.cn/walletd-server/api/v1/subject/profile/peek")!
+        ))
+        XCTAssertFalse(SiliconFlowConsoleSessionProvider.isAllowedProfileURL(
+            URL(string: "https://cloud.siliconflow.cn/walletd-server/api/v1/subject/profile/peek/extra")!
+        ))
+        XCTAssertFalse(SiliconFlowConsoleSessionProvider.isAllowedProfileURL(
+            URL(string: "https://walletd.siliconflow.cn/api/v1/subject/profile/peek")!
+        ))
+    }
+
+    func testSiliconFlowConsoleProviderFetchesBalance() async throws {
+        let backend = InMemoryCredentialBackend()
+        let store = SiliconFlowConsoleSessionStore(backend: backend)
+        try store.saveCookieHeader("sf_session=test")
+        try store.saveSubjectID("subject-test-123456")
+        let provider = SiliconFlowConsoleSessionProvider(
+            sessionStore: store,
+            fetchData: { request in
+                XCTAssertEqual(
+                    request.url?.absoluteString,
+                    "https://cloud.siliconflow.cn/walletd-server/api/v1/subject/profile/peek"
+                )
+                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Subject-Id"), "subject-test-123456")
+                let data = Data("""
+                {"data": {"financialInfo": {"chargeBalance": "96", "currency": "CNY"}}}
+                """.utf8)
+                return (data, HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 200,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!)
+            }
+        )
+
+        let result = await provider.fetchBalance()
+
+        XCTAssertTrue(result.ok)
+        XCTAssertEqual(result.balance?.amount, 96)
+    }
+
+    func testSiliconFlowConsoleProviderReportsInvalidSubject() async throws {
+        let backend = InMemoryCredentialBackend()
+        let store = SiliconFlowConsoleSessionStore(backend: backend)
+        try store.saveCookieHeader("sf_session=test")
+        try store.saveSubjectID("subject-test-123456")
+        let provider = SiliconFlowConsoleSessionProvider(
+            sessionStore: store,
+            fetchData: { request in
+                let data = Data("""
+                {"code": 10001, "message": "validate error: invalid parameter: SubjectId"}
+                """.utf8)
+                return (data, HTTPURLResponse(
+                    url: request.url!,
+                    statusCode: 400,
+                    httpVersion: nil,
+                    headerFields: nil
+                )!)
+            }
+        )
+
+        let result = await provider.fetchBalance()
+
+        XCTAssertFalse(result.ok)
+        XCTAssertEqual(result.reason, "invalid_subject")
+    }
+
+    func testSiliconFlowConsoleProviderParsesFinancialInfo() throws {
+        let data = Data("""
+        {
+          "data": {
+            "financialInfo": {
+              "balance": "0",
+              "currency": "CNY"
+            }
+          }
+        }
+        """.utf8)
+
+        let provider = try SiliconFlowConsoleSessionProvider.parseProfileData(data)
+
+        XCTAssertTrue(provider.ok)
+        XCTAssertEqual(provider.source, "console_session")
+        XCTAssertEqual(provider.balance?.amount, 0)
+        XCTAssertEqual(provider.balance?.label, "Console Balance")
+    }
+
+    func testSiliconFlowConsoleProviderPrefersRechargeBalance() throws {
+        let data = Data("""
+        {
+          "data": {
+            "financialInfo": {
+              "balance": null,
+              "totalBalance": "-70",
+              "chargeBalance": "96",
+              "currency": "CNY"
+            }
+          }
+        }
+        """.utf8)
+
+        let provider = try SiliconFlowConsoleSessionProvider.parseProfileData(data)
+
+        XCTAssertEqual(provider.balance?.amount, 96)
+    }
+
+    func testSiliconFlowConsoleProviderNormalizesRawBalanceUnits() throws {
+        let data = Data("""
+        {"data": {"financialInfo": {"balance": "81208061100000"}}}
+        """.utf8)
+
+        let provider = try SiliconFlowConsoleSessionProvider.parseProfileData(data)
+
+        XCTAssertEqual(provider.balance?.amount ?? 0, 81.2080611, accuracy: 0.0000001)
+    }
+
+    func testSiliconFlowConsoleProviderRejectsNegativeFinancialInfo() throws {
+        let data = Data("""
+        {"data": {"financialInfo": {"balance": "-1"}}}
+        """.utf8)
+
+        XCTAssertThrowsError(try SiliconFlowConsoleSessionProvider.parseProfileData(data))
     }
 
     func testControlCenterHasTwoColumnLayoutWithNavigation() throws {
@@ -351,6 +717,30 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("OpenRouter"), "should show OpenRouter provider")
     }
 
+    func testSiliconFlowConfigurationIsOneCombinedRow() throws {
+        let source = try sourceFile("App/ControlCenterView.swift")
+        let rowStart = source.range(of: "struct SiliconFlowProviderRow: View")!.lowerBound
+        let rowEnd = source.range(of: "struct SourceOptionBadge: View")!.lowerBound
+        let rowSource = String(source[rowStart..<rowEnd])
+
+        XCTAssertTrue(source.contains("SiliconFlowProviderRow"), "SiliconFlow should have one console-selected row")
+        XCTAssertFalse(rowSource.contains("onEditAPIKey"), "SiliconFlow should not expose an API key action")
+        XCTAssertFalse(rowSource.contains("API Key"), "SiliconFlow should not advertise API-key mode")
+        XCTAssertFalse(source.contains("SiliconFlowConsoleSessionRow"), "Console session should not render as a separate provider row")
+        XCTAssertFalse(source.contains("SiliconFlow Console Balance"), "Console balance should be an option inside SiliconFlow, not a separate provider")
+        XCTAssertTrue(source.contains("subjectId"), "Console session save should capture the SiliconFlow subject id")
+        XCTAssertTrue(source.contains("SF_SUBJECT_ID"), "Console session save should prefer SiliconFlow's explicit subject global")
+        XCTAssertFalse(source.contains("prefill_subject_id"), "Console session save should not persist short prefill subject codes")
+    }
+
+    func testSiliconFlowReconnectCapturesSubjectCandidatesFromWebRequests() throws {
+        let source = try sourceFile("App/ControlCenterView.swift")
+
+        XCTAssertTrue(source.contains("__quotaWidgetSubjectCandidates"))
+        XCTAssertTrue(source.contains("WKUserScript"))
+        XCTAssertTrue(source.contains("performance.getEntriesByType"))
+    }
+
     func testDisplaysPanelExposesDisplayLayerActions() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
 
@@ -360,6 +750,16 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("Refresh Timelines"))
         XCTAssertTrue(source.contains("Open Widget Gallery"))
         XCTAssertTrue(source.contains("Open App"))
+    }
+
+    func testDisplaysPanelDoesNotSynchronouslyQueryStatusInBody() throws {
+        let source = try sourceFile("App/ControlCenterView.swift")
+        let displaysStart = source.range(of: "struct DisplaysPage: View")!.lowerBound
+        let displayCardStart = source.range(of: "struct DisplayCard")!.lowerBound
+        let displaysSource = String(source[displaysStart..<displayCardStart])
+
+        XCTAssertFalse(displaysSource.contains("displayStore.status(for:"))
+        XCTAssertTrue(displaysSource.contains("@State private var statuses"))
     }
 
     func testAppBundlesDisplayLayerInstallSources() throws {
@@ -380,13 +780,15 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("ControlCenterView"))
         XCTAssertTrue(source.contains("Settings..."))
         XCTAssertTrue(source.contains("SettingsPresenter"))
+        XCTAssertTrue(source.contains("setActivationPolicy(.regular)"))
     }
 
     func testAccountRowsKeepAPIProvidersInControlApp() {
         let model = AccountSettingsModel(
             payload: .preview,
-            configuredAPIKeys: [.deepseek, .siliconflow],
-            codexActiveRefresh: false
+            configuredAPIKeys: [.deepseek],
+            codexActiveRefresh: false,
+            siliconFlowConsoleConfigured: true
         )
 
         let apiRows = model.rows.filter { $0.kind == .apiKey }

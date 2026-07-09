@@ -27,13 +27,12 @@ class TestContract(unittest.TestCase):
                                return_value=no_data), \
              mock.patch.object(fetch_usage.codex, "parse_codex",
                                return_value=no_data), \
+             mock.patch.object(fetch_usage.codex, "maybe_active_refresh"), \
              mock.patch.object(fetch_usage, "claude_with_cache",
                                return_value=no_data), \
              mock.patch.object(fetch_usage, "kimi_with_cache",
                                return_value=no_data), \
              mock.patch.object(fetch_usage, "deepseek_with_cache",
-                               return_value=no_data), \
-             mock.patch.object(fetch_usage, "siliconflow_with_cache",
                                return_value=no_data), \
              mock.patch.object(fetch_usage, "openrouter_with_cache",
                                return_value=no_data):
@@ -55,8 +54,12 @@ class TestContract(unittest.TestCase):
 
         provider = schema["$defs"]["provider"]
         self.assertIn("kind", provider["properties"])
+        self.assertIn("source", provider["properties"])
         self.assertIn("balance", provider["properties"])
         self.assertIn("burn_rate", provider["properties"])
+        self.assertIn("balance_unavailable", provider["properties"]["reason"]["enum"])
+        self.assertIn("login_required", provider["properties"]["reason"]["enum"])
+        self.assertIn("console_session", provider["properties"]["source"]["enum"])
 
         balance = schema["$defs"]["balance"]
         self.assertIn("amount", balance["required"])

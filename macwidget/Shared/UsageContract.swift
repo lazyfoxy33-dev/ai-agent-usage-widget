@@ -49,6 +49,7 @@ struct UsageProvider: Codable, Equatable {
     let ok: Bool
     let reason: String?
     let kind: String?
+    let source: String?
     let live: Bool?
     let fetchedAt: TimeInterval?
     let asOf: TimeInterval?
@@ -61,6 +62,7 @@ struct UsageProvider: Codable, Equatable {
         ok: Bool,
         reason: String? = nil,
         kind: String? = nil,
+        source: String? = nil,
         live: Bool? = nil,
         fetchedAt: TimeInterval? = nil,
         asOf: TimeInterval? = nil,
@@ -72,6 +74,7 @@ struct UsageProvider: Codable, Equatable {
         self.ok = ok
         self.reason = reason
         self.kind = kind
+        self.source = source
         self.live = live
         self.fetchedAt = fetchedAt
         self.asOf = asOf
@@ -87,7 +90,7 @@ struct UsageProvider: Codable, Equatable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case ok, reason, kind, live
+        case ok, reason, kind, source, live
         case fetchedAt = "fetched_at"
         case asOf = "as_of"
         case fiveH = "five_h"
@@ -130,6 +133,9 @@ enum ProviderPresentation {
         let rateLimited: String
         let notSignedIn: String
         let noApiKey: String
+        let balanceUnavailable: String
+        let loginRequired: String
+        let invalidSubject: String
         let cached: String
         let cachedBalance: String
         let cmdMap: [String: String]
@@ -139,6 +145,9 @@ enum ProviderPresentation {
         rateLimited: "请求受限 · 稍后自动重试",
         notSignedIn: "未登录 · 请先在 {CLI} 登录",
         noApiKey: "未配置 API Key · 请在 {CLI} 添加",
+        balanceUnavailable: "余额口径异常 · 请到后台核对",
+        loginRequired: "需要重新登录 SiliconFlow 后台",
+        invalidSubject: "SiliconFlow 账户标识失效 · 请重新连接",
         cached: "缓存数据 · 等待刷新",
         cachedBalance: "缓存余额 · 等待刷新",
         cmdMap: [
@@ -155,6 +164,9 @@ enum ProviderPresentation {
         rateLimited: "Rate limited · retrying soon",
         notSignedIn: "Not signed in · Log in via {CLI}",
         noApiKey: "API key not set · Add it in {CLI}",
+        balanceUnavailable: "Balance unavailable · check provider console",
+        loginRequired: "Sign in to SiliconFlow console again",
+        invalidSubject: "SiliconFlow account id expired · reconnect",
         cached: "Cached · awaiting refresh",
         cachedBalance: "Cached balance · awaiting refresh",
         cmdMap: [
@@ -185,6 +197,12 @@ enum ProviderPresentation {
         switch provider.reason {
         case "rate_limited":
             return strings.rateLimited
+        case "balance_unavailable":
+            return strings.balanceUnavailable
+        case "login_required":
+            return strings.loginRequired
+        case "invalid_subject":
+            return strings.invalidSubject
         default:
             let cli = strings.cmdMap[kind.rawValue] ?? kind.rawValue
             if isBalanceProvider(kind, provider: provider) {
@@ -299,6 +317,7 @@ extension UsagePayload {
             ok: true,
             reason: "stale",
             kind: "balance",
+            source: "console_session",
             live: false,
             balance: BalanceInfo(amount: 88.88, currency: "CNY", available: true, label: "Balance"),
             burnRate: BurnRateInfo(
