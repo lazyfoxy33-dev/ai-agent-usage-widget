@@ -366,6 +366,41 @@ final class UsageContractTests: XCTestCase {
         XCTAssertEqual(byID[.siliconflow]?.statusText, ProviderPresentation.cachedBalanceMessage())
     }
 
+    func testAccountRowsNormalizeLegacySiliconFlowConsoleRawBalance() {
+        let rawConsoleBalance = 123_450_000_000_000.0
+        let payload = UsagePayload(
+            schemaVersion: 1,
+            claude: UsagePayload.preview.claude,
+            codex: UsagePayload.preview.codex,
+            kimi: UsagePayload.preview.kimi,
+            deepseek: UsagePayload.preview.deepseek,
+            siliconflow: UsageProvider(
+                ok: true,
+                kind: "balance",
+                source: "console_session",
+                live: true,
+                balance: BalanceInfo(
+                    amount: rawConsoleBalance,
+                    currency: "CNY",
+                    available: true,
+                    label: "Console Balance"
+                ),
+                burnRate: UsagePayload.preview.siliconflow.burnRate
+            ),
+            openrouter: UsagePayload.preview.openrouter
+        )
+        let model = AccountSettingsModel(
+            payload: payload,
+            configuredAPIKeys: [],
+            codexActiveRefresh: false,
+            siliconFlowConsoleConfigured: true
+        )
+
+        let siliconFlow = model.rows.first { $0.id == AccountProviderID.siliconflow }
+        XCTAssertEqual(siliconFlow?.statusText, "¥123.45")
+        XCTAssertTrue(siliconFlow?.balanceSummary?.hasPrefix("¥123.45") ?? false)
+    }
+
     func testCodexRowReflectsActiveRefreshFlag() {
         let enabled = AccountSettingsModel(
             payload: .preview,

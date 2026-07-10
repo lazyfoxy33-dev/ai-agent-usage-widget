@@ -85,14 +85,44 @@ struct AccountSettingsModel: Equatable {
 
     private func provider(for id: AccountProviderID) -> UsageProvider? {
         guard let payload else { return nil }
+        let provider: UsageProvider
         switch id {
-        case .claude: return payload.claude
-        case .codex: return payload.codex
-        case .kimi: return payload.kimi
-        case .deepseek: return payload.deepseek
-        case .siliconflow: return payload.siliconflow
-        case .openrouter: return payload.openrouter
+        case .claude: provider = payload.claude
+        case .codex: provider = payload.codex
+        case .kimi: provider = payload.kimi
+        case .deepseek: provider = payload.deepseek
+        case .siliconflow: provider = payload.siliconflow
+        case .openrouter: provider = payload.openrouter
         }
+        return normalizedProvider(provider, for: id)
+    }
+
+    private func normalizedProvider(_ provider: UsageProvider, for id: AccountProviderID) -> UsageProvider {
+        guard id == .siliconflow,
+              provider.source == "console_session",
+              let balance = provider.balance,
+              balance.amount >= 1_000_000_000
+        else {
+            return provider
+        }
+        return UsageProvider(
+            ok: provider.ok,
+            reason: provider.reason,
+            kind: provider.kind,
+            source: provider.source,
+            live: provider.live,
+            fetchedAt: provider.fetchedAt,
+            asOf: provider.asOf,
+            fiveH: provider.fiveH,
+            weekly: provider.weekly,
+            balance: BalanceInfo(
+                amount: balance.amount / 1_000_000_000_000,
+                currency: balance.currency,
+                available: balance.available,
+                label: balance.label
+            ),
+            burnRate: provider.burnRate
+        )
     }
 
     private func row(for id: AccountProviderID) -> AccountRowState {

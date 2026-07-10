@@ -272,6 +272,12 @@ struct AccountsPage: View {
                 onCancel: { showingSiliconFlowConsoleLogin = false }
             )
         }
+        .onAppear {
+            viewModel.reload()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .quotaWidgetUsagePayloadDidRefresh)) { _ in
+            viewModel.reload()
+        }
     }
 }
 
