@@ -45,6 +45,8 @@ and [core contract](../core/CONTRACT.md).
 
 ## 安装 / Install
 
+Recommended installation is through `QuotaWidget.app` > Settings... > Displays. Manual installation remains available for development.
+
 最简单的方式：从
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
 已公证的 `QuotaBar.dmg`，拖入「应用程序」并打开（已 Developer ID 签名 + 公证，

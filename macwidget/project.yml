@@ -34,6 +34,17 @@ targets:
           find "$DESTINATION" -type d -name __pycache__ -prune -exec rm -rf {} +
           find "$DESTINATION" -type f -name '*.pyc' -delete
         basedOnDependencyAnalysis: false
+      - name: Bundle display layers
+        script: |
+          set -eu
+          DESTINATION="${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/display-layers"
+          rm -rf "$DESTINATION"
+          mkdir -p "$DESTINATION"
+          ditto "${SRCROOT}/../usage-widget" "$DESTINATION/usage-widget"
+          ditto "${SRCROOT}/../touchbar" "$DESTINATION/touchbar"
+          find "$DESTINATION" -type d \( -name __pycache__ -o -name .build -o -name build \) -prune -exec rm -rf {} +
+          find "$DESTINATION" -type f \( -name '*.pyc' -o -name '*.jsonl' \) -delete
+        basedOnDependencyAnalysis: false
   QuotaWidgetExtension:
     type: app-extension
     platform: macOS

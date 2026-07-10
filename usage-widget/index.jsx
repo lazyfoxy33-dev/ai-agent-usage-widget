@@ -1,5 +1,5 @@
-const SCRIPT = "$HOME/Library/Application Support/Übersicht/widgets/usage-widget/fetch_usage.py";
-export const command = `/usr/bin/python3 "${SCRIPT}"`;
+const SHARED_USAGE_DEFAULT = "$HOME/Library/Group Containers/group.dev.lazyfoxy.QuotaWidget/Library/Application Support/usage.json";
+export const command = `/bin/sh -lc 'shared="\${QUOTAWIDGET_SHARED_USAGE:-${SHARED_USAGE_DEFAULT}}"; if [ -f "$shared" ]; then cat "$shared"; exit 0; fi; printf "%s\\n" "{}"; exit 0'`;
 export const refreshFrequency = 60000;
 
 const TONE = {
@@ -10,20 +10,39 @@ const TONE = {
 const PROVIDERS = {
   claude: { name: "Claude", accent: "#D97757", tintL: "#FAF7F3", tintD: "#211F1C" },
   codex: { name: "Codex", accent: "#7B83F5", tintL: "#F6F6FB", tintD: "#1B1B23" },
-  kimi: { name: "Kimi Code", accent: "#1478FF", tintL: "#F4F7FC", tintD: "#181C24" }
+  kimi: { name: "Kimi Code", accent: "#1478FF", tintL: "#F4F7FC", tintD: "#181C24" },
+  deepseek: { name: "DeepSeek", kind: "balance", accent: "#4F6D7A", tintL: "#F3F6F7", tintD: "#1A2024" },
+  siliconflow: { name: "SiliconFlow", kind: "balance", accent: "#F56C6C", tintL: "#FDF5F5", tintD: "#241A1A" },
+  openrouter: { name: "OpenRouter", kind: "balance", accent: "#8B5CF6", tintL: "#F5F3FD", tintD: "#1E1A2E" }
 };
 
 const I18N = {
   zh: {
     cached: "缓存数据 · 等待刷新",
+    cachedBalance: "缓存余额 · 等待刷新",
     rateLimited: "请求受限 · 稍后自动重试",
+    networkError: "连接失败 · 检查网络或代理",
+    noApiKey: "未配置 API 密钥",
+    balanceUnavailable: "余额口径异常 · 请到后台核对",
+    loginRequired: "需要重新登录后台",
+    invalidSubject: "SiliconFlow 账户标识失效 · 请重新连接",
+    trendEstimate: "近 {window} 日约可用 {days} 天",
+    noTrend: "暂无消耗趋势",
     notSignedIn: "未登录 · 请先在 {CLI} 登录",
     cmdMap: { "Claude": "Claude Code", "Codex": "Codex CLI", "Kimi Code": "Kimi CLI" },
     resetsSoon: "Resets soon"
   },
   en: {
     cached: "Cached · awaiting refresh",
+    cachedBalance: "Cached balance · awaiting refresh",
     rateLimited: "Rate limited · retrying soon",
+    networkError: "Connection failed · check network or proxy",
+    noApiKey: "No API key configured",
+    balanceUnavailable: "Balance unavailable · check provider console",
+    loginRequired: "Sign in to provider console again",
+    invalidSubject: "SiliconFlow account id expired · reconnect",
+    trendEstimate: "≈ {days} days left ({window}d)",
+    noTrend: "No spending trend yet",
     notSignedIn: "Not signed in · Log in via {CLI}",
     cmdMap: { "Claude": "Claude Code", "Codex": "Codex CLI", "Kimi Code": "Kimi CLI" },
     resetsSoon: "Resets soon"
@@ -62,6 +81,15 @@ function emphasis(accent, used, isDark) {
   return rgbToHex(r * f, g * f, b * f);
 }
 
+function rgba(hex, alpha) {
+  const [r, g, b] = hexToRgb(hex);
+  return `rgba(${r},${g},${b},${alpha})`;
+}
+
+function dangerTrack(accent, tone, isDark) {
+  return `linear-gradient(90deg,${tone.track} 0 82%,${rgba(accent, isDark ? 0.26 : 0.15)} 82% 100%)`;
+}
+
 function sl(label) {
   return label === "Weekly" ? "Wk" : label;
 }
@@ -80,33 +108,48 @@ function fmtDuration(resetsAt) {
   return `${d}d` + (h ? ` ${h}h` : "");
 }
 
-function pctFontSize(pct) {
-  return pct >= 100 ? 14 : 18;
+function fmtBalance(amount, currency) {
+  const value = Number(amount || 0).toFixed(2);
+  const code = String(currency || "").toUpperCase();
+  if (code === "CNY") return `¥${value}`;
+  if (code === "USD") return `$${value}`;
+  return code ? `${value} ${code}` : value;
 }
 
-function ring(pal, tone, fivePct, weekPct, isDark) {
-  const R1 = 38, R2 = 27, C1 = 2 * Math.PI * R1, C2 = 2 * Math.PI * R2;
-  const off = (c, p) => c * (1 - Math.min(100, Math.max(0, p)) / 100);
-  const cWeek = emphasis(pal.accent, weekPct, isDark);
-  const cFive = emphasis(pal.accent, fivePct, isDark);
-  const urgent = fivePct >= weekPct ? { pct: fivePct, label: "5H" } : { pct: weekPct, label: "Wk" };
+function balanceTrendText(burnRate) {
+  const t = I18N[locale()];
+  if (!burnRate || burnRate.confidence === "none" || burnRate.estimated_days_left == null) {
+    return t.noTrend;
+  }
+  return t.trendEstimate
+    .replace("{window}", String(burnRate.window_days || 7))
+    .replace("{days}", String(burnRate.estimated_days_left));
+}
+
+function soonestWindow(wins) {
+  return wins.reduce((best, win) => {
+    if (!best) return win;
+    if (!win.resetsAt) return best;
+    if (!best.resetsAt) return win;
+    return win.resetsAt < best.resetsAt ? win : best;
+  }, null);
+}
+
+function usageBarRow(w, pal, tone, isDark) {
+  const clamped = Math.min(100, Math.max(0, w.pct));
+  const color = emphasis(pal.accent, w.pct, isDark);
   return (
-    <div style={{ width: 88, height: 88, position: "relative", flex: "none" }}>
-      <svg width="88" height="88" viewBox="0 0 88 88" style={{ transform: "rotate(-90deg)" }}>
-        <circle cx="44" cy="44" r={R1} fill="none" stroke={tone.track} strokeWidth="6.5" />
-        <circle cx="44" cy="44" r={R1} fill="none" stroke={cWeek} strokeWidth="6.5" strokeLinecap="round" strokeDasharray={C1} strokeDashoffset={off(C1, weekPct)} />
-        <circle cx="44" cy="44" r={R2} fill="none" stroke={tone.track} strokeWidth="6.5" />
-        <circle cx="44" cy="44" r={R2} fill="none" stroke={cFive} strokeWidth="6.5" strokeLinecap="round" strokeDasharray={C2} strokeDashoffset={off(C2, fivePct)} />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", lineHeight: 1, transform: "translateY(-1px)" }}>
-        <span style={{ fontSize: pctFontSize(urgent.pct), fontWeight: 720, letterSpacing: "-.5px", color: emphasis(pal.accent, urgent.pct, isDark) }}>{urgent.pct}%</span>
-        <span style={{ fontSize: 8, marginTop: 3, letterSpacing: ".5px", color: tone.sub, fontWeight: 600 }}>{sl(urgent.label).toUpperCase()}</span>
-      </div>
+    <div key={w.label} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+      <span style={{ width: 46, flex: "none", fontSize: 12, fontWeight: 600, color: tone.ink }}>{sl(w.label)}</span>
+      <span style={{ flex: 1, height: 7, borderRadius: 4, overflow: "hidden", position: "relative", background: dangerTrack(pal.accent, tone, isDark) }}>
+        <span style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${clamped}%`, borderRadius: 4, background: pal.accent }} />
+      </span>
+      <span style={{ width: 38, textAlign: "right", fontSize: 13, fontWeight: 700, color: color }}>{w.pct}%</span>
     </div>
   );
 }
 
-function panel(name, glyph, pal, data) {
+function usagePanel(name, glyph, pal, data) {
   const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
   const tone = TONE[isDark ? "dark" : "light"];
   const bg = isDark ? pal.tintD : pal.tintL;
@@ -117,6 +160,8 @@ function panel(name, glyph, pal, data) {
     let msg;
     if (reason === "rate_limited") {
       msg = t.rateLimited;
+    } else if (reason === "error") {
+      msg = t.networkError;
     } else {
       const cli = t.cmdMap[name] || name;
       msg = t.notSignedIn.replace("{CLI}", cli);
@@ -139,36 +184,73 @@ function panel(name, glyph, pal, data) {
     { label: "5H", pct: (data.five_h && data.five_h.pct) || 0, resetsAt: data.five_h && data.five_h.resets_at },
     { label: "Weekly", pct: (data.weekly && data.weekly.pct) || 0, resetsAt: data.weekly && data.weekly.resets_at }
   ];
-  const row = (w) => {
-    const color = emphasis(pal.accent, w.pct, isDark);
-    const dur = fmtDuration(w.resetsAt);
-    return (
-      <div key={w.label} style={{ display: "flex", alignItems: "center", gap: 7 }}>
-        <span style={{ width: 9, height: 9, borderRadius: "50%", background: color, flex: "none" }} />
-        <span style={{ fontSize: 12, fontWeight: 600, color: tone.ink }}>{sl(w.label)}</span>
-        <span style={{ marginLeft: "auto", fontSize: 10.5, color: tone.sub, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
-          <span style={{ fontSize: 10, opacity: 0.75 }}>↻</span>{dur || t.resetsSoon}
-        </span>
-        <span style={{ marginLeft: 8, fontSize: 13, fontWeight: 700, color: color, minWidth: 34, textAlign: "right" }}>{w.pct}%</span>
-      </div>
-    );
-  };
+  const reset = soonestWindow(wins);
+  const resetText = reset && fmtDuration(reset.resetsAt) ? `${sl(reset.label)} ${fmtDuration(reset.resetsAt)}` : t.resetsSoon;
 
   return (
-    <div style={{ padding: "17px 18px 16px", display: "flex", alignItems: "center", gap: 17, background: bg, color: tone.ink }}>
-      <div style={{ opacity: cached ? 0.55 : 1 }}>{ring(pal, tone, wins[0].pct, wins[1].pct, isDark)}</div>
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 11 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {glyph}
-            <span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span>
-          </div>
-          {cached && <span style={{ fontSize: 9.5, color: tone.sub, marginLeft: 32 }}>{t.cached}</span>}
+    <div style={{ padding: "17px 18px 16px", display: "flex", flexDirection: "column", gap: 11, background: bg, color: tone.ink }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {glyph}
+        <span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span>
+        <span style={{ marginLeft: "auto", fontSize: 10.5, color: tone.sub, whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: 3 }}>
+          <span style={{ fontSize: 10, opacity: 0.75 }}>↻</span>{resetText}
+        </span>
+      </div>
+      {cached && <span style={{ fontSize: 9.5, color: tone.sub, marginTop: -4 }}>{t.cached}</span>}
+      <div style={{ display: "flex", flexDirection: "column", gap: 9, opacity: cached ? 0.55 : 1 }}>
+        {usageBarRow(wins[0], pal, tone, isDark)}
+        {usageBarRow(wins[1], pal, tone, isDark)}
+      </div>
+    </div>
+  );
+}
+
+function balancePanel(name, glyph, pal, data) {
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  const tone = TONE[isDark ? "dark" : "light"];
+  const bg = isDark ? pal.tintD : pal.tintL;
+  const t = I18N[locale()];
+
+  if (!data || !data.ok) {
+    const reason = data && data.reason;
+    let msg;
+    if (reason === "rate_limited") {
+      msg = t.rateLimited;
+    } else if (reason === "error") {
+      msg = t.networkError;
+    } else if (reason === "balance_unavailable") {
+      msg = t.balanceUnavailable;
+    } else if (reason === "login_required") {
+      msg = t.loginRequired;
+    } else if (reason === "invalid_subject") {
+      msg = t.invalidSubject;
+    } else {
+      msg = t.noApiKey;
+    }
+    return (
+      <div style={{ padding: "17px 18px", background: bg, color: tone.sub, fontSize: 12 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {glyph}<strong style={{ color: tone.ink, fontSize: 15 }}>{name}</strong>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 9, opacity: cached ? 0.55 : 1 }}>
-          {row(wins[0])}
-          {row(wins[1])}
-        </div>
+        <div style={{ marginTop: 8 }}>{msg}</div>
+      </div>
+    );
+  }
+
+  const cached = data.reason === "stale" || data.live === false;
+  const balance = data.balance || {};
+  return (
+    <div style={{ padding: "17px 18px 16px", display: "flex", flexDirection: "column", gap: 10, background: bg, color: tone.ink }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        {glyph}
+        <span style={{ fontSize: 15, fontWeight: 650 }}>{name}</span>
+      </div>
+      {cached && <span style={{ fontSize: 9.5, color: tone.sub, marginLeft: 32 }}>{t.cachedBalance}</span>}
+      <div style={{ fontSize: 26, fontWeight: 720, color: tone.ink, opacity: cached ? 0.55 : 1 }}>
+        {fmtBalance(balance.amount, balance.currency)}
+      </div>
+      <div style={{ fontSize: 12, color: tone.sub, opacity: cached ? 0.55 : 1 }}>
+        {balanceTrendText(data.burn_rate)}
       </div>
     </div>
   );
@@ -184,6 +266,15 @@ const codexGlyph = (
 );
 const kimiGlyph = (
   <img src="/usage-widget/assets/kimi-code.png" width="27" height="27" alt="Kimi Code" style={ICON_STYLE} />
+);
+const deepseekGlyph = (
+  <img src="/usage-widget/assets/deepseek.png" width="27" height="27" alt="DeepSeek" style={ICON_STYLE} />
+);
+const siliconflowGlyph = (
+  <img src="/usage-widget/assets/siliconflow.png" width="27" height="27" alt="SiliconFlow" style={ICON_STYLE} />
+);
+const openrouterGlyph = (
+  <img src="/usage-widget/assets/openrouter.png" width="27" height="27" alt="OpenRouter" style={ICON_STYLE} />
 );
 
 export const className = `
@@ -202,11 +293,17 @@ export const render = ({ output }) => {
   const divColor = isDark ? "rgba(255,255,255,.07)" : "rgba(0,0,0,.06)";
   return (
     <div>
-      {panel("Claude", claudeGlyph, PROVIDERS.claude, data.claude)}
+      {usagePanel("Claude", claudeGlyph, PROVIDERS.claude, data.claude)}
       <div style={{ height: 1, background: divColor }} />
-      {panel("Codex", codexGlyph, PROVIDERS.codex, data.codex)}
+      {usagePanel("Codex", codexGlyph, PROVIDERS.codex, data.codex)}
       <div style={{ height: 1, background: divColor }} />
-      {panel("Kimi Code", kimiGlyph, PROVIDERS.kimi, data.kimi)}
+      {usagePanel("Kimi Code", kimiGlyph, PROVIDERS.kimi, data.kimi)}
+      <div style={{ height: 1, background: divColor }} />
+      {balancePanel("DeepSeek", deepseekGlyph, PROVIDERS.deepseek, data.deepseek)}
+      <div style={{ height: 1, background: divColor }} />
+      {balancePanel("SiliconFlow", siliconflowGlyph, PROVIDERS.siliconflow, data.siliconflow)}
+      <div style={{ height: 1, background: divColor }} />
+      {balancePanel("OpenRouter", openrouterGlyph, PROVIDERS.openrouter, data.openrouter)}
     </div>
   );
 };

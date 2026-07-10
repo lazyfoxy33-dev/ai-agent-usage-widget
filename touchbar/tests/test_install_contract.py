@@ -33,7 +33,7 @@ class TestTouchBarInstallContract(unittest.TestCase):
     def test_installer_uses_stable_applications_copy(self):
         source = read_script("install.sh")
 
-        self.assertIn('INSTALL_APP="$HOME/Applications/QuotaBar.app"', source)
+        self.assertIn('INSTALL_APP="${QUOTABAR_INSTALL_DESTINATION:-$HOME/Applications/QuotaBar.app}"', source)
         self.assertIn('${INSTALL_APP}…', source)
         self.assertIn("ditto --norsrc --noextattr", source)
         self.assertIn('./sign_bundle.sh "$INSTALL_APP"', source)
@@ -60,6 +60,12 @@ class TestTouchBarInstallContract(unittest.TestCase):
         self.assertIn("launchctl bootstrap", source)
         self.assertIn("launchctl kickstart -k", source)
         self.assertIn("pkill -x QuotaBar", source)
+
+    def test_install_script_supports_app_callable_mode(self):
+        source = read_script("install.sh")
+        self.assertIn("QUOTABAR_INSTALL_DESTINATION", source)
+        self.assertIn("QuotaBar.app", source)
+        self.assertNotIn("sudo", source)
 
 
 if __name__ == "__main__":

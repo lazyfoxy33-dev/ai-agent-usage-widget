@@ -9,6 +9,8 @@ QuotaWidget 是 Claude、Codex 与 Kimi Code 用量的原生 WidgetKit 前端。
 伴侣 app 每三分钟运行共享 Python 数据层，把 JSON 契约写入 App Group，并通知
 WidgetKit 刷新。
 
+`QuotaWidget.app` is the primary macOS entry point. Use **Settings...** to open the control center. The Accounts tab manages local-agent and API-balance providers. The Displays tab installs optional display layers. The WidgetKit extension is bundled with the signed app and reads only App Group state.
+
 ## Download / 下载
 
 Most users don't need to build anything: download the notarized
@@ -70,6 +72,34 @@ refresh. Failed refreshes keep the last successful snapshot.
 
 伴侣 app 只显示在菜单栏。点击**立即刷新**可手动刷新；刷新失败时会保留上一次
 成功数据。
+
+## Account settings / 账户设置
+
+点击菜单栏的 QuotaWidget，选择 **Settings...** 打开账户设置窗口：
+
+- **Claude、Codex、Kimi Code** 从本地官方客户端存储自动检测；Claude 与 Kimi
+  只需正常使用官方客户端即可识别，Codex 可额外开启 **Enable Probe** 主动探测。
+- **DeepSeek、SiliconFlow、OpenRouter** 点 **Add Key** 输入 API key；key 通过
+  macOS Keychain（服务名 `AI Agent Usage Widget`）保存，可 **Test** 验证或
+  **Remove** 删除。
+- 共享数据层仍兼容 `DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`、`OPENROUTER_API_KEY`
+  等环境变量，但 GUI 设置是推荐路径。
+- WidgetKit 扩展只通过 App Group 接收 JSON 契约，永远不会接触原始 API key。
+
+Click QuotaWidget in the menu bar and choose **Settings...** to open the account
+settings window:
+
+- **Claude, Codex, and Kimi Code** are auto-detected from local official-client
+  storage; Claude and Kimi are recognized once you use the official client, and
+  Codex can additionally enable **Enable Probe** for active probing.
+- For **DeepSeek, SiliconFlow, and OpenRouter**, click **Add Key** to enter an API
+  key; keys are stored in the macOS Keychain (service `AI Agent Usage Widget`)
+  and can be **Test**ed or **Remove**d.
+- The shared data layer still supports `DEEPSEEK_API_KEY`, `SILICONFLOW_API_KEY`,
+  `OPENROUTER_API_KEY`, and similar environment variables, but the GUI settings
+  are the recommended path.
+- The WidgetKit extension only receives the JSON contract through the App Group
+  and never sees raw API keys.
 
 ## Distribution / 分发
 

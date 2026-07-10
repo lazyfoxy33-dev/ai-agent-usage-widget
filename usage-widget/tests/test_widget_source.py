@@ -38,22 +38,30 @@ class TestWidgetSource(unittest.TestCase):
         self.assertIn('track: "rgba(255,255,255,.13)"', self.source)
         self.assertIn('div: "rgba(255,255,255,.07)"', self.source)
 
-    def test_two_letter_quota_codes_and_per_row_reset_countdown(self):
+    def test_two_letter_quota_codes_and_header_reset_countdown(self):
         self.assertIn('label === "Weekly" ? "Wk"', self.source)
         self.assertIn('"Wk"', self.source)
         self.assertIn("↻", self.source)
-        # Übersicht shows each window's own reset, inline between the code and %.
-        self.assertIn("const dur = fmtDuration(w.resetsAt)", self.source)
+        self.assertIn("function soonestWindow", self.source)
+        self.assertIn("soonestWindow(wins)", self.source)
 
     def test_no_resets_in_prefix(self):
         self.assertNotIn("Resets in", self.source)
 
-    def test_three_digit_percentage_uses_smaller_font(self):
-        self.assertIn("function pctFontSize", self.source)
-        self.assertIn("pct >= 100 ? 14 : 18", self.source)
-        self.assertIn("fontSize: pctFontSize", self.source)
-        self.assertIn('transform: "translateY(-1px)"', self.source)
-        self.assertIn("fontSize: 8", self.source)
+    def test_bar_rows_use_track_fill_and_semantic_value_color(self):
+        self.assertIn("function usageBarRow", self.source)
+        self.assertIn("dangerTrack", self.source)
+        self.assertIn("width: `${clamped}%`", self.source)
+        self.assertIn("width: 46", self.source)
+        self.assertIn("width: 38", self.source)
+
+    def test_bar_primary_design_replaces_ring_primary(self):
+        self.assertIn("function usageBarRow", self.source)
+        self.assertIn("function usagePanel", self.source)
+        self.assertIn("usageBarRow(wins[0]", self.source)
+        self.assertIn("usageBarRow(wins[1]", self.source)
+        self.assertNotIn("function ring(", self.source)
+        self.assertNotIn("<circle", self.source)
 
     def test_widget_is_anchored_to_top_left(self):
         self.assertIn("left: 40px; top: 40px;", self.source)
@@ -75,10 +83,30 @@ class TestWidgetSource(unittest.TestCase):
         self.assertIn('src="/usage-widget/assets/claude-app.png"', self.source)
         self.assertIn('src="/usage-widget/assets/codex-app.png"', self.source)
         self.assertIn('src="/usage-widget/assets/kimi-code.png"', self.source)
+        self.assertIn('src="/usage-widget/assets/deepseek.png"', self.source)
+        self.assertIn('src="/usage-widget/assets/siliconflow.png"', self.source)
+        self.assertIn('src="/usage-widget/assets/openrouter.png"', self.source)
+        self.assertNotIn("glyphLogo(\"D\"", self.source)
+        self.assertNotIn("glyphLogo(\"S\"", self.source)
+        self.assertNotIn("glyphLogo(\"O\"", self.source)
+
+    def test_command_reads_only_control_app_shared_state_at_runtime(self):
+        self.assertNotIn("Übersicht/widgets/usage-widget", self.source)
+        self.assertNotIn("Übersicht/widgets/usage-widget", self.source)
+        self.assertNotIn("FETCHER_DIRS", self.source)
+        self.assertNotIn("for d in", self.source)
+        self.assertIn("QUOTAWIDGET_SHARED_USAGE", self.source)
+        self.assertIn("group.dev.lazyfoxy.QuotaWidget", self.source)
+        self.assertIn("usage.json", self.source)
 
     def test_old_design_tokens_are_removed(self):
         self.assertNotIn('soft: "#A78BFA"', self.source)
         self.assertNotIn('soft: "#252A33"', self.source)
+
+    def test_widget_prefers_control_app_shared_state(self):
+        self.assertIn("QUOTAWIDGET_SHARED_USAGE", self.source)
+        self.assertIn("group.dev.lazyfoxy.QuotaWidget", self.source)
+        self.assertIn("usage.json", self.source)
 
 
 if __name__ == "__main__":
