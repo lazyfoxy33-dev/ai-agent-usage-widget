@@ -118,21 +118,21 @@ curl --version
 
 > **菜单栏 app 与 Touch Bar** 可直接从
 > [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
-> **已公证**的 DMG（`QuotaWidget.dmg` / `QuotaBar.dmg`），无需自行构建签名（见下方各端小节）。
+> **Developer ID 签名**的 DMG（`QuotaWidget.dmg` / `QuotaBar.dmg`），公证状态见各 Release 说明（未公证时首次打开需在 Finder 中右键 → 打开）。
 >
-> The **menu bar app** and the **Touch Bar** frontend ship as **notarized** DMGs on
+> The **menu bar app** and the **Touch Bar** frontend ship as **Developer ID-signed** DMGs on
 > [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases)
-> (`QuotaWidget.dmg` / `QuotaBar.dmg`) — no build or signing needed (see their
-> sections below).
+> (`QuotaWidget.dmg` / `QuotaBar.dmg`); check each release note for notarization
+> status (unnotarized builds need right-click → Open on first launch).
 
 ### 菜单栏 app / Menu bar app
 
 1. 从 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases)
-   下载已公证的 `QuotaWidget.dmg`，拖入「应用程序」并打开。
+   下载 `QuotaWidget.dmg`（Developer ID 签名），拖入「应用程序」并打开。
 2. 状态栏出现常驻图标，点开即可查看各提供商用量与余额。
 3. 需要自行从源码构建时，见 [macwidget/README.md](macwidget/README.md)。
 
-1. Download the notarized `QuotaWidget.dmg` from
+1. Download the Developer ID-signed `QuotaWidget.dmg` from
    [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases),
    drag it to Applications, and open it.
 2. A status item appears in the menu bar; click it to see per-provider usage and

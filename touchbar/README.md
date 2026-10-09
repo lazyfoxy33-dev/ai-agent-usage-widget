@@ -49,13 +49,14 @@ Recommended installation is through `QuotaWidget.app` > Settings... > Touch Bar 
 
 最简单的方式：从
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
-已公证的 `QuotaBar.dmg`，拖入「应用程序」并打开（已 Developer ID 签名 + 公证，
-无 Gatekeeper 拦截；仍需 `python3`）。要开机自启，可改用下面的源码安装。
+`QuotaBar.dmg`（Developer ID 签名），拖入「应用程序」并打开；若对应 Release 说明
+标注未公证，首次打开请在 Finder 中右键 → 打开（仍需 `python3`）。要开机自启，可改用下面的源码安装。
 
-Easiest: download the notarized `QuotaBar.dmg` from
+Easiest: download the Developer ID-signed `QuotaBar.dmg` from
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases), drag
-it to Applications, and open it (Developer ID-signed + notarized, so no Gatekeeper
-warning; still needs `python3`). For launch-at-login, build from source instead:
+it to Applications, and open it (if the release note says it is not notarized,
+right-click → Open on first launch; still needs `python3`). For launch-at-login,
+build from source instead:
 
 ```bash
 ./install.sh          # 编译 + 开机自启（LaunchAgent）
