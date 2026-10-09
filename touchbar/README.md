@@ -45,7 +45,7 @@ and [core contract](../core/CONTRACT.md).
 
 ## 安装 / Install
 
-Recommended installation is through `QuotaWidget.app` > Settings... > Touch Bar. Manual installation remains available for development.
+Recommended installation is through `QuotaWidget.app` > Settings... > Touch Bar (installs to `/Applications/QuotaBar.app`). Manual `./install.sh` installs to `~/Applications/QuotaBar.app`; the control center treats both locations as installed. Manual installation remains available for development.
 
 最简单的方式：从
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载

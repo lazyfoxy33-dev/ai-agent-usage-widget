@@ -31,10 +31,14 @@ enum DisplayLayerStoreError: Error, LocalizedError {
 }
 
 /// Installs and opens the bundled Touch Bar frontend (`QuotaBar.app`).
+///
+/// `touchbar/install.sh` writes to `~/Applications`, while this app installs to
+/// `/Applications`, so both locations count as "installed".
 struct DisplayLayerStore: Sendable {
     static let touchBarAppName = "QuotaBar.app"
 
     let applicationsDirectory: URL
+    let userApplicationsDirectory: URL
     let resourceDirectory: URL
     let processList: @Sendable () -> [String]
     let openURL: @Sendable (URL) -> Bool
@@ -42,24 +46,39 @@ struct DisplayLayerStore: Sendable {
 
     init(
         applicationsDirectory: URL = URL(fileURLWithPath: "/Applications", isDirectory: true),
+        userApplicationsDirectory: URL = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent("Applications", isDirectory: true),
         resourceDirectory: URL = Bundle.main.resourceURL ?? Bundle.main.bundleURL,
         processList: @escaping @Sendable () -> [String] = DisplayLayerStore.defaultProcessList,
         openURL: @escaping @Sendable (URL) -> Bool = { NSWorkspace.shared.open($0) },
         runCommand: @escaping @Sendable (DisplayLayerCommand) throws -> Void = DisplayLayerStore.defaultRunCommand
     ) {
         self.applicationsDirectory = applicationsDirectory
+        self.userApplicationsDirectory = userApplicationsDirectory
         self.resourceDirectory = resourceDirectory
         self.processList = processList
         self.openURL = openURL
         self.runCommand = runCommand
     }
 
-    var touchBarAppURL: URL {
-        applicationsDirectory.appendingPathComponent(Self.touchBarAppName)
+    /// Accepted install locations, in preference order.
+    var touchBarAppURLs: [URL] {
+        [
+            applicationsDirectory.appendingPathComponent(Self.touchBarAppName),
+            userApplicationsDirectory.appendingPathComponent(Self.touchBarAppName)
+        ]
+    }
+
+    /// Where `Install / Update` writes.
+    var touchBarInstallDestination: URL { touchBarAppURLs[0] }
+
+    /// The first accepted location that actually exists.
+    var installedTouchBarAppURL: URL? {
+        touchBarAppURLs.first { FileManager.default.fileExists(atPath: $0.path) }
     }
 
     func touchBarStatus() -> DisplayLayerStatus {
-        let installed = FileManager.default.fileExists(atPath: touchBarAppURL.path)
+        let installed = installedTouchBarAppURL != nil
         let running = processList().contains { $0.localizedCaseInsensitiveContains("QuotaBar") }
         let detail: String
         if !installed {
@@ -81,7 +100,7 @@ struct DisplayLayerStore: Sendable {
             arguments: ["install.sh"],
             workingDirectory: installer.deletingLastPathComponent(),
             environment: [
-                "QUOTABAR_INSTALL_DESTINATION": touchBarAppURL.path
+                "QUOTABAR_INSTALL_DESTINATION": touchBarInstallDestination.path
             ]
         )
     }
@@ -91,10 +110,10 @@ struct DisplayLayerStore: Sendable {
     }
 
     func openTouchBarApp() throws {
-        guard FileManager.default.fileExists(atPath: touchBarAppURL.path) else {
-            throw DisplayLayerStoreError.openFailed(touchBarAppURL)
+        guard let app = installedTouchBarAppURL else {
+            throw DisplayLayerStoreError.openFailed(touchBarInstallDestination)
         }
-        guard openURL(touchBarAppURL) else { throw DisplayLayerStoreError.openFailed(touchBarAppURL) }
+        guard openURL(app) else { throw DisplayLayerStoreError.openFailed(app) }
     }
 
     private static func defaultProcessList() -> [String] {

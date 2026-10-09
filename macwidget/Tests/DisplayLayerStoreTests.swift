@@ -16,6 +16,7 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         let store = DisplayLayerStore(
             applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            userApplicationsDirectory: root.appendingPathComponent("UserApplications", isDirectory: true),
             resourceDirectory: root,
             processList: { [] }
         )
@@ -37,6 +38,7 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         let store = DisplayLayerStore(
             applicationsDirectory: applications,
+            userApplicationsDirectory: root.appendingPathComponent("UserApplications", isDirectory: true),
             resourceDirectory: root,
             processList: { [] }
         )
@@ -60,6 +62,7 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         let store = DisplayLayerStore(
             applicationsDirectory: applications,
+            userApplicationsDirectory: root.appendingPathComponent("UserApplications", isDirectory: true),
             resourceDirectory: root,
             processList: { ["/bin/launchd", "/Applications/QuotaBar.app/Contents/MacOS/QuotaBar"] }
         )
@@ -85,6 +88,7 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         let store = DisplayLayerStore(
             applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            userApplicationsDirectory: root.appendingPathComponent("UserApplications", isDirectory: true),
             resourceDirectory: resources,
             processList: { [] }
         )
@@ -106,6 +110,7 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         let store = DisplayLayerStore(
             applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            userApplicationsDirectory: root.appendingPathComponent("UserApplications", isDirectory: true),
             resourceDirectory: root,
             processList: { [] }
         )
@@ -136,6 +141,7 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         let store = DisplayLayerStore(
             applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            userApplicationsDirectory: root.appendingPathComponent("UserApplications", isDirectory: true),
             resourceDirectory: resources,
             processList: { [] },
             runCommand: { recorder.commands.append($0) }
@@ -153,6 +159,7 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         let store = DisplayLayerStore(
             applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            userApplicationsDirectory: root.appendingPathComponent("UserApplications", isDirectory: true),
             resourceDirectory: root,
             processList: { [] },
             openURL: { _ in XCTFail("openURL must not be called"); return false }
@@ -180,6 +187,7 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         let store = DisplayLayerStore(
             applicationsDirectory: applications,
+            userApplicationsDirectory: root.appendingPathComponent("UserApplications", isDirectory: true),
             resourceDirectory: root,
             processList: { [] },
             openURL: { url in
@@ -191,5 +199,93 @@ final class DisplayLayerStoreTests: XCTestCase {
         try store.openTouchBarApp()
 
         XCTAssertEqual(opened.urls, [app])
+    }
+    func testTouchBarStatusDetectsUserApplicationsInstall() throws {
+        let root = try makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let userApplications = root.appendingPathComponent("UserApplications", isDirectory: true)
+        try FileManager.default.createDirectory(
+            at: userApplications.appendingPathComponent("QuotaBar.app", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+
+        let store = DisplayLayerStore(
+            applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            userApplicationsDirectory: userApplications,
+            resourceDirectory: root,
+            processList: { [] }
+        )
+
+        let status = store.touchBarStatus()
+
+        XCTAssertTrue(status.installed)
+        XCTAssertEqual(status.detail, "Installed")
+    }
+
+    func testOpenTouchBarAppUsesUserApplicationsCopy() throws {
+        let root = try makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let userApplications = root.appendingPathComponent("UserApplications", isDirectory: true)
+        let app = userApplications.appendingPathComponent("QuotaBar.app", isDirectory: true)
+        try FileManager.default.createDirectory(at: app, withIntermediateDirectories: true)
+
+        final class Opened: @unchecked Sendable {
+            var urls: [URL] = []
+        }
+        let opened = Opened()
+
+        let store = DisplayLayerStore(
+            applicationsDirectory: root.appendingPathComponent("Applications", isDirectory: true),
+            userApplicationsDirectory: userApplications,
+            resourceDirectory: root,
+            processList: { [] },
+            openURL: { url in
+                opened.urls.append(url)
+                return true
+            }
+        )
+
+        try store.openTouchBarApp()
+
+        XCTAssertEqual(opened.urls, [app])
+    }
+
+    func testOpenTouchBarAppPrefersApplicationsCopy() throws {
+        let root = try makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let applications = root.appendingPathComponent("Applications", isDirectory: true)
+        let userApplications = root.appendingPathComponent("UserApplications", isDirectory: true)
+        for base in [applications, userApplications] {
+            try FileManager.default.createDirectory(
+                at: base.appendingPathComponent("QuotaBar.app", isDirectory: true),
+                withIntermediateDirectories: true
+            )
+        }
+
+        final class Opened: @unchecked Sendable {
+            var urls: [URL] = []
+        }
+        let opened = Opened()
+
+        let store = DisplayLayerStore(
+            applicationsDirectory: applications,
+            userApplicationsDirectory: userApplications,
+            resourceDirectory: root,
+            processList: { [] },
+            openURL: { url in
+                opened.urls.append(url)
+                return true
+            }
+        )
+
+        try store.openTouchBarApp()
+
+        XCTAssertEqual(
+            opened.urls,
+            [applications.appendingPathComponent("QuotaBar.app", isDirectory: true)]
+        )
     }
 }
