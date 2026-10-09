@@ -29,7 +29,6 @@ if [[ "${QUOTAWIDGET_UNSIGNED:-0}" == "1" ]]; then
   tmp_dir="$(mktemp -d)"
   trap 'rm -rf "$tmp_dir"' EXIT
   app_entitlements="$tmp_dir/app.entitlements"
-  widget_entitlements="$tmp_dir/widget.entitlements"
   cat > "$app_entitlements" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -42,28 +41,10 @@ if [[ "${QUOTAWIDGET_UNSIGNED:-0}" == "1" ]]; then
 </dict>
 </plist>
 EOF
-  cat > "$widget_entitlements" <<EOF
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>com.apple.security.app-sandbox</key>
-  <true/>
-  <key>com.apple.security.application-groups</key>
-  <array>
-    <string>$app_group</string>
-  </array>
-</dict>
-</plist>
-EOF
-  for appex in "$destination"/Contents/PlugIns/*.appex; do
-    [[ -d "$appex" ]] || continue
-    codesign --force --sign - --entitlements "$widget_entitlements" "$appex"
-  done
   codesign --force --sign - --entitlements "$app_entitlements" "$destination"
 fi
 
 open "$destination"
 
 echo "Installed: $destination"
-echo "Add AI Agent Usage from the macOS widget gallery."
+echo "QuotaWidget lives in the menu bar; use Settings... for account setup and the Touch Bar install."

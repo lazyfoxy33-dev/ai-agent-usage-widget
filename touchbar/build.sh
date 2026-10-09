@@ -32,8 +32,8 @@ cat > "$APP/Contents/Info.plist" <<'PLIST'
     <key>CFBundleName</key>            <string>QuotaBar</string>
     <key>CFBundleDisplayName</key>     <string>QuotaBar</string>
     <key>CFBundleIdentifier</key>      <string>com.quotabar.app</string>
-    <key>CFBundleVersion</key>         <string>1.0</string>
-    <key>CFBundleShortVersionString</key><string>1.0</string>
+    <key>CFBundleVersion</key>         <string>2</string>
+    <key>CFBundleShortVersionString</key><string>1.1</string>
     <key>CFBundleExecutable</key>      <string>QuotaBar</string>
     <key>CFBundlePackageType</key>     <string>APPL</string>
     <key>NSPrincipalClass</key>        <string>NSApplication</string>
