@@ -36,39 +36,28 @@ body { padding: 8px; user-select: none; }
 }
 
 .provider-card {
-  min-height: 122px;
+  min-height: 105px;
   display: flex;
-  align-items: center;
-  gap: 16px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 11px;
   padding: 16px 18px;
 }
 .provider-card + .provider-card { border-top: 1px solid var(--divln); }
 .provider-card.failed { min-height: 82px; display: block; }
 .provider-card.failed p { margin: 8px 0 0 32px; font-size: 11px; opacity: .56; }
 
-.ring-wrap { flex: none; }
-.ring { width: 88px; height: 88px; position: relative; }
-.ring svg { width: 88px; height: 88px; transform: rotate(-90deg); }
-.ring circle { fill: none; stroke-width: 6.5; }
-.ring .track { opacity: 1; }
-.ring .progress { stroke-linecap: round; }
-.ring-value {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  line-height: 1;
-}
-.ring-value strong { font-weight: 720; letter-spacing: -.5px; }
-.ring-value span { margin-top: 4px; font-size: 8px; font-weight: 600; letter-spacing: .5px; }
-
 .details { flex: 1; display: flex; flex-direction: column; gap: 9px; min-width: 0; }
 
 header { display: flex; align-items: center; gap: 8px; }
 header img { width: 24px; height: 24px; object-fit: contain; border-radius: 7px; flex: none; }
 header b { font-size: 15px; font-weight: 650; letter-spacing: -.1px; }
+header .reset {
+  margin-left: auto;
+  font-size: 10.5px;
+  font-weight: 400;
+  white-space: nowrap;
+}
 
 .countdown {
   margin-left: auto;
@@ -83,9 +72,9 @@ header b { font-size: 15px; font-weight: 650; letter-spacing: -.1px; }
 
 .cached-note { margin-top: -5px; font-size: 9.5px; }
 
-.rows { display: flex; flex-direction: column; gap: 7px; }
-.row { display: flex; align-items: center; gap: 7px; }
-.row .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.row .lbl { font-size: 12px; font-weight: 600; }
-.row .row-reset { margin-left: auto; font-size: 10px; font-weight: 400; white-space: nowrap; opacity: .75; }
-.row .val { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+.rows { display: flex; flex-direction: column; gap: 9px; }
+.row { display: flex; align-items: center; gap: 10px; }
+.row .lbl { width: 46px; flex: none; font-size: 12px; font-weight: 600; }
+.bar-track { flex: 1; height: 7px; border-radius: 4px; overflow: hidden; position: relative; }
+.bar-fill { position: absolute; left: 0; top: 0; height: 100%; border-radius: 4px; }
+.row .val { width: 38px; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }

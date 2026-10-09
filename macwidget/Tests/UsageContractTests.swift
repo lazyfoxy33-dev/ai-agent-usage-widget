@@ -134,6 +134,31 @@ final class UsageContractTests: XCTestCase {
         XCTAssertNil(env["SILICONFLOW_API_KEY"])
     }
 
+    func testFetcherEnvironmentCanLimitRefreshToAPIKeyProviders() {
+        let env = UsageFetcher.environment(
+            base: ["PATH": "/usr/bin"],
+            apiKeys: [.deepseek: "deepseek-key"],
+            providerScope: .apiKeyOnly
+        )
+
+        XCTAssertEqual(env["DEEPSEEK_API_KEY"], "deepseek-key")
+        XCTAssertEqual(env["AI_AGENT_USAGE_PROVIDER_SCOPE"], "api-key")
+    }
+
+    func testMenuRefreshDefaultsToAPIKeyProviderScope() throws {
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("App/QuotaWidgetApp.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertTrue(source.contains("refreshAPIKeyProviders()"))
+        XCTAssertTrue(source.contains("providerScope: .apiKeyOnly"))
+        XCTAssertFalse(source.contains("let json = try UsageFetcher.fetch(apiKeys: keys)"))
+    }
+
     func testProviderStatusFromJSONSanitizesValues() throws {
         let json = """
         {
@@ -147,6 +172,39 @@ final class UsageContractTests: XCTestCase {
         let provider = UsageFetcher.providerStatus(from: json, providerKey: "deepseek")
         XCTAssertEqual(provider?.balance?.amount, 110.0)
         XCTAssertNil(UsageFetcher.providerStatus(from: json, providerKey: "siliconflow"))
+    }
+
+    func testAPIKeyRefreshCanPreserveExistingLocalAgentProviders() throws {
+        let existing = """
+        {
+          "schema_version": 1,
+          "claude": {"ok": true, "five_h": {"pct": 80, "resets_at": 1}},
+          "codex": {"ok": true, "five_h": {"pct": 60, "resets_at": 2}},
+          "kimi": {"ok": true, "weekly": {"pct": 40, "resets_at": 3}},
+          "deepseek": {"ok": false, "reason": "old"},
+          "siliconflow": {"ok": false, "kind": "balance", "source": "console_session", "reason": "login_required"},
+          "openrouter": {"ok": false, "kind": "balance", "reason": "no_data"}
+        }
+        """
+        let refreshed = """
+        {
+          "schema_version": 1,
+          "claude": {"ok": false, "reason": "manual_refresh_required"},
+          "codex": {"ok": false, "reason": "manual_refresh_required"},
+          "kimi": {"ok": false, "reason": "manual_refresh_required"},
+          "deepseek": {"ok": true, "kind": "balance", "balance": {"amount": 12, "currency": "CNY", "available": true, "label": "Balance"}},
+          "siliconflow": {"ok": false, "kind": "balance", "source": "console_session", "reason": "login_required"},
+          "openrouter": {"ok": false, "kind": "balance", "reason": "no_data"}
+        }
+        """
+
+        let merged = UsageFetcher.preservingLocalAgentProviders(existing: existing, in: refreshed)
+        let payload = try UsagePayload.decode(Data(merged.utf8))
+
+        XCTAssertEqual(payload.claude.fiveH?.percentage, 80)
+        XCTAssertEqual(payload.codex.fiveH?.percentage, 60)
+        XCTAssertEqual(payload.kimi.weekly?.percentage, 40)
+        XCTAssertEqual(payload.deepseek.balance?.amount, 12)
     }
 
     func testReplacingProviderPreservesSharedPayloadShape() throws {
@@ -815,6 +873,8 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("ControlCenterView"))
         XCTAssertTrue(source.contains("Settings..."))
         XCTAssertTrue(source.contains("SettingsPresenter"))
+        XCTAssertFalse(source.contains(".floating"))
+        XCTAssertTrue(source.contains(".canJoinAllSpaces"))
         XCTAssertTrue(source.contains("setActivationPolicy(.regular)"))
     }
 

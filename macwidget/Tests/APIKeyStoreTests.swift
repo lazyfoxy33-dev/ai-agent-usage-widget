@@ -76,4 +76,19 @@ final class APIKeyStoreTests: XCTestCase {
         XCTAssertEqual(APIKeyProviderID.deepseek.envName, "DEEPSEEK_API_KEY")
         XCTAssertEqual(APIKeyProviderID.openrouter.envName, "OPENROUTER_API_KEY")
     }
+
+    func testSiliconFlowSubjectValidationDoesNotLogIdentifierFragments() throws {
+        let source = try String(
+            contentsOf: URL(fileURLWithPath: #filePath)
+                .deletingLastPathComponent()
+                .deletingLastPathComponent()
+                .appendingPathComponent("App/APIKeyStore.swift"),
+            encoding: .utf8
+        )
+
+        XCTAssertFalse(source.contains("prefix("))
+        XCTAssertFalse(source.contains("suffix("))
+        XCTAssertFalse(source.contains("prefix=%@"))
+        XCTAssertFalse(source.contains("suffix=%@"))
+    }
 }

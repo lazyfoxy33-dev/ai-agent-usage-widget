@@ -42,7 +42,7 @@ targets:
           mkdir -p "$DESTINATION"
           ditto "${SRCROOT}/../usage-widget" "$DESTINATION/usage-widget"
           ditto "${SRCROOT}/../touchbar" "$DESTINATION/touchbar"
-          find "$DESTINATION" -type d \( -name __pycache__ -o -name .build -o -name build \) -prune -exec rm -rf {} +
+          find "$DESTINATION" -type d \( -name __pycache__ -o -name .build -o -name build -o -name dist \) -prune -exec rm -rf {} +
           find "$DESTINATION" -type f \( -name '*.pyc' -o -name '*.jsonl' \) -delete
         basedOnDependencyAnalysis: false
   QuotaWidgetExtension:

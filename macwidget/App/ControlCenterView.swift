@@ -151,11 +151,10 @@ struct SidebarStatus: View {
     @ObservedObject var accountViewModel: AccountSettingsViewModel
 
     var body: some View {
-        let status = usageStore.status()
         let configuredCount = accountViewModel.model.rows.filter(\.configured).count
 
         VStack(spacing: 7) {
-            StatusLine(label: "Shared state", value: status.available ? "Available" : "\(status.reason)")
+            StatusLine(label: "Shared state", value: "Manual")
             StatusLine(label: "Last refresh", value: "—")
             StatusLine(label: "Configured", value: "\(configuredCount) / 6")
         }
@@ -1187,6 +1186,7 @@ struct StatusPill: View {
 struct DiagnosticsPage: View {
     let usageStore: UsageStore
     let displayStore: DisplayLayerStore
+    @State private var layerStatuses: [DisplayLayer: DisplayLayerStatus] = [:]
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1213,7 +1213,7 @@ struct DiagnosticsPage: View {
                     VStack(alignment: .leading, spacing: 0) {
                         DiagnosticRow(label: "Shared usage state", value: status.available ? "Available" : "\(status.reason)")
                         ForEach(DisplayLayer.allCases) { layer in
-                            let layerStatus = displayStore.status(for: layer)
+                            let layerStatus = layerStatuses[layer] ?? DisplayLayerStatus(layer: layer, installed: false, running: false, detail: layer == .ubersicht ? "Managed manually" : "Checking...")
                             DiagnosticRow(label: layer.title, value: layerStatus.detail)
                         }
                     }
@@ -1229,6 +1229,18 @@ struct DiagnosticsPage: View {
                         .foregroundStyle(.secondary)
                 }
                 .padding(24)
+            }
+        }
+        .task {
+            DispatchQueue.global(qos: .userInitiated).async {
+                var statuses: [DisplayLayer: DisplayLayerStatus] = [:]
+                for layer in DisplayLayer.allCases {
+                    guard layer != .ubersicht else { continue }
+                    statuses[layer] = displayStore.status(for: layer)
+                }
+                DispatchQueue.main.async {
+                    layerStatuses = statuses
+                }
             }
         }
     }
@@ -1256,4 +1268,34 @@ struct DiagnosticRow: View {
             alignment: .bottom
         )
     }
+}
+
+#Preview("Control Center") {
+    let viewModel = AccountSettingsViewModel(
+        apiKeyStore: APIKeyStore(backend: InMemoryCredentialBackend()),
+        configStore: AppConfigStore(
+            baseDirectory: FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        ),
+        usageStore: UsageStore(containerURLProvider: {
+            FileManager.default.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        })
+    )
+    let displayStore = DisplayLayerStore()
+    return ControlCenterView(
+        accountViewModel: viewModel,
+        displayStore: displayStore,
+        usageStore: UsageStore(),
+        refreshNow: {},
+        displayActions: DisplayLayerActions(
+            installUbersicht: {},
+            openUbersichtFolder: {},
+            refreshWidgetKit: {},
+            openWidgetGallery: {},
+            installTouchBar: {},
+            openTouchBar: {}
+        )
+    )
+    .frame(width: 920, height: 620)
 }

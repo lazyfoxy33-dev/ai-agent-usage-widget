@@ -108,20 +108,19 @@ struct DisplayLayerStore: Sendable {
     }
 
     func installUbersichtWidget(from sourceDirectory: URL) throws {
-        let destinations = Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory)
-            .filter { FileManager.default.fileExists(atPath: $0.path) }
-        let targets = destinations.isEmpty
-            ? [Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory)[0]]
-            : destinations
+        let candidates = Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory)
+        let targetBase = candidates.first { FileManager.default.fileExists(atPath: $0.path) } ?? candidates[0]
 
-        for base in targets {
+        for base in candidates {
             let destination = base.appendingPathComponent("usage-widget", isDirectory: true)
-            if FileManager.default.fileExists(atPath: destination.path) {
-                try FileManager.default.removeItem(at: destination)
-            }
-            try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-            try FileManager.default.copyItem(at: sourceDirectory, to: destination)
+            guard FileManager.default.fileExists(atPath: destination.path) else { continue }
+            try FileManager.default.removeItem(at: destination)
         }
+
+        let destination = targetBase.appendingPathComponent("usage-widget", isDirectory: true)
+        try FileManager.default.createDirectory(at: targetBase, withIntermediateDirectories: true)
+        try FileManager.default.copyItem(at: sourceDirectory, to: destination)
+        try removePackagedUbersichtArtifacts(from: destination)
         try recordInstalled(.ubersicht)
     }
 
@@ -157,6 +156,13 @@ struct DisplayLayerStore: Sendable {
             if FileManager.default.fileExists(atPath: usagePackage.path) {
                 try FileManager.default.copyItem(at: usagePackage, to: destinationUsage)
             }
+        }
+    }
+
+    private func removePackagedUbersichtArtifacts(from destination: URL) throws {
+        let nestedWidgetBuild = destination.appendingPathComponent("dist", isDirectory: true)
+        if FileManager.default.fileExists(atPath: nestedWidgetBuild.path) {
+            try FileManager.default.removeItem(at: nestedWidgetBuild)
         }
     }
 
@@ -206,8 +212,8 @@ struct DisplayLayerStore: Sendable {
         task.standardOutput = pipe
         do {
             try task.run()
-            task.waitUntilExit()
             let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            task.waitUntilExit()
             return String(data: data, encoding: .utf8)?.components(separatedBy: .newlines) ?? []
         } catch {
             return []

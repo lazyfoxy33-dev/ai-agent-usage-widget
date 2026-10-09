@@ -93,6 +93,7 @@ minutes. Expired cache fallbacks are always `live=false`.
 - `expired`：凭据缺失、过期或被服务端拒绝。
 - `rate_limited`：服务端返回 HTTP 429。
 - `no_data`：没有可读取的本地或远端数据。
+- `balance_unavailable`：服务端余额字段不适合展示，需要到 provider 后台核对。
 - `error`：其他网络、解析或系统错误。
 - `stale`：显示的是过期缓存。
 - `balance_unavailable`：上游返回的余额口径不适合展示。
@@ -101,6 +102,8 @@ minutes. Expired cache fallbacks are always `live=false`.
 - `expired`: credentials are missing, expired, or rejected.
 - `rate_limited`: the provider returned HTTP 429.
 - `no_data`: no local or remote usage data is available.
+- `balance_unavailable`: provider balance fields are not suitable for display;
+  verify the balance in the provider console.
 - `error`: another network, parsing, or system error occurred.
 - `stale`: displayed values came from an expired cache.
 - `balance_unavailable`: the upstream balance semantics are unsafe to display.

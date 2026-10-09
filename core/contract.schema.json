@@ -49,10 +49,10 @@
           "enum": ["api_key", "console_session"]
         },
         "reason": {
-          "enum": ["expired", "error", "no_data", "stale", "rate_limited", "balance_unavailable", "login_required"]
+          "enum": ["expired", "error", "no_data", "stale", "rate_limited", "balance_unavailable", "login_required", "invalid_subject"]
         },
         "upstream_reason": {
-          "enum": ["expired", "error", "no_data", "rate_limited", "balance_unavailable", "login_required"]
+          "enum": ["expired", "error", "no_data", "rate_limited", "balance_unavailable", "login_required", "invalid_subject"]
         },
         "as_of": {
           "type": "integer"

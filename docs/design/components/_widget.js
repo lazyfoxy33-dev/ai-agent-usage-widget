@@ -34,16 +34,31 @@ window.UW = (function(){
     { k:'claude', name:'Claude', icon:'../assets/claude-app.png', accent:'#D97757',
       tintL:'#FAF7F3', tintD:'#211F1C',
       windows:[ {label:'5H', used:47, reset:214}, {label:'Weekly', used:91, reset:6480} ] },
-    { k:'codex', name:'Codex', icon:'../assets/codex-app.png', accent:'#7B83F5',
+    { k:'codex', name:'Codex', icon:'../assets/codex-app.png?v=logo-fix', accent:'#7B83F5',
       tintL:'#F6F6FB', tintD:'#1B1B23',
       windows:[ {label:'5H', used:4, reset:221}, {label:'Weekly', used:1, reset:9960} ] },
     { k:'kimi', name:'Kimi Code', icon:'../assets/kimi-code.png', accent:'#1478FF',
       tintL:'#F4F7FC', tintD:'#181C24',
       windows:[ {label:'5H', used:1, reset:277}, {label:'Weekly', used:1, reset:9000} ] }
   ];
+  const BALANCE = [
+    { k:'deepseek', name:'DeepSeek', icon:'../assets/deepseek.png', glyph:'D', accent:'#4F6D7A',
+      tintL:'#F3F6F7', tintD:'#1A2024',
+      kind:'balance', amount:'¥45.83', trend:'近 2 日约可用 139 天',
+      amountEn:'¥45.83', trendEn:'≈ 139 days left (2d)' },
+    { k:'siliconflow', name:'SiliconFlow', icon:'../assets/siliconflow.png', glyph:'S', accent:'#F56C6C',
+      tintL:'#FDF5F5', tintD:'#241A1A',
+      kind:'balance', state:'no_api_key' },
+    { k:'openrouter', name:'OpenRouter', icon:'../assets/openrouter.png', glyph:'O', accent:'#8B5CF6',
+      tintL:'#F5F3FD', tintD:'#1E1A2E',
+      kind:'balance', amount:'$75.42', trend:'暂无消耗趋势',
+      amountEn:'$75.42', trendEn:'No spending trend yet' }
+  ];
   const CREDIT = { k:'credit', name:'Credits', glyph:'$', accent:'#1FA37A',
       tintL:'#F2F8F5', tintD:'#171F1B',
-      credit:true, used:75, spent:'$37.60', total:'$50.00', remain:'$12.40', runway:'~9d' };
+      kind:'balance', amount:'$12.40', trend:'~9d est.',
+      amountEn:'$12.40', trendEn:'~9d est.' };
+  const ALL = P.concat(BALANCE);
 
   /* ---------- helpers ---------- */
   function fmt(min){
@@ -57,9 +72,10 @@ window.UW = (function(){
 
   function glyph(p, cls){
     cls = cls || 'ico';
-    if(p.icon) return '<img class="'+cls+'" src="'+p.icon+'">';
+    if(p.icon) return '<img class="'+cls+'" src="'+p.icon+'" alt="'+p.name+'">';
     return '<span class="'+cls+' gl" style="background:'+p.accent+'">'+(p.glyph||'?')+'</span>';
   }
+  function isBalance(p){ return p && p.kind === 'balance'; }
 
   function ringSVG(p, theme){
     const t = TONE[theme], Co = 238.76, Ci = 169.65;
@@ -83,20 +99,31 @@ window.UW = (function(){
 
   function barPanel(p, theme){                                   /* PRIMARY form */
     const t = TONE[theme], tint = theme==='light'? p.tintL : p.tintD;
-    if(p.credit){
-      const s = style(p.used, p.accent, theme);
-      return '<div class="panel col" style="background:'+tint+';color:'+t.ink+'">'
-        + '<div class="hdr">'+glyph(p)+'<span class="name">'+p.name+'</span><span class="cd" style="color:'+t.sub+'">'+p.remain+' left</span></div>'
-        + '<div class="bars">'
-        +   '<div class="brow"><span class="blbl">Cr</span><span class="track" style="background:'+s.track+'"><span class="fill" style="width:'+p.used+'%;background:'+s.fill+'"></span></span><span class="bval" style="color:'+s.val+'">'+p.used+'%</span></div>'
-        +   '<div class="bcap" style="color:'+t.sub+'">'+p.spent+' / '+p.total+' · '+p.runway+' est.</div>'
-        + '</div></div>';
-    }
+    if(isBalance(p)) return balancePanel(p, theme);
     const sc = soonest(p.windows);
     const bars = p.windows.map(w=> barRow(w, p.accent, theme)).join('');
     return '<div class="panel col" style="background:'+tint+';color:'+t.ink+'">'
       + '<div class="hdr">'+glyph(p)+'<span class="name">'+p.name+'</span><span class="cd" style="color:'+t.sub+'"><span class="rr">↻</span>'+sl(sc.label)+' '+fmt(sc.reset)+'</span></div>'
       + '<div class="bars">'+bars+'</div></div>';
+  }
+
+  function balanceText(p, lang){
+    const T = t9n(lang);
+    if(p.state === 'no_api_key') return { amount:T.noApiKey, trend:T.apiKeyHint, missing:true };
+    return {
+      amount:(lang === 'en' && p.amountEn) ? p.amountEn : p.amount,
+      trend:(lang === 'en' && p.trendEn) ? p.trendEn : p.trend,
+      missing:false
+    };
+  }
+
+  function balancePanel(p, theme, lang){
+    const t = TONE[theme], tint = theme==='light'? p.tintL : p.tintD;
+    const copy = balanceText(p, lang || locale());
+    return '<div class="panel col balance-panel" style="background:'+tint+';color:'+t.ink+'">'
+      + '<div class="hdr">'+glyph(p)+'<span class="name">'+p.name+'</span><span class="cd" style="color:'+t.sub+'">Cr</span></div>'
+      + '<div class="balance-main'+(copy.missing?' missing':'')+'" style="color:'+(copy.missing?t.sub:t.ink)+'">'+copy.amount+'</div>'
+      + '<div class="balance-sub" style="color:'+t.sub+'">'+copy.trend+'</div></div>';
   }
 
   function ringPanel(p, theme){                                  /* ALTERNATE form */
@@ -116,6 +143,13 @@ window.UW = (function(){
 
   function compactRow(p, theme){                                 /* Direction B */
     const t = TONE[theme], tint = theme==='light'? p.tintL : p.tintD;
+    if(isBalance(p)){
+      const copy = balanceText(p, locale());
+      return '<div class="striprow balance-row" style="background:'+tint+';color:'+t.ink+'">'
+        + glyph(p) + '<span class="sname">'+p.name+'</span>'
+        + '<div class="balance-mini"><span class="mval balance-amt" style="color:'+(copy.missing?t.sub:t.ink)+'">'+copy.amount+'</span>'
+        + '<span class="mtrend" style="color:'+t.sub+'">'+copy.trend+'</span></div></div>';
+    }
     const wins = p.windows.map(w=>{
       const s = style(w.used, p.accent, theme);
       return '<div class="mini"><span class="mlbl" style="color:'+t.sub+'">'+sl(w.label)+'</span>'
@@ -127,6 +161,12 @@ window.UW = (function(){
   }
 
   function touchCell(p){                                         /* Touch Bar */
+    if(isBalance(p)){
+      const copy = balanceText(p, 'zh');
+      return '<div class="tcell balance-touch" title="'+p.name+'">'
+        + glyph(p,'tico')
+        + '<div class="tmid"><span class="tname">'+p.name+'</span><span class="tval" style="color:'+(copy.missing?'rgba(255,255,255,.55)':p.accent)+'">'+copy.amount+'</span></div></div>';
+    }
     const u = urgentWin(p.windows), c = meter(u.used, p.accent, 'dark');
     const bars = p.windows.map(w=>{
       return '<span class="tbar"><i style="width:'+w.used+'%;background:'+p.accent+'"></i></span>';
@@ -140,17 +180,29 @@ window.UW = (function(){
   function fillWidget(el){
     const form = el.dataset.form, theme = el.dataset.theme || 'light';
     el.style.setProperty('--divln', TONE[theme].div);
-    const list = (el.dataset.providers === 'credit')
+    const list = (el.dataset.providers === 'balance')
+      ? BALANCE
+      : (el.dataset.providers === 'credit')
       ? [P[0], CREDIT]
-      : (el.dataset.providers === 'all+credit') ? P.concat([CREDIT]) : P;
-    if(form==='ring')    el.innerHTML = list.map(p=> ringPanel(p, theme)).join('');
-    else if(form==='compact') el.innerHTML = list.map(p=> compactRow(p, theme)).join('');
-    else                 el.innerHTML = list.map(p=> barPanel(p, theme)).join('');
+      : (el.dataset.providers === 'all+credit') ? P.concat([CREDIT])
+      : (el.dataset.providers === 'all') ? ALL
+      : P;
+    el.innerHTML = widgetPanels(form, theme, list);
+  }
+
+  function widgetPanels(form, theme, providers){
+    const list = providers === 'all' ? ALL
+      : providers === 'balance' ? BALANCE
+      : Array.isArray(providers) ? providers
+      : P;
+    if(form==='ring')    return list.map(p=> isBalance(p) ? balancePanel(p, theme) : ringPanel(p, theme)).join('');
+    else if(form==='compact') return list.map(p=> compactRow(p, theme)).join('');
+    else                 return list.map(p=> barPanel(p, theme)).join('');
   }
   /* ---------- i18n: 默认中文 · 英文系统自动切 ---------- */
   const I18N = {
-    zh:{ login:'未登录 · 请先在', loginTail:'登录', cached:'缓存数据 · 等待刷新', resetsPre:'', cmdMap:{ 'Claude':'Claude Code', 'Codex':'Codex CLI', 'Kimi Code':'Kimi CLI', 'Credits':'控制台' } },
-    en:{ login:'Not signed in · Log in via', loginTail:'', cached:'Cached · awaiting refresh', resetsPre:'', cmdMap:{ 'Claude':'Claude Code', 'Codex':'Codex CLI', 'Kimi Code':'Kimi CLI', 'Credits':'the console' } }
+    zh:{ login:'未登录 · 请先在', loginTail:'登录', cached:'缓存数据 · 等待刷新', cachedBalance:'缓存余额 · 等待刷新', noApiKey:'未配置 API 密钥', apiKeyHint:'在账户设置中添加后显示余额', resetsPre:'', cmdMap:{ 'Claude':'Claude Code', 'Codex':'Codex CLI', 'Kimi Code':'Kimi CLI', 'Credits':'控制台', 'DeepSeek':'账户设置', 'SiliconFlow':'账户设置', 'OpenRouter':'账户设置' } },
+    en:{ login:'Not signed in · Log in via', loginTail:'', cached:'Cached · awaiting refresh', cachedBalance:'Cached balance · awaiting refresh', noApiKey:'No API key configured', apiKeyHint:'Add a key in Account Settings', resetsPre:'', cmdMap:{ 'Claude':'Claude Code', 'Codex':'Codex CLI', 'Kimi Code':'Kimi CLI', 'Credits':'the console', 'DeepSeek':'Account Settings', 'SiliconFlow':'Account Settings', 'OpenRouter':'Account Settings' } }
   };
   function locale(){
     if(window.UW_LOCALE) return window.UW_LOCALE;                 /* manual override */
@@ -163,9 +215,14 @@ window.UW = (function(){
     return T.login + ' ' + where + (T.loginTail ? (' ' + T.loginTail) : '');
   }
 
-  /* states: only two — 'login' (needs auth) | 'cached' (stale, dimmed). normal = no message. */
+  /* states: quota = login/cached; balance = no_api_key/cached. normal = no message. */
   function statePanel(p, theme, state, lang){
     const t = TONE[theme], tint = theme==='light'? p.tintL : p.tintD, T = t9n(lang);
+    if(isBalance(p) && state==='no_api_key'){
+      return '<div class="panel col" style="background:'+tint+';color:'+t.sub+'">'
+        + '<div class="hdr">'+glyph(p)+'<span class="name" style="color:'+t.ink+'">'+p.name+'</span></div>'
+        + '<div class="msg" style="font-size:12px;line-height:1.45">'+T.noApiKey+' · '+T.apiKeyHint+'</div></div>';
+    }
     if(state==='login'){
       return '<div class="panel col" style="background:'+tint+';color:'+t.sub+'">'
         + '<div class="hdr">'+glyph(p)+'<span class="name" style="color:'+t.ink+'">'+p.name+'</span></div>'
@@ -173,6 +230,12 @@ window.UW = (function(){
     }
     /* cached: real data dimmed + caption */
     const inner = barPanel(p, theme);
+    if(isBalance(p)){
+      return inner
+        .replace('<div class="balance-main', '<div class="note" style="color:'+t.sub+';font-size:9.5px;margin-top:-4px;margin-bottom:2px">'+T.cachedBalance+'</div><div class="balance-main')
+        .replace('class="balance-main', 'class="balance-main stale')
+        .replace('class="balance-sub"', 'class="balance-sub stale"');
+    }
     return inner
       .replace('<div class="bars">', '<div class="note" style="color:'+t.sub+';font-size:9.5px;margin-top:-4px;margin-bottom:2px">'+T.cached+'</div><div class="bars" style="opacity:.5">');
   }
@@ -181,12 +244,15 @@ window.UW = (function(){
   function autoMount(root){
     root = root || document;
     root.querySelectorAll('.widget[data-form]').forEach(fillWidget);
-    root.querySelectorAll('.touchbar[data-auto]').forEach(el=>{ el.innerHTML = P.map(touchCell).join(''); });
+    root.querySelectorAll('.touchbar[data-auto]').forEach(el=>{
+      const list = el.dataset.providers === 'all' ? ALL : P;
+      el.innerHTML = list.map(touchCell).join('');
+    });
   }
   if(document.readyState !== 'loading') autoMount();
   else document.addEventListener('DOMContentLoaded', ()=> autoMount());
 
-  return { TONE, meter, style, emph, rgba, P, CREDIT, fmt, soonest, urgentWin, sl, glyph,
-           ringSVG, barRow, barPanel, ringPanel, compactRow, touchCell,
+  return { TONE, meter, style, emph, rgba, P, BALANCE, CREDIT, ALL, fmt, soonest, urgentWin, sl, glyph,
+           ringSVG, barRow, barPanel, balancePanel, ringPanel, compactRow, touchCell, widgetPanels,
            I18N, locale, t9n, loginMsg, statePanel, fillWidget, autoMount };
 })();

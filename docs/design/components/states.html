@@ -1,6 +1,6 @@
 <!-- @dsCard group="Components" name="Panel states" subtitle="仅两态:需登录 / 缓存等待刷新 · 正常态无提示 · 中英双语" -->
 <!doctype html><html><head><meta charset="utf-8">
-<link rel="stylesheet" href="_widget.css">
+<link rel="stylesheet" href="_widget.css?v=balance-providers">
 <style>
   html,body{margin:0;padding:0}
   body{padding:30px;box-sizing:border-box;background:#5b6472;
@@ -15,7 +15,7 @@
   .single{width:300px;border-radius:18px;overflow:hidden;box-shadow:0 12px 28px -10px rgba(0,0,0,.5)}
 </style></head><body>
   <div class="grid" id="root"></div>
-<script src="_widget.js"></script>
+<script src="_widget.js?v=balance-providers"></script>
 <script>
   const root = document.getElementById('root');
   function mount(into, p, theme, state, lang){
@@ -39,6 +39,16 @@
     f2.innerHTML = '<div class="flbl">'+(lang==='zh'?'缓存等待刷新':'Cached, awaiting refresh')+'</div>';
     mount(f2, UW.P[1], 'dark', 'cached', lang);
     stack.appendChild(f2);
+
+    const f3 = document.createElement('div'); f3.className='frame';
+    f3.innerHTML = '<div class="flbl">'+(lang==='zh'?'未配置 API 密钥':'Missing API key')+'</div>';
+    mount(f3, UW.BALANCE[1], 'light', 'no_api_key', lang);
+    stack.appendChild(f3);
+
+    const f4 = document.createElement('div'); f4.className='frame';
+    f4.innerHTML = '<div class="flbl">'+(lang==='zh'?'缓存余额':'Cached balance')+'</div>';
+    mount(f4, UW.BALANCE[0], 'dark', 'cached', lang);
+    stack.appendChild(f4);
 
     col.appendChild(stack);
     root.appendChild(col);

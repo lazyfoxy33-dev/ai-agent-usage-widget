@@ -59,6 +59,7 @@ class TestContract(unittest.TestCase):
         self.assertIn("burn_rate", provider["properties"])
         self.assertIn("balance_unavailable", provider["properties"]["reason"]["enum"])
         self.assertIn("login_required", provider["properties"]["reason"]["enum"])
+        self.assertIn("invalid_subject", provider["properties"]["reason"]["enum"])
         self.assertIn("console_session", provider["properties"]["source"]["enum"])
 
         balance = schema["$defs"]["balance"]

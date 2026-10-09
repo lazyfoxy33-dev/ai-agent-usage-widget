@@ -242,13 +242,16 @@ final class AccountSettingsViewModel: ObservableObject {
         apiKeyStore: APIKeyStore = APIKeyStore(),
         siliconFlowConsoleStore: SiliconFlowConsoleSessionStore = SiliconFlowConsoleSessionStore(),
         configStore: AppConfigStore = AppConfigStore(),
-        usageStore: UsageStore = UsageStore()
+        usageStore: UsageStore = UsageStore(),
+        autoload: Bool = true
     ) {
         self.apiKeyStore = apiKeyStore
         self.siliconFlowConsoleStore = siliconFlowConsoleStore
         self.configStore = configStore
         self.usageStore = usageStore
-        reload()
+        if autoload {
+            reload()
+        }
     }
 
     func reload() {
@@ -357,33 +360,21 @@ final class AccountSettingsViewModel: ObservableObject {
         Task.detached { [weak self] in
             do {
                 let keys = (try? QuotaWidgetModel.apiKeys(from: apiKeyStore)) ?? [:]
-                var json = try UsageFetcher.fetch(apiKeys: keys)
+                var json = try UsageFetcher.fetch(apiKeys: keys, providerScope: .apiKeyOnly)
                 let consoleSession = try? siliconFlowConsoleStore.readSession()
-                if let consoleSession, consoleSession.isConfigured {
-                    let consoleProvider = await SiliconFlowConsoleSessionProvider(
-                        sessionStore: siliconFlowConsoleStore,
-                        session: consoleSession
-                    ).fetchBalance()
-                    json = try UsageFetcher.replacingSiliconFlowProvider(
-                        in: json,
-                        consoleProvider: consoleProvider
-                    )
-                } else if let consoleSession,
-                          consoleSession.cookieHeader?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
-                          consoleSession.subjectID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
-                    json = try UsageFetcher.replacingSiliconFlowProvider(
-                        in: json,
-                        consoleProvider: UsageProvider(
-                            ok: false,
-                            reason: "invalid_subject",
-                            kind: "balance",
-                            source: "console_session",
-                            live: false
-                        )
-                    )
-                }
+                let consoleProvider = await QuotaWidgetModel.siliconFlowConsoleProvider(
+                    from: consoleSession
+                )
+                json = try UsageFetcher.replacingSiliconFlowProvider(
+                    in: json,
+                    consoleProvider: consoleProvider
+                )
                 await MainActor.run {
-                    try? self?.usageStore.write(json)
+                    let merged = UsageFetcher.preservingLocalAgentProviders(
+                        existing: try? self?.usageStore.read(),
+                        in: json
+                    )
+                    try? self?.usageStore.write(merged)
                     self?.reload()
                     self?.isTesting = false
                 }

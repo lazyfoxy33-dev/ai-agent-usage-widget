@@ -329,7 +329,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\nDESTINATION=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/display-layers\"\nrm -rf \"$DESTINATION\"\nmkdir -p \"$DESTINATION\"\nditto \"${SRCROOT}/../usage-widget\" \"$DESTINATION/usage-widget\"\nditto \"${SRCROOT}/../touchbar\" \"$DESTINATION/touchbar\"\nfind \"$DESTINATION\" -type d \\( -name __pycache__ -o -name .build -o -name build \\) -prune -exec rm -rf {} +\nfind \"$DESTINATION\" -type f \\( -name '*.pyc' -o -name '*.jsonl' \\) -delete\n";
+			shellScript = "set -eu\nDESTINATION=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/display-layers\"\nrm -rf \"$DESTINATION\"\nmkdir -p \"$DESTINATION\"\nditto \"${SRCROOT}/../usage-widget\" \"$DESTINATION/usage-widget\"\nditto \"${SRCROOT}/../touchbar\" \"$DESTINATION/touchbar\"\nfind \"$DESTINATION\" -type d \\( -name __pycache__ -o -name .build -o -name build -o -name dist \\) -prune -exec rm -rf {} +\nfind \"$DESTINATION\" -type f \\( -name '*.pyc' -o -name '*.jsonl' \\) -delete\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

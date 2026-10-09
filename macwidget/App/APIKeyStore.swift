@@ -1,6 +1,5 @@
 import Foundation
 import Security
-import OSLog
 
 enum APIKeyProviderID: String, CaseIterable, Identifiable {
     case deepseek
@@ -33,10 +32,7 @@ struct StoredSiliconFlowConsoleSession: Codable, Equatable, Sendable {
             options: .regularExpression
         ) != nil
         if !valid {
-            NSLog("[SFConsole] subjectID rejected: length=%zu prefix=%@ suffix=%@",
-                  trimmed.count,
-                  String(trimmed.prefix(8)) as NSString,
-                  String(trimmed.suffix(4)) as NSString)
+            NSLog("[SFConsole] subjectID rejected: length=%zu", trimmed.count)
         }
         return valid
     }

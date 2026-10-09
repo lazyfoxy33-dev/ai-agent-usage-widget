@@ -81,13 +81,24 @@ final class DisplayLayerStoreTests: XCTestCase {
         try? FileManager.default.removeItem(at: root)
     }
 
-    func testInstallUbersichtRecordsInstallStateWhenConfigured() throws {
+    func testInstallUbersichtRemovesNestedDistWidgetBundle() throws {
         let root = FileManager.default.temporaryDirectory
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         let source = root.appendingPathComponent("source", isDirectory: true)
+        let widgets = root.appendingPathComponent("Library/Application Support/Übersicht/widgets", isDirectory: true)
         let state = root.appendingPathComponent("state", isDirectory: true)
         try FileManager.default.createDirectory(at: source, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: source.appendingPathComponent("dist/ai-agent-usage.widget", isDirectory: true),
+            withIntermediateDirectories: true
+        )
+        try FileManager.default.createDirectory(at: widgets, withIntermediateDirectories: true)
         try "widget".write(to: source.appendingPathComponent("index.jsx"), atomically: true, encoding: .utf8)
+        try "nested".write(
+            to: source.appendingPathComponent("dist/ai-agent-usage.widget/index.jsx"),
+            atomically: true,
+            encoding: .utf8
+        )
 
         let store = DisplayLayerStore(
             homeDirectory: root,
@@ -98,6 +109,12 @@ final class DisplayLayerStoreTests: XCTestCase {
 
         try store.installUbersichtWidget(from: source)
 
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: widgets.appendingPathComponent("usage-widget/index.jsx").path
+        ))
+        XCTAssertFalse(FileManager.default.fileExists(
+            atPath: widgets.appendingPathComponent("usage-widget/dist/ai-agent-usage.widget/index.jsx").path
+        ))
         XCTAssertTrue(FileManager.default.fileExists(
             atPath: state.appendingPathComponent("ubersicht.installed").path
         ))

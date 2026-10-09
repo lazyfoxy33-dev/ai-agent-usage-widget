@@ -16,9 +16,6 @@ final class QuotaWidgetModel: ObservableObject {
     init() {
         self.lastUsed = UserDefaults.standard.string(forKey: "lastUsedProvider")
         startForegroundTracking()
-        if !Self.isRunningUnitTests {
-            start()
-        }
     }
 
     func startForegroundTracking() {
@@ -51,11 +48,7 @@ final class QuotaWidgetModel: ObservableObject {
     func start() {
         guard !hasStarted else { return }
         hasStarted = true
-        refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 180, repeats: true) {
-            [weak self] _ in
-            Task { @MainActor in self?.refresh() }
-        }
+        status = "已启动 · 手动刷新"
     }
 
     nonisolated static func apiKeys(from store: APIKeyStore) throws -> [APIKeyProviderID: String] {
@@ -66,52 +59,63 @@ final class QuotaWidgetModel: ObservableObject {
         ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
     }
 
-    nonisolated static func refreshUsagePayload() async throws {
-        let credentials = (try? AppCredentialBundleStore().snapshot())
-            ?? AppCredentialSnapshot(apiKeys: [:], siliconFlowConsoleSession: nil)
-        var json = try UsageFetcher.fetch(apiKeys: credentials.apiKeys)
-        if let consoleSession = credentials.siliconFlowConsoleSession,
-           consoleSession.isConfigured {
-            let consoleProvider = await SiliconFlowConsoleSessionProvider(
+    nonisolated static func siliconFlowConsoleProvider(
+        from consoleSession: StoredSiliconFlowConsoleSession?
+    ) async -> UsageProvider {
+        if let consoleSession, consoleSession.isConfigured {
+            return await SiliconFlowConsoleSessionProvider(
                 session: consoleSession
             ).fetchBalance()
-            json = try UsageFetcher.replacingSiliconFlowProvider(
-                in: json,
-                consoleProvider: consoleProvider
-            )
-        } else if let consoleSession = credentials.siliconFlowConsoleSession,
-                  consoleSession.cookieHeader?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
-                  consoleSession.subjectID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
-            json = try UsageFetcher.replacingSiliconFlowProvider(
-                in: json,
-                consoleProvider: UsageProvider(
-                    ok: false,
-                    reason: "invalid_subject",
-                    kind: "balance",
-                    source: "console_session",
-                    live: false
-                )
-            )
-        } else {
-            json = try UsageFetcher.replacingSiliconFlowProvider(
-                in: json,
-                consoleProvider: UsageProvider(
-                    ok: false,
-                    reason: "login_required",
-                    kind: "balance",
-                    source: "console_session",
-                    live: false
-                )
+        }
+        if let consoleSession,
+           consoleSession.cookieHeader?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false,
+           consoleSession.subjectID?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            return UsageProvider(
+                ok: false,
+                reason: "invalid_subject",
+                kind: "balance",
+                source: "console_session",
+                live: false
             )
         }
-        try UsageStore().write(json)
+        return UsageProvider(
+            ok: false,
+            reason: "login_required",
+            kind: "balance",
+            source: "console_session",
+            live: false
+        )
     }
 
-    func refresh() {
+    nonisolated static func refreshUsagePayload(
+        providerScope: UsageFetcher.ProviderScope = .all
+    ) async throws {
+        let credentials = (try? AppCredentialBundleStore().snapshot())
+            ?? AppCredentialSnapshot(apiKeys: [:], siliconFlowConsoleSession: nil)
+        let usageStore = UsageStore()
+        let existing = providerScope == .apiKeyOnly ? try? usageStore.read() : nil
+        var json = try UsageFetcher.fetch(
+            apiKeys: credentials.apiKeys,
+            providerScope: providerScope
+        )
+        let consoleProvider = await siliconFlowConsoleProvider(
+            from: credentials.siliconFlowConsoleSession
+        )
+        json = try UsageFetcher.replacingSiliconFlowProvider(
+            in: json,
+            consoleProvider: consoleProvider
+        )
+        if providerScope == .apiKeyOnly {
+            json = UsageFetcher.preservingLocalAgentProviders(existing: existing, in: json)
+        }
+        try usageStore.write(json)
+    }
+
+    func refresh(providerScope: UsageFetcher.ProviderScope = .apiKeyOnly) {
         status = "正在刷新…"
         Task.detached { [weak self] in
             do {
-                try await Self.refreshUsagePayload()
+                try await Self.refreshUsagePayload(providerScope: providerScope)
                 await MainActor.run {
                     NotificationCenter.default.post(name: .quotaWidgetUsagePayloadDidRefresh, object: nil)
                     self?.status = "已刷新 \(Date().formatted(date: .omitted, time: .shortened))"
@@ -123,6 +127,14 @@ final class QuotaWidgetModel: ObservableObject {
                 }
             }
         }
+    }
+
+    func refreshAPIKeyProviders() {
+        refresh(providerScope: .apiKeyOnly)
+    }
+
+    func refreshAllProviders() {
+        refresh(providerScope: .all)
     }
 }
 
@@ -150,7 +162,7 @@ struct MenuBarContentView: View {
         Text(model.status)
         Divider()
         Button("Settings...") { SettingsPresenter.app(openSettings: { openSettings() }).present() }
-        Button("立即刷新") { model.refresh() }
+        Button("立即刷新") { model.refreshAPIKeyProviders() }
         Divider()
         Button("退出") { NSApplication.shared.terminate(nil) }
     }
@@ -183,6 +195,7 @@ struct SettingsPresenter {
                 NSApplication.shared.windows
                     .filter { $0.isVisible && $0.canBecomeKey }
                     .forEach {
+                        $0.collectionBehavior.insert(.canJoinAllSpaces)
                         $0.makeKeyAndOrderFront(nil)
                         $0.orderFrontRegardless()
                     }
@@ -198,7 +211,7 @@ struct SettingsPresenter {
 struct QuotaWidgetApp: App {
     @NSApplicationDelegateAdaptor(QuotaWidgetAppDelegate.self) private var appDelegate
     @StateObject private var model = QuotaWidgetModel()
-    @StateObject private var settingsModel = AccountSettingsViewModel()
+    @StateObject private var settingsModel = AccountSettingsViewModel(autoload: false)
 
     var body: some Scene {
         MenuBarExtra("QuotaWidget", systemImage: "gauge.with.dots.needle.67percent") {
@@ -216,7 +229,7 @@ struct QuotaWidgetApp: App {
                 accountViewModel: settingsModel,
                 displayStore: displayStore,
                 usageStore: UsageStore(),
-                refreshNow: { model.refresh() },
+                refreshNow: { model.refreshAllProviders() },
                 displayActions: DisplayLayerActions(
                     installUbersicht: { try displayStore.installBundledUbersichtWidget() },
                     openUbersichtFolder: { try displayStore.openUbersichtWidgetsDirectory() },

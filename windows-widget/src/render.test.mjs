@@ -91,12 +91,26 @@ test("render uses new design tokens and structure", () => {
   assert.match(html, />Wk</);
   assert.match(html, />5H</);
 
-  // Each row shows its own reset countdown (matching macwidget MetricRow)
-  assert.match(html, /↻\s*30m/); // Codex 5H = 30m
-  assert.match(html, /↻\s*1h/);  // Claude 5H = 1h
+  // Header shows the earliest reset for the provider.
+  assert.match(html, /↻\s*5H 30m/); // Codex 5H = 30m
+  assert.match(html, /↻\s*5H 1h/);  // Claude 5H = 1h
 
-  // Center shows most-full (urgent) window: Claude weekly 91%
+  // Bar-primary design: no SVG rings, bars carry usage.
+  assert.doesNotMatch(html, /<svg/);
+  assert.doesNotMatch(html, /<circle/);
+  assert.match(html, /class="row usage-bar"/);
   assert.match(html, />91%</);
+});
+
+test("render uses image logos for all providers", () => {
+  const html = renderToHTML(livePayload, NOW_MS);
+  assert.match(html, /assets\/claude.svg/);
+  assert.match(html, /assets\/codex-app.png/);
+  assert.match(html, /assets\/kimi-code.png/);
+  assert.match(html, /assets\/deepseek.png/);
+  assert.match(html, /assets\/siliconflow.png/);
+  assert.match(html, /assets\/openrouter.png/);
+  assert.doesNotMatch(html, /data:image\/svg\+xml/);
 });
 
 test("render marks stale/cached state", () => {

@@ -47,22 +47,31 @@ def parse_siliconflow_info(payload, now=None):
     currency = data.get("currency") or DEFAULT_CURRENCY
     status = data.get("status", "active")
 
-    amounts = []
+    positive_amounts = []
+    zero_amounts = []
     saw_balance_field = False
+    saw_negative = False
     for key in ("totalBalance", "chargeBalance", "balance"):
         balance_value = data.get(key)
         if balance_value is None:
             continue
         saw_balance_field = True
         candidate = _as_float(balance_value)
-        if candidate >= 0:
-            amounts.append(candidate)
+        if candidate > 0:
+            positive_amounts.append(candidate)
+        elif candidate == 0:
+            zero_amounts.append(candidate)
+        else:
+            saw_negative = True
 
-    if not amounts:
+    if positive_amounts:
+        amount = max(positive_amounts)
+    elif zero_amounts and not saw_negative:
+        amount = 0
+    else:
         if saw_balance_field:
             raise BalanceUnavailableError("SiliconFlow returned a negative API balance")
         raise ValueError("SiliconFlow response missing balance")
-    amount = max(amounts)
 
     return {
         "ok": True,
@@ -132,10 +141,10 @@ def fetch_siliconflow(now=None):
     if not token:
         return {"ok": False, "kind": "balance", "reason": "no_data"}
 
+    last_auth_error = False
+    last_rate_limit = False
     try:
         payload = None
-        last_auth_error = False
-        last_rate_limit = False
         for url in API_URLS:
             try:
                 payload = api_key_http.bearer_get_json(url, token)
