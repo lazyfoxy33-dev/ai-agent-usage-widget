@@ -1,7 +1,7 @@
 # Design language — AI Agent Usage Widget
 
-One shared visual + textual language across every frontend (macOS WidgetKit,
-Übersicht, Touch Bar, Windows). New frontends and changes to existing ones must
+One shared visual + textual language across every frontend (the macOS menu bar app
+and the Touch Bar). New frontends and changes to existing ones must
 follow this document. The authoritative, runnable reference is the Claude Design
 iteration under `docs/design/` (especially `components/_widget.css` +
 `components/_widget.js`); this doc is the prose summary.
@@ -33,13 +33,13 @@ Each provider has one brand accent and a subtle background tint:
 
 Every provider is represented by its **app icon**, scaled down — never a glyph or
 letter. Assets live alongside each frontend (`claude-app.png`, `codex-app.png`,
-`kimi-code.png`, or the SVG equivalents on Windows). Render at ~18–20pt with a
+`kimi-code.png`). Render at ~18–20pt with a
 small rounded-corner clip. (The Touch Bar, being severely space-constrained, is the
 one exception and may use single-letter brand badges.)
 
 ## Chart form: rings on roomy surfaces, bars when compact
 
-- **Roomy widgets** (macOS WidgetKit, Übersicht, Windows) use the **dual ring**.
+- **Roomy surfaces** (the design-system previews under `docs/design/`) use the **dual ring**; no shipped frontend currently uses it.
 - **Compact strips** (Touch Bar) use two stacked **bars** instead.
 
 The color mapping is identical either way.
@@ -65,7 +65,7 @@ Use these exact terms everywhere. Do not localize them.
 | weekly window | `Wk` |
 | reset countdown | `↻ {dur}` |
 
-On the roomy widgets (Übersicht, macOS Widget) each metric row shows **its own**
+On a roomy surface (the `docs/design/` previews) each metric row shows **its own**
 window's reset inline, between the code and the percentage, as `↻ {dur}` — e.g.
 `● 5H  ↻ 2h 14m  47%`. The Touch Bar, which has no room for per-row countdowns,
 shows the single soonest reset in its strip. There is no `Resets in` prefix anywhere.

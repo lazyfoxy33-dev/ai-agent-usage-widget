@@ -5,7 +5,7 @@ import AppKit
 ///     it follows the frontmost Claude / Codex / Kimi app (else the most recent),
 ///     and falls back to the most-drained window when none has data;
 ///   * a full-width modal bar with one compact gauge per provider, presented on tap.
-/// Percentages are **used %**, matching the Übersicht widget. Data comes from the
+/// Percentages are **used %**, matching the menu bar app. Data comes from the
 /// shared `core/fetch_usage.py` via `UsageSource`.
 final class TouchBarController: NSObject, NSTouchBarDelegate {
 
@@ -45,7 +45,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     private let dim    = NSColor(white: 0.55, alpha: 1)
     private let bright = NSColor(white: 0.92, alpha: 1)
 
-    // Per-provider brand palette, matching the Übersicht widget (5h = accent,
+    // Per-provider brand palette, matching the menu bar app (5h = accent,
     // weekly = softer tint). C=Claude, X=Codex, K=Kimi.
     private func accent(_ tag: String) -> NSColor {
         switch tag {

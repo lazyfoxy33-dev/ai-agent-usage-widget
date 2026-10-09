@@ -32,10 +32,14 @@ body:
       label: macOS version / macOS 版本
     validations:
       required: true
-  - type: input
-    id: ubersicht
+  - type: dropdown
+    id: frontend
     attributes:
-      label: Übersicht version / Übersicht 版本
+      label: Affected frontend / 受影响的前端
+      options:
+        - Menu bar app / 菜单栏 app
+        - Touch Bar / Touch Bar 组件
+        - Shared data layer / 共享数据层
     validations:
       required: true
   - type: dropdown

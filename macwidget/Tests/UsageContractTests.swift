@@ -54,25 +54,6 @@ final class UsageContractTests: XCTestCase {
         )
     }
 
-    func testMacWidgetUsesBarPrimaryLayoutSource() throws {
-        let source = try widgetSource()
-        XCTAssertFalse(source.contains("DualRing"), "mac widget should use bar-primary rows, not the old dual-ring view")
-        XCTAssertFalse(source.contains("MetricRow"), "mac widget should use bar-primary rows, not the old metric row view")
-        XCTAssertTrue(source.contains("UsageBarRow"), "mac widget should render usage providers with bar-primary rows")
-        XCTAssertTrue(source.contains("ProviderGridColumn"), "medium widget should use provider columns for all six providers")
-    }
-
-    func testMediumWidgetIncludesAllSixProviders() throws {
-        let source = try widgetSource()
-        let expectedKinds = [
-            ".claude", ".codex", ".kimi", ".deepseek", ".siliconflow", ".openrouter"
-        ]
-
-        for kind in expectedKinds {
-            XCTAssertTrue(source.contains("ProviderGridColumn(kind: \(kind)"), "medium widget is missing \(kind)")
-        }
-    }
-
     func testBalancePresentationFormatting() {
         let balance = BalanceInfo(amount: 24.58, currency: "USD", available: true, label: "Balance")
         let burn = BurnRateInfo(
@@ -792,7 +773,7 @@ final class UsageContractTests: XCTestCase {
         )
         XCTAssertTrue(source.contains("Accounts"))
         XCTAssertTrue(source.contains("Refresh"))
-        XCTAssertTrue(source.contains("Displays"))
+        XCTAssertTrue(source.contains("Touch Bar"))
         XCTAssertTrue(source.contains("Diagnostics"))
     }
 
@@ -834,37 +815,37 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("performance.getEntriesByType"))
     }
 
-    func testDisplaysPanelExposesDisplayLayerActions() throws {
+    func testTouchBarPanelExposesDisplayLayerActions() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
 
         XCTAssertTrue(source.contains("DisplayLayerActions"))
         XCTAssertTrue(source.contains("Install / Update"))
-        XCTAssertTrue(source.contains("Open Folder"))
-        XCTAssertTrue(source.contains("Refresh Timelines"))
-        XCTAssertTrue(source.contains("Open Widget Gallery"))
         XCTAssertTrue(source.contains("Open App"))
+        XCTAssertFalse(source.contains("Open Folder"))
+        XCTAssertFalse(source.contains("Refresh Timelines"))
+        XCTAssertFalse(source.contains("Open Widget Gallery"))
     }
 
-    func testDisplaysPanelDoesNotSynchronouslyQueryStatusInBody() throws {
+    func testTouchBarPanelDoesNotSynchronouslyQueryStatusInBody() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
-        let displaysStart = source.range(of: "struct DisplaysPage: View")!.lowerBound
+        let pageStart = source.range(of: "struct TouchBarPage: View")!.lowerBound
         let displayCardStart = source.range(of: "struct DisplayCard")!.lowerBound
-        let displaysSource = String(source[displaysStart..<displayCardStart])
+        let pageSource = String(source[pageStart..<displayCardStart])
 
-        XCTAssertFalse(displaysSource.contains("displayStore.status(for:"))
-        XCTAssertTrue(displaysSource.contains("@State private var statuses"))
+        XCTAssertFalse(pageSource.contains("displayStore.touchBarStatus()"))
+        XCTAssertTrue(pageSource.contains("@State private var status"))
     }
 
-    func testAppBundlesDisplayLayerInstallSources() throws {
+    func testAppBundlesTouchBarInstallSource() throws {
         let project = try sourceFile("QuotaWidget.xcodeproj/project.pbxproj")
         let projectYAML = try sourceFile("project.yml")
 
-        XCTAssertTrue(project.contains("Bundle display layers"))
-        XCTAssertTrue(project.contains("../usage-widget"))
+        XCTAssertTrue(project.contains("Bundle Touch Bar frontend"))
         XCTAssertTrue(project.contains("../touchbar"))
-        XCTAssertTrue(projectYAML.contains("Bundle display layers"))
-        XCTAssertTrue(projectYAML.contains("../usage-widget"))
+        XCTAssertFalse(project.contains("../usage-widget"))
+        XCTAssertTrue(projectYAML.contains("Bundle Touch Bar frontend"))
         XCTAssertTrue(projectYAML.contains("../touchbar"))
+        XCTAssertFalse(projectYAML.contains("../usage-widget"))
     }
 
     func testSettingsMenuOpensControlCenter() throws {
@@ -890,10 +871,6 @@ final class UsageContractTests: XCTestCase {
         XCTAssertEqual(apiRows.map(\.id), [.deepseek, .siliconflow, .openrouter])
         XCTAssertEqual(apiRows.map(\.configured), [true, true, false])
     }
-}
-
-private func widgetSource() throws -> String {
-    try sourceFile("Widget/QuotaWidget.swift")
 }
 
 private func sourceFile(_ relativePath: String) throws -> String {

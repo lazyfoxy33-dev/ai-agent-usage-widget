@@ -1,28 +1,12 @@
 import AppKit
 import Foundation
 
-enum DisplayLayer: String, CaseIterable, Identifiable {
-    case ubersicht
-    case widgetKit
-    case touchBar
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .ubersicht: return "Übersicht"
-        case .widgetKit: return "macOS Widget"
-        case .touchBar: return "Touch Bar / Bar"
-        }
-    }
-}
-
-struct DisplayLayerStatus: Equatable, Identifiable {
-    var id: DisplayLayer { layer }
-    let layer: DisplayLayer
+struct DisplayLayerStatus: Equatable {
     let installed: Bool
     let running: Bool
     let detail: String
+
+    static let checking = DisplayLayerStatus(installed: false, running: false, detail: "Checking...")
 }
 
 struct DisplayLayerCommand: Equatable {
@@ -33,14 +17,11 @@ struct DisplayLayerCommand: Equatable {
 }
 
 enum DisplayLayerStoreError: Error, LocalizedError {
-    case missingBundledUbersichtWidget(URL)
     case missingBundledTouchBarInstaller(URL)
     case openFailed(URL)
 
     var errorDescription: String? {
         switch self {
-        case .missingBundledUbersichtWidget(let url):
-            return "Bundled Übersicht widget is missing at \(url.path)"
         case .missingBundledTouchBarInstaller(let url):
             return "Bundled Touch Bar installer is missing at \(url.path)"
         case .openFailed(let url):
@@ -49,128 +30,44 @@ enum DisplayLayerStoreError: Error, LocalizedError {
     }
 }
 
+/// Installs and opens the bundled Touch Bar frontend (`QuotaBar.app`).
 struct DisplayLayerStore: Sendable {
-    let homeDirectory: URL
+    static let touchBarAppName = "QuotaBar.app"
+
     let applicationsDirectory: URL
     let resourceDirectory: URL
-    let installStateDirectory: URL?
     let processList: @Sendable () -> [String]
     let openURL: @Sendable (URL) -> Bool
     let runCommand: @Sendable (DisplayLayerCommand) throws -> Void
 
     init(
-        homeDirectory: URL = FileManager.default.homeDirectoryForCurrentUser,
         applicationsDirectory: URL = URL(fileURLWithPath: "/Applications", isDirectory: true),
         resourceDirectory: URL = Bundle.main.resourceURL ?? Bundle.main.bundleURL,
-        installStateDirectory: URL? = nil,
         processList: @escaping @Sendable () -> [String] = DisplayLayerStore.defaultProcessList,
         openURL: @escaping @Sendable (URL) -> Bool = { NSWorkspace.shared.open($0) },
         runCommand: @escaping @Sendable (DisplayLayerCommand) throws -> Void = DisplayLayerStore.defaultRunCommand
     ) {
-        self.homeDirectory = homeDirectory
         self.applicationsDirectory = applicationsDirectory
         self.resourceDirectory = resourceDirectory
-        self.installStateDirectory = installStateDirectory
         self.processList = processList
         self.openURL = openURL
         self.runCommand = runCommand
     }
 
-    static func defaultInstallStateDirectory() -> URL {
-        AppConfigStore.defaultDirectory()
-            .appendingPathComponent("display-layers", isDirectory: true)
+    var touchBarAppURL: URL {
+        applicationsDirectory.appendingPathComponent(Self.touchBarAppName)
     }
 
-    static func ubersichtWidgetDirectories(homeDirectory: URL) -> [URL] {
-        [
-            homeDirectory.appendingPathComponent("Library/Application Support/Übersicht/widgets", isDirectory: true),
-            homeDirectory.appendingPathComponent("Library/Application Support/Übersicht/widgets", isDirectory: true)
-        ]
-    }
-
-    func status(for layer: DisplayLayer) -> DisplayLayerStatus {
-        switch layer {
-        case .ubersicht:
-            let installed = installStateDirectory == nil
-                ? Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory).contains { base in
-                    FileManager.default.fileExists(atPath: base.appendingPathComponent("usage-widget/index.jsx").path)
-                }
-                : isRecordedInstalled(.ubersicht)
-            let running = processList().contains { $0.localizedCaseInsensitiveContains("Übersicht") || $0.localizedCaseInsensitiveContains("Übersicht") }
-            return DisplayLayerStatus(layer: layer, installed: installed, running: running, detail: installed ? "Installed" : "Not installed")
-        case .widgetKit:
-            return DisplayLayerStatus(layer: layer, installed: true, running: false, detail: "Bundled with QuotaWidget.app")
-        case .touchBar:
-            let installed = FileManager.default.fileExists(atPath: applicationsDirectory.appendingPathComponent("QuotaBar.app").path)
-            let running = processList().contains { $0.localizedCaseInsensitiveContains("QuotaBar") }
-            return DisplayLayerStatus(layer: layer, installed: installed, running: running, detail: installed ? "Installed" : "Not installed")
+    func touchBarStatus() -> DisplayLayerStatus {
+        let installed = FileManager.default.fileExists(atPath: touchBarAppURL.path)
+        let running = processList().contains { $0.localizedCaseInsensitiveContains("QuotaBar") }
+        let detail: String
+        if !installed {
+            detail = "Not installed"
+        } else {
+            detail = running ? "Installed, running" : "Installed"
         }
-    }
-
-    func installUbersichtWidget(from sourceDirectory: URL) throws {
-        let candidates = Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory)
-        let targetBase = candidates.first { FileManager.default.fileExists(atPath: $0.path) } ?? candidates[0]
-
-        for base in candidates {
-            let destination = base.appendingPathComponent("usage-widget", isDirectory: true)
-            guard FileManager.default.fileExists(atPath: destination.path) else { continue }
-            try FileManager.default.removeItem(at: destination)
-        }
-
-        let destination = targetBase.appendingPathComponent("usage-widget", isDirectory: true)
-        try FileManager.default.createDirectory(at: targetBase, withIntermediateDirectories: true)
-        try FileManager.default.copyItem(at: sourceDirectory, to: destination)
-        try removePackagedUbersichtArtifacts(from: destination)
-        try recordInstalled(.ubersicht)
-    }
-
-    func installBundledUbersichtWidget() throws {
-        let source = resourceDirectory
-            .appendingPathComponent("display-layers/usage-widget", isDirectory: true)
-        guard FileManager.default.fileExists(atPath: source.appendingPathComponent("index.jsx").path) else {
-            throw DisplayLayerStoreError.missingBundledUbersichtWidget(source)
-        }
-        try installUbersichtWidget(from: source)
-        try installBundledCoreIntoUbersichtWidgets()
-    }
-
-    private func installBundledCoreIntoUbersichtWidgets() throws {
-        let core = resourceDirectory.appendingPathComponent("core", isDirectory: true)
-        let fetcher = core.appendingPathComponent("fetch_usage.py")
-        let usagePackage = core.appendingPathComponent("usage", isDirectory: true)
-        guard FileManager.default.fileExists(atPath: fetcher.path) else { return }
-
-        for base in Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory) {
-            let destination = base.appendingPathComponent("usage-widget", isDirectory: true)
-            guard FileManager.default.fileExists(atPath: destination.path) else { continue }
-            let destinationFetcher = destination.appendingPathComponent("fetch_usage.py")
-            if FileManager.default.fileExists(atPath: destinationFetcher.path) {
-                try FileManager.default.removeItem(at: destinationFetcher)
-            }
-            try FileManager.default.copyItem(at: fetcher, to: destinationFetcher)
-
-            let destinationUsage = destination.appendingPathComponent("usage", isDirectory: true)
-            if FileManager.default.fileExists(atPath: destinationUsage.path) {
-                try FileManager.default.removeItem(at: destinationUsage)
-            }
-            if FileManager.default.fileExists(atPath: usagePackage.path) {
-                try FileManager.default.copyItem(at: usagePackage, to: destinationUsage)
-            }
-        }
-    }
-
-    private func removePackagedUbersichtArtifacts(from destination: URL) throws {
-        let nestedWidgetBuild = destination.appendingPathComponent("dist", isDirectory: true)
-        if FileManager.default.fileExists(atPath: nestedWidgetBuild.path) {
-            try FileManager.default.removeItem(at: nestedWidgetBuild)
-        }
-    }
-
-    func openUbersichtWidgetsDirectory() throws {
-        let candidates = Self.ubersichtWidgetDirectories(homeDirectory: homeDirectory)
-        let destination = candidates.first { FileManager.default.fileExists(atPath: $0.path) } ?? candidates[0]
-        try FileManager.default.createDirectory(at: destination, withIntermediateDirectories: true)
-        guard openURL(destination) else { throw DisplayLayerStoreError.openFailed(destination) }
+        return DisplayLayerStatus(installed: installed, running: running, detail: detail)
     }
 
     func touchBarInstallCommand() throws -> DisplayLayerCommand {
@@ -184,24 +81,20 @@ struct DisplayLayerStore: Sendable {
             arguments: ["install.sh"],
             workingDirectory: installer.deletingLastPathComponent(),
             environment: [
-                "QUOTABAR_INSTALL_DESTINATION": applicationsDirectory
-                    .appendingPathComponent("QuotaBar.app")
-                    .path
+                "QUOTABAR_INSTALL_DESTINATION": touchBarAppURL.path
             ]
         )
     }
 
     func installTouchBar() throws {
         try runCommand(touchBarInstallCommand())
-        try recordInstalled(.touchBar)
     }
 
     func openTouchBarApp() throws {
-        let app = applicationsDirectory.appendingPathComponent("QuotaBar.app")
-        guard FileManager.default.fileExists(atPath: app.path) else {
-            throw DisplayLayerStoreError.openFailed(app)
+        guard FileManager.default.fileExists(atPath: touchBarAppURL.path) else {
+            throw DisplayLayerStoreError.openFailed(touchBarAppURL)
         }
-        guard openURL(app) else { throw DisplayLayerStoreError.openFailed(app) }
+        guard openURL(touchBarAppURL) else { throw DisplayLayerStoreError.openFailed(touchBarAppURL) }
     }
 
     private static func defaultProcessList() -> [String] {
@@ -218,21 +111,6 @@ struct DisplayLayerStore: Sendable {
         } catch {
             return []
         }
-    }
-
-    private func isRecordedInstalled(_ layer: DisplayLayer) -> Bool {
-        guard let installStateDirectory else { return false }
-        return FileManager.default.fileExists(atPath: markerURL(for: layer, in: installStateDirectory).path)
-    }
-
-    private func recordInstalled(_ layer: DisplayLayer) throws {
-        guard let installStateDirectory else { return }
-        try FileManager.default.createDirectory(at: installStateDirectory, withIntermediateDirectories: true)
-        try Data().write(to: markerURL(for: layer, in: installStateDirectory), options: [.atomic])
-    }
-
-    private func markerURL(for layer: DisplayLayer, in directory: URL) -> URL {
-        directory.appendingPathComponent("\(layer.rawValue).installed")
     }
 
     private static func defaultRunCommand(_ command: DisplayLayerCommand) throws {

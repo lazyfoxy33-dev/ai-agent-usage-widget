@@ -1,10 +1,10 @@
 # QuotaBar — Touch Bar 组件 / Touch Bar frontend
 
-把 **Claude / Codex / Kimi** 的 5 小时与周用量常驻到 macOS Touch Bar。与 Übersicht 桌面
-组件**共用同一套数据层**（`../core`）及其安全的新鲜度与凭据策略。
+把 **Claude / Codex / Kimi** 的 5 小时与周用量常驻到 macOS Touch Bar。与菜单栏
+app**共用同一套数据层**（`../core`）及其安全的新鲜度与凭据策略。
 
 Pins **Claude / Codex / Kimi** 5-hour and weekly usage onto the macOS Touch Bar.
-Shares the same data layer (`../core`) as the Übersicht widget, including its
+Shares the same data layer (`../core`) as the menu bar app, including its
 safe freshness and credential policy.
 
 ## 设计 / Design
@@ -40,12 +40,12 @@ so the UI has two levels:
 
 QuotaBar does not reimplement provider fetching. It runs the shared
 `core/fetch_usage.py`, bundled under `QuotaBar.app/Contents/Resources/core`,
-and parses the same JSON as Übersicht. See the [project README](../README.md)
+and parses the same JSON as the menu bar app. See the [project README](../README.md)
 and [core contract](../core/CONTRACT.md).
 
 ## 安装 / Install
 
-Recommended installation is through `QuotaWidget.app` > Settings... > Displays. Manual installation remains available for development.
+Recommended installation is through `QuotaWidget.app` > Settings... > Touch Bar. Manual installation remains available for development.
 
 最简单的方式：从
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载

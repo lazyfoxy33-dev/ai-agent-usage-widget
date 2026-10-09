@@ -119,7 +119,7 @@ macOS 主 app 的 Console Session Provider：
 
 SiliconFlow 由 macOS 主 app 启用 Console Session Provider。该模式
 使用 app 自己的 WebKit 登录态读取 SiliconFlow 后台余额，并只把裁剪后的余额结果写入
-共享 payload。WidgetKit、Übersicht 和其他展示层不得读取或接收网页登录态。
+共享 payload。Touch Bar 和其他展示层不得读取或接收网页登录态。
 
 Balance providers read API keys from environment variables (never from command
 line arguments). SiliconFlow only uses the macOS main app's Console Session
@@ -131,8 +131,8 @@ Provider:
 SiliconFlow uses the Console Session Provider in the macOS main app. That mode
 uses the app-owned WebKit session to read the SiliconFlow console
 balance and writes only the sanitized balance result into the shared payload.
-WidgetKit, Übersicht, and other display layers must not read or receive web
-session credentials.
+The Touch Bar and other display layers must not read or receive web session
+credentials.
 
 机器可读定义见 `contract.schema.json`。
 

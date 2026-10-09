@@ -20,7 +20,7 @@ extension NSColor {
     }
 }
 
-/// One provider's compact Touch Bar gauge. It translates the Übersicht widget's
+/// One provider's compact Touch Bar gauge. It translates the menu bar app's
 /// two-ring design (5h = accent, weekly = soft tint) onto the horizontal strip as
 /// a brand badge plus two mini bars. Fixed width keeps the modal's total length
 /// bounded; rendering stays inside the Touch Bar's 30pt height.

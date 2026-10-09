@@ -1,63 +1,63 @@
-# QuotaWidget for macOS / macOS 原生小组件
+# QuotaWidget for macOS / macOS 菜单栏 app
 
-QuotaWidget is a native WidgetKit frontend for Claude, Codex, and Kimi Code
-usage. A menu bar companion app runs the shared Python data layer every three
-minutes, writes the JSON contract into an App Group, and asks WidgetKit to
-reload.
+QuotaWidget is the macOS menu bar app for Claude, Codex, and Kimi Code usage plus
+DeepSeek, SiliconFlow, and OpenRouter balances. It runs the shared Python data
+layer on a timer and writes the sanitized JSON contract into its App Group
+container.
 
-QuotaWidget 是 Claude、Codex 与 Kimi Code 用量的原生 WidgetKit 前端。菜单栏
-伴侣 app 每三分钟运行共享 Python 数据层，把 JSON 契约写入 App Group，并通知
-WidgetKit 刷新。
+QuotaWidget 是 macOS 菜单栏 app：状态栏常驻图标，展示 Claude、Codex、Kimi Code 用量
+与 DeepSeek、SiliconFlow、OpenRouter 余额。它定时运行共享 Python 数据层，并把脱敏后的
+JSON 契约写入 App Group 容器。
 
-`QuotaWidget.app` is the primary macOS entry point. Use **Settings...** to open the control center. The Accounts tab manages local-agent and API-balance providers. The Displays tab installs optional display layers. The WidgetKit extension is bundled with the signed app and reads only App Group state.
+`QuotaWidget.app` is the primary macOS entry point. Use **Settings...** to open the control center. The Accounts tab manages local-agent and API-balance providers. The Touch Bar tab installs the optional Touch Bar frontend.
 
 ## Download / 下载
 
 Most users don't need to build anything: download the notarized
 `QuotaWidget.dmg` from
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases), drag
-**QuotaWidget** to Applications, open it (it lives in the menu bar), and add
-**AI Agent Usage** from the widget gallery. It is Developer ID-signed and notarized,
+**QuotaWidget** to Applications, and open it (it lives in the menu bar). It is
+Developer ID-signed and notarized,
 so there is no Gatekeeper warning. You still need `python3` (see the note below).
 
 大多数用户无需自行构建：从
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
-已公证的 `QuotaWidget.dmg`，把 **QuotaWidget** 拖入「应用程序」并打开（在菜单栏），
-再从小组件库添加 **AI Agent Usage**。已 Developer ID 签名 + 公证，无 Gatekeeper
-拦截；仍需要 `python3`（见下方说明）。
+已公证的 `QuotaWidget.dmg`，把 **QuotaWidget** 拖入「应用程序」并打开（在菜单栏）。
+已 Developer ID 签名 + 公证，无 Gatekeeper 拦截；仍需要 `python3`（见下方说明）。
 
 ## Requirements (building from source) / 要求（从源码构建）
 
 - macOS 14 or later / macOS 14 或更高版本
 - Xcode 16 or later / Xcode 16 或更高版本
 - Python 3 and `curl` / Python 3 与 `curl`
-- An Apple Developer Team that can register an App Group
-- 可注册 App Group 的 Apple Developer Team
+- An Apple Developer Team that can register an App Group — only needed for
+  Developer ID distribution
+- 可注册 App Group 的 Apple Developer Team —— 仅分发签名时需要
 
-Widget extensions are sandboxed. Sharing CLI-derived data with the extension
-requires a signed App Group; an unsigned build can compile and run tests, but
-cannot complete the real app-to-widget data path.
+Local development and tests do not need a registered App Group: with
+`CODE_SIGNING_ALLOWED=NO` the App Group container is unavailable, yet the app
+still builds, the tests pass, and usage still renders — only the Diagnostics
+shared-state row reports unavailable.
 
-Widget 扩展处于沙箱中。要把 CLI 数据共享给扩展，必须使用已签名的 App Group；
-无签名构建可以编译和运行测试，但不能打通真实的 app 到 widget 数据链路。
+本地开发与测试不需要注册 App Group：使用 `CODE_SIGNING_ALLOWED=NO` 时 App Group
+容器不可用，但 app 仍可编译、测试照常通过、用量照常显示，只有 Diagnostics 里的
+共享状态会显示为不可用。
 
 ## Sign And Install / 签名与安装
 
 1. In Apple Developer Certificates, Identifiers & Profiles, create an App Group
    such as `group.example.QuotaWidget`.
-2. Open `QuotaWidget.xcodeproj`, select both `QuotaWidgetApp` and
-   `QuotaWidgetExtension`, choose the same Team, and enable the same App Group.
-3. Set `APP_GROUP_ID` in the project build settings to that registered value.
-4. Build and run `QuotaWidgetApp`, then add **AI Agent Usage** from the macOS
-   widget gallery.
+2. Open `QuotaWidget.xcodeproj`, select `QuotaWidgetApp`, choose your Team, and
+   enable that App Group.
+3. Set `APP_GROUP_ID` in the project build settings to the registered value.
+4. Build and run `QuotaWidgetApp`; it appears in the menu bar.
 
 1. 在 Apple Developer 的 Certificates, Identifiers & Profiles 中创建 App
    Group，例如 `group.example.QuotaWidget`。
-2. 打开 `QuotaWidget.xcodeproj`，为 `QuotaWidgetApp` 与
-   `QuotaWidgetExtension` 选择同一个 Team，并启用同一个 App Group。
+2. 打开 `QuotaWidget.xcodeproj`，为 `QuotaWidgetApp` 选择你的 Team，并启用同一个
+   App Group。
 3. 把工程 Build Settings 中的 `APP_GROUP_ID` 改为已注册的值。
-4. 构建并运行 `QuotaWidgetApp`，然后从 macOS 小组件库添加
-   **AI Agent Usage**。
+4. 构建并运行 `QuotaWidgetApp`，它会出现在菜单栏。
 
 Command-line install / 命令行安装：
 
@@ -84,7 +84,7 @@ refresh. Failed refreshes keep the last successful snapshot.
   **Remove** 删除。
 - 共享数据层仍兼容 `DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`、`OPENROUTER_API_KEY`
   等环境变量，但 GUI 设置是推荐路径。
-- WidgetKit 扩展只通过 App Group 接收 JSON 契约，永远不会接触原始 API key。
+- 菜单栏 app 与 Touch Bar 前端只交换脱敏的 JSON 契约，永远不会接触原始 API key。
 
 Click QuotaWidget in the menu bar and choose **Settings...** to open the account
 settings window:
@@ -98,8 +98,8 @@ settings window:
 - The shared data layer still supports `DEEPSEEK_API_KEY`, `SILICONFLOW_API_KEY`,
   `OPENROUTER_API_KEY`, and similar environment variables, but the GUI settings
   are the recommended path.
-- The WidgetKit extension only receives the JSON contract through the App Group
-  and never sees raw API keys.
+- The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
+  contract and never see raw API keys.
 
 ## Distribution / 分发
 
@@ -118,10 +118,9 @@ One-time setup / 一次性准备：
    **Developer ID Application** certificate.
    在 Xcode → Settings → Accounts → Manage Certificates 中创建一张
    **Developer ID Application** 证书。
-2. Ensure the App IDs `dev.lazyfoxy.QuotaWidget` and
-   `dev.lazyfoxy.QuotaWidget.extension` have the **App Groups** capability
+2. Ensure the App ID `dev.lazyfoxy.QuotaWidget` has the **App Groups** capability
    enabled (the same setup development signing needs).
-   确认 App ID `dev.lazyfoxy.QuotaWidget` 与 `.extension` 都启用了 **App Groups**
+   确认 App ID `dev.lazyfoxy.QuotaWidget` 启用了 **App Groups**
    能力（和开发签名所需的一致）。
 3. Store notarization credentials once / 存一次公证凭证：
 
@@ -179,11 +178,11 @@ QUOTAWIDGET_UNSIGNED=1 ./build.sh
 
 ## Troubleshooting / 排错
 
-- **Widget says to open the app:** launch `QuotaWidgetApp` and use manual
-  refresh once. If it remains empty, verify both targets use exactly the same
-  registered App Group.
-- **小组件提示打开 app：**启动 `QuotaWidgetApp` 并手动刷新一次；若仍为空，
-  检查两个 target 是否使用完全相同且已注册的 App Group。
+- **Menu bar shows nothing:** make sure `QuotaWidget.app` is running and use
+  **立即刷新** once. If it stays empty, set `APP_GROUP_ID` to an App Group that
+  is registered for `dev.lazyfoxy.QuotaWidget`.
+- **菜单栏没有内容：**确认 `QuotaWidget.app` 正在运行，并点一次**立即刷新**；若仍为空，
+  检查 `APP_GROUP_ID` 是否为 `dev.lazyfoxy.QuotaWidget` 已注册的 App Group。
 - **Refresh fails:** run `cd ../core && python3 fetch_usage.py` and resolve the
   provider-specific login or network message first.
 - **刷新失败：**运行 `cd ../core && python3 fetch_usage.py`，先处理对应提供商的

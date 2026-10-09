@@ -1,6 +1,5 @@
 import AppKit
 import SwiftUI
-import WidgetKit
 
 extension Notification.Name {
     static let quotaWidgetUsagePayloadDidRefresh = Notification.Name("quotaWidgetUsagePayloadDidRefresh")
@@ -222,24 +221,13 @@ struct QuotaWidgetApp: App {
         }
 
         Settings {
-            let displayStore = DisplayLayerStore(
-                installStateDirectory: DisplayLayerStore.defaultInstallStateDirectory()
-            )
+            let displayStore = DisplayLayerStore()
             ControlCenterView(
                 accountViewModel: settingsModel,
                 displayStore: displayStore,
                 usageStore: UsageStore(),
                 refreshNow: { model.refreshAllProviders() },
                 displayActions: DisplayLayerActions(
-                    installUbersicht: { try displayStore.installBundledUbersichtWidget() },
-                    openUbersichtFolder: { try displayStore.openUbersichtWidgetsDirectory() },
-                    refreshWidgetKit: { WidgetCenter.shared.reloadAllTimelines() },
-                    openWidgetGallery: {
-                        let settings = URL(fileURLWithPath: "/System/Applications/System Settings.app")
-                        guard NSWorkspace.shared.open(settings) else {
-                            throw DisplayLayerStoreError.openFailed(settings)
-                        }
-                    },
                     installTouchBar: { try displayStore.installTouchBar() },
                     openTouchBar: { try displayStore.openTouchBarApp() }
                 )

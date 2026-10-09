@@ -1,67 +1,33 @@
 #!/usr/bin/env bash
-# One-shot update & publish for the distributable frontends.
+# One-shot update & publish for the macOS frontends.
 #
-#   ./release.sh                 # do all: Übersicht + macwidget + Windows
-#   ./release.sh --ubersicht     # only repackage + publish the Übersicht widget
-#   ./release.sh --macwidget     # only rebuild + notarize the macwidget dmg
-#   ./release.sh --windows       # only build + publish the Windows installer
-#   ./release.sh --screenshot    # also re-render the gallery screenshot
+#   ./release.sh                 # rebuild + notarize the macwidget dmg
+#   ./release.sh --touchbar      # only rebuild + notarize the Touch Bar dmg
 #
 # Required for the macwidget part (Developer ID notarization):
 #   export QUOTAWIDGET_TEAM="9AVXU7V6Q8"
 #   export QUOTAWIDGET_NOTARY_PROFILE="quotawidget-notary"
 #
+# Required for the Touch Bar part:
+#   export QUOTABAR_TEAM="9AVXU7V6Q8"
+#   export QUOTABAR_NOTARY_PROFILE="quotabar-notary"
+#
 # Optional:
-#   GALLERY_REPO=/path/to/quotawidget-ubersicht   (default: sibling of this repo)
 #   RELEASE_TAG=macwidget-v1.0.0                   (GitHub Release tag to update)
+#   TOUCHBAR_RELEASE_TAG=touchbar-v1.0.0           (GitHub Release tag to update)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-GALLERY_REPO="${GALLERY_REPO:-$(dirname "$ROOT")/quotawidget-ubersicht}"
 RELEASE_TAG="${RELEASE_TAG:-macwidget-v1.0.0}"
+TOUCHBAR_RELEASE_TAG="${TOUCHBAR_RELEASE_TAG:-touchbar-v1.0.0}"
 
-DO_UBER=1; DO_MAC=1; DO_WIN=1; DO_SHOT=0
+DO_MAC=1; DO_TOUCHBAR=0
 for a in "$@"; do
     case "$a" in
-        --ubersicht) DO_MAC=0; DO_WIN=0 ;;
-        --macwidget) DO_UBER=0; DO_WIN=0 ;;
-        --windows) DO_UBER=0; DO_MAC=0 ;;
-        --screenshot) DO_SHOT=1 ;;
+        --macwidget) DO_TOUCHBAR=0 ;;
+        --touchbar) DO_MAC=0; DO_TOUCHBAR=1 ;;
         *) echo "unknown flag: $a"; exit 2 ;;
     esac
 done
-
-if [[ $DO_UBER == 1 ]]; then
-    echo "==> Übersicht: packaging widget…"
-    bash "$ROOT/usage-widget/package-widget.sh"
-
-    if [[ $DO_SHOT == 1 ]]; then
-        echo "==> Übersicht: rendering gallery screenshot…"
-        bash "$ROOT/usage-widget/render-screenshot.sh"
-    fi
-
-    if [[ -d "$GALLERY_REPO/.git" ]]; then
-        echo "==> Übersicht: syncing to gallery repo ($GALLERY_REPO)…"
-        cp "$ROOT/usage-widget/dist/ai-agent-usage.widget.zip" "$GALLERY_REPO/"
-        rm -rf "$GALLERY_REPO/ai-agent-usage.widget"
-        cp -R "$ROOT/usage-widget/dist/ai-agent-usage.widget" "$GALLERY_REPO/"
-        [[ $DO_SHOT == 1 && -f "$ROOT/usage-widget/dist/screenshot.png" ]] && \
-            cp "$ROOT/usage-widget/dist/screenshot.png" "$GALLERY_REPO/screenshot.png"
-        (
-            cd "$GALLERY_REPO"
-            if [[ -n "$(git status --porcelain)" ]]; then
-                git add -A
-                git commit -qm "Update widget package ($(date +%Y-%m-%d))"
-                git push -q
-                echo "    pushed gallery repo update"
-            else
-                echo "    gallery repo already up to date"
-            fi
-        )
-    else
-        echo "  ⚠ gallery repo not found at $GALLERY_REPO — skipped publish."
-        echo "    Set GALLERY_REPO=/path/to/quotawidget-ubersicht. Zip is in usage-widget/dist/."
-    fi
-fi
 
 if [[ $DO_MAC == 1 ]]; then
     echo "==> macwidget: build + notarize…"
@@ -75,15 +41,17 @@ if [[ $DO_MAC == 1 ]]; then
     fi
 fi
 
-if [[ $DO_WIN == 1 ]]; then
-    echo "==> Windows: build + publish…"
-    if command -v pwsh >/dev/null 2>&1; then
-        ( cd "$ROOT/windows-widget" && pwsh -Command "./release.ps1" )
-    elif command -v powershell >/dev/null 2>&1; then
-        ( cd "$ROOT/windows-widget" && powershell -Command "./release.ps1" )
+if [[ $DO_TOUCHBAR == 1 ]]; then
+    echo "==> Touch Bar: build + notarize…"
+    ( cd "$ROOT/touchbar" && ./distribute.sh )
+    TOUCHBAR_DMG="$ROOT/touchbar/build/dist/QuotaBar.dmg"
+    if [[ ! -f "$TOUCHBAR_DMG" ]]; then
+        echo "  ⚠ no Touch Bar dmg found at $TOUCHBAR_DMG — check distribute.sh output."
+    elif gh release view "$TOUCHBAR_RELEASE_TAG" >/dev/null 2>&1; then
+        echo "==> Touch Bar: updating release asset on $TOUCHBAR_RELEASE_TAG…"
+        gh release upload "$TOUCHBAR_RELEASE_TAG" "$TOUCHBAR_DMG" --clobber
     else
-        echo "  ⚠ PowerShell (pwsh/powershell) not found — skipping Windows publish."
-        echo "    Build manually from windows-widget/ with .\release.ps1"
+        echo "  ⚠ release $TOUCHBAR_RELEASE_TAG not found — dmg built at $TOUCHBAR_DMG (create the release or set TOUCHBAR_RELEASE_TAG)."
     fi
 fi
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Render the per-frontend preview mocks to docs/*.png via headless Chrome (@2x).
+# Render the frontend preview mocks to docs/*.png via headless Chrome (@2x).
 # Re-run when the design changes. Sources are the committed *.html in this dir;
 # edit the numbers/colors there to change the promo values.
 set -euo pipefail
@@ -15,5 +15,4 @@ render() { # <html> <w> <h> <out>
   echo "Rendered: docs/$4"
 }
 
-render widget.html   600 240 preview-widget.png
 render touchbar.html 660  96 preview-touchbar.png

@@ -20,9 +20,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: dev.lazyfoxy.QuotaWidget
         INFOPLIST_FILE: App/Info.plist
         CODE_SIGN_ENTITLEMENTS: App/QuotaWidgetApp.entitlements
-    dependencies:
-      - target: QuotaWidgetExtension
-        embed: true
     preBuildScripts:
       - name: Bundle shared Python core
         script: |
@@ -34,29 +31,16 @@ targets:
           find "$DESTINATION" -type d -name __pycache__ -prune -exec rm -rf {} +
           find "$DESTINATION" -type f -name '*.pyc' -delete
         basedOnDependencyAnalysis: false
-      - name: Bundle display layers
+      - name: Bundle Touch Bar frontend
         script: |
           set -eu
           DESTINATION="${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/display-layers"
           rm -rf "$DESTINATION"
           mkdir -p "$DESTINATION"
-          ditto "${SRCROOT}/../usage-widget" "$DESTINATION/usage-widget"
           ditto "${SRCROOT}/../touchbar" "$DESTINATION/touchbar"
           find "$DESTINATION" -type d \( -name __pycache__ -o -name .build -o -name build -o -name dist \) -prune -exec rm -rf {} +
           find "$DESTINATION" -type f \( -name '*.pyc' -o -name '*.jsonl' \) -delete
         basedOnDependencyAnalysis: false
-  QuotaWidgetExtension:
-    type: app-extension
-    platform: macOS
-    sources:
-      - Widget
-      - Shared
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.lazyfoxy.QuotaWidget.extension
-        INFOPLIST_FILE: Widget/Info.plist
-        CODE_SIGN_ENTITLEMENTS: Widget/QuotaWidgetExtension.entitlements
-        SKIP_INSTALL: true
   QuotaWidgetTests:
     type: bundle.unit-test
     platform: macOS
@@ -72,7 +56,6 @@ schemes:
     build:
       targets:
         QuotaWidgetApp: all
-        QuotaWidgetExtension: all
         QuotaWidgetTests: [test]
     test:
       targets:

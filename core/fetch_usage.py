@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Entry point for the Übersicht widget. Prints combined usage JSON to stdout."""
+"""Entry point for the frontends. Prints combined usage JSON to stdout."""
 import json
 import os
 import time

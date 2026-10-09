@@ -1,43 +1,44 @@
 # AI Agent Usage Widget / AI Agent 用量组件
 
-集中显示 Claude、Codex、Kimi Code 用量，以及 DeepSeek、SiliconFlow、
-OpenRouter 余额的跨平台工具。同一套数据层
-（`core/`）驱动 Übersicht、Touch Bar、macOS WidgetKit 和 Windows Tauri
-四个前端。
+在 macOS 上集中显示 Claude、Codex、Kimi Code 用量与 DeepSeek、SiliconFlow、
+OpenRouter 余额：菜单栏常驻图标点开即看，另有一个常驻 Touch Bar 的小组件。
+两端共用同一套数据层（`core/`）。
 
-A cross-platform tool that shows Claude, Codex, and Kimi Code usage plus
-DeepSeek, SiliconFlow, and OpenRouter balances in one place. One shared data
-layer (`core/`) drives four frontends: Übersicht, Touch Bar, native macOS
-WidgetKit, and Windows Tauri.
+A macOS tool that shows Claude, Codex, and Kimi Code usage plus DeepSeek,
+SiliconFlow, and OpenRouter balances from the menu bar, with an always-on Touch
+Bar companion. Both frontends share one data layer (`core/`).
 
-![组件预览 / Widget preview](docs/widget-preview.png)
+![Touch Bar 预览 / Touch Bar preview](docs/preview-touchbar.png)
 
 ## 项目结构 / Layout
 
 ```text
 core/          共享数据层（取数逻辑 + 测试）/ shared data layer (fetchers + tests)
-usage-widget/  Übersicht 桌面组件 / Übersicht desktop widget
+macwidget/     菜单栏 app：状态栏常驻图标 + 账户设置
+               menu bar app: status item + account settings
 touchbar/      Touch Bar 组件（Swift）/ Touch Bar frontend (Swift)
-macwidget/     macOS WidgetKit 小组件 + 菜单栏伴侣 app
-               macOS WidgetKit extension + menu bar companion
-windows-widget/ Windows Tauri 无边框桌面组件 / Windows Tauri desktop widget
 ```
 
-所有前端都消费 `core/fetch_usage.py` 输出的同一份 JSON，并共享相同的新鲜度与
+两个前端都消费 `core/fetch_usage.py` 输出的同一份 JSON，并共享相同的新鲜度与
 凭据处理策略。
-All frontends consume the same JSON from `core/fetch_usage.py` and share the
+Both frontends consume the same JSON from `core/fetch_usage.py` and share the
 same freshness and credential-handling policy.
 
-### macOS Control App
+### macOS 菜单栏 app / macOS Menu Bar App
 
-Install `QuotaWidget.app` first. It is the control app for AI Agent Usage on macOS:
+先安装 `QuotaWidget.app`，它是 macOS 上的主入口 / Install `QuotaWidget.app`
+first; it is the primary entry point on macOS:
 
-- configure provider accounts and API keys
-- refresh usage data
-- write sanitized shared state
-- install or update optional display layers
+- 状态栏常驻图标，点开展示各提供商用量与余额 /
+  a status item that expands to per-provider usage and balances
+- 配置账号与 API key / configure provider accounts and API keys
+- 手动刷新数据 / refresh usage data
+- 写入脱敏后的共享状态 / write sanitized shared state
+- 安装或更新 Touch Bar 前端 / install or update the Touch Bar frontend
 
-Display layers do not store API keys.
+账户设置只把 API key 存进 macOS Keychain，不会写入仓库、缓存或日志。
+Account settings keep API keys in the macOS Keychain only; they are never written
+to the repository, cache, or logs.
 
 ## 功能 / Features
 
@@ -49,12 +50,10 @@ Display layers do not store API keys.
 - Stale-data indicators prevent cached or expired snapshots from appearing live
 - 每 60 秒检查数据，成功响应最多缓存五分钟
 - Checks data every 60 seconds and caches successful responses for five minutes
-- 默认固定在桌面左上角
-- Anchored to the desktop top-left corner by default
 - 跟随系统浅色 / 深色外观，并按已用量显示语义告急色（注意 / 告急）
 - Follows the system light / dark appearance with semantic usage colors
-- macOS 原生 WidgetKit 小组件与 Windows 无边框桌面窗
-- Native macOS WidgetKit and a frameless Windows desktop window
+- 菜单栏常驻图标点开展示，Touch Bar 上一格常驻小组件
+- A menu bar status item that expands on click, plus a Touch Bar companion
 - API 余额面板会基于近期本地余额历史估算可用天数（历史不足时不显示猜测）
 - API balance panels estimate days remaining from local recent balance history
   when enough data exists, and avoid guessing when history is insufficient
@@ -107,12 +106,8 @@ times.
 
 各前端的额外要求 / Frontend-specific requirements:
 
-- Übersicht：macOS + [Übersicht](https://tracesof.net/uebersicht/)
+- 两个前端都需要 macOS 14+ / both frontends require macOS 14+
 - Touch Bar：带 Touch Bar 的 Mac / a Mac with Touch Bar
-- WidgetKit：macOS 14+、Xcode 与可注册 App Group 的 Apple Developer Team
-- WidgetKit: macOS 14+, Xcode, and an Apple Developer Team for App Groups
-- Windows：Windows 10/11 + WebView2；源码构建需 Rust/Tauri
-- Windows: Windows 10/11 + WebView2; source builds require Rust/Tauri
 
 ```bash
 python3 --version
@@ -121,45 +116,53 @@ curl --version
 
 ## 快速安装 / Quick Start
 
-> **macOS 原生小组件与 Touch Bar** 可直接从
+> **菜单栏 app 与 Touch Bar** 可直接从
 > [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
 > **已公证**的 DMG（`QuotaWidget.dmg` / `QuotaBar.dmg`），无需自行构建签名（见下方各端小节）。
-> Übersicht 与 Windows 端从源码安装。
 >
-> The **macOS Widget** and **Touch Bar** ship as **notarized** DMGs on
+> The **menu bar app** and the **Touch Bar** frontend ship as **notarized** DMGs on
 > [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases)
 > (`QuotaWidget.dmg` / `QuotaBar.dmg`) — no build or signing needed (see their
-> sections below). Übersicht and Windows install from source.
+> sections below).
 
-### 下载 ZIP / Download ZIP
+### 菜单栏 app / Menu bar app
 
-1. 在 GitHub 仓库的 **Code** 菜单选择 **Download ZIP**。
-2. 解压后打开终端，输入 `cd `（末尾有空格），把解压目录拖进终端并回车。
-3. In GitHub's **Code** menu, choose **Download ZIP**. Extract it, type `cd `
-   in Terminal, drag the extracted folder into Terminal, and press Return.
-4. 运行 / Run:
+1. 从 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases)
+   下载已公证的 `QuotaWidget.dmg`，拖入「应用程序」并打开。
+2. 状态栏出现常驻图标，点开即可查看各提供商用量与余额。
+3. 需要自行从源码构建时，见 [macwidget/README.md](macwidget/README.md)。
 
-```bash
-cd usage-widget
-bash install.sh
-```
+1. Download the notarized `QuotaWidget.dmg` from
+   [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases),
+   drag it to Applications, and open it.
+2. A status item appears in the menu bar; click it to see per-provider usage and
+   balances.
+3. To build from source instead, see [macwidget/README.md](macwidget/README.md).
 
-### Git 克隆 / Git Clone
+#### Account settings / 账户设置（macOS app）
 
-```bash
-git clone https://github.com/lazyfoxy33-dev/ai-agent-usage-widget.git
-cd ai-agent-usage-widget/usage-widget
-bash install.sh
-```
+在菜单栏点击 QuotaWidget，选择 **Settings...** 打开账户设置：
 
-打开或重启 Übersicht，并在菜单中启用 `usage-widget`。安装位置：
+- **Claude、Codex、Kimi Code** 从本地官方客户端存储自动检测；未配置时点对应行的
+  **Open**（或启用 Codex 的 **Enable Probe**）按提示使用官方客户端。
+- **DeepSeek、SiliconFlow、OpenRouter** 点 **Add Key** 输入 API key；key 会存入
+  macOS Keychain（服务名 `AI Agent Usage Widget`），可随时 **Test** 或 **Remove**。
+- 共享数据层仍支持读取对应 `*_API_KEY` 环境变量，但 macOS app 的 GUI 设置是推荐路径。
+- 菜单栏 app 与 Touch Bar 前端只交换脱敏后的 JSON 契约，从不接触原始 key。
 
-Open or restart Übersicht and enable `usage-widget` from its menu. Install
-location:
+In the menu bar, click QuotaWidget and choose **Settings...** to open account
+settings:
 
-```text
-~/Library/Application Support/Übersicht/widgets/usage-widget/
-```
+- **Claude, Codex, and Kimi Code** are auto-detected from local official-client
+  storage; if unconfigured, click **Open** (or **Enable Probe** for Codex) and
+  follow the official-client setup.
+- For **DeepSeek, SiliconFlow, and OpenRouter**, click **Add Key** to enter an API
+  key; keys are stored in the macOS Keychain (service `AI Agent Usage Widget`)
+  and can be **Test**ed or **Remove**d at any time.
+- The shared data layer still reads the corresponding `*_API_KEY` environment
+  variables, but the macOS app's GUI settings are the recommended path.
+- The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
+  contract and never see raw keys.
 
 ### Touch Bar 组件 / Touch Bar frontend
 
@@ -183,63 +186,12 @@ bash install.sh
 The tray cell shows the most-used window; tap to expand the full readout. See
 [touchbar/README.md](touchbar/README.md).
 
-### macOS WidgetKit / macOS 原生小组件
-
-![macOS Widget 预览 / macOS Widget preview](docs/preview-widget.png)
-
-最简单的方式：从
-[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
-已公证的 `QuotaWidget.dmg`，拖入「应用程序」打开，再从小组件库添加
-**AI Agent Usage**。若要自行从源码构建，WidgetKit 扩展需用你自己的 Apple Team 与
-App Group 签名——详见 [macwidget/README.md](macwidget/README.md)。
-
-Easiest: download the notarized `QuotaWidget.dmg` from
-[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases), drag
-it to Applications, open it, then add **AI Agent Usage** from the widget gallery.
-To build from source instead, the WidgetKit extension must be signed with your own
-Apple Team and App Group — see [macwidget/README.md](macwidget/README.md).
-
-#### Account settings / 账户设置（macOS app）
-
-在菜单栏点击 QuotaWidget，选择 **Settings...** 打开账户设置：
-
-- **Claude、Codex、Kimi Code** 从本地官方客户端存储自动检测；未配置时点对应行的
-  **Open**（或启用 Codex 的 **Enable Probe**）按提示使用官方客户端。
-- **DeepSeek、SiliconFlow、OpenRouter** 点 **Add Key** 输入 API key；key 会存入
-  macOS Keychain（服务名 `AI Agent Usage Widget`），可随时 **Test** 或 **Remove**。
-- 共享数据层仍支持读取对应 `*_API_KEY` 环境变量，但 macOS app 的 GUI 设置是推荐路径。
-- WidgetKit 扩展只通过 App Group 接收已脱敏的 JSON 契约，永远不会接触原始 key。
-
-In the menu bar, click QuotaWidget and choose **Settings...** to open account
-settings:
-
-- **Claude, Codex, and Kimi Code** are auto-detected from local official-client
-  storage; if unconfigured, click **Open** (or **Enable Probe** for Codex) and
-  follow the official-client setup.
-- For **DeepSeek, SiliconFlow, and OpenRouter**, click **Add Key** to enter an API
-  key; keys are stored in the macOS Keychain (service `AI Agent Usage Widget`)
-  and can be **Test**ed or **Remove**d at any time.
-- The shared data layer still reads the corresponding `*_API_KEY` environment
-  variables, but the macOS app’s GUI settings are the recommended path.
-- The WidgetKit extension only receives the sanitized JSON contract through the
-  App Group and never sees raw keys.
-
-### Windows Tauri / Windows 桌面组件
-
-Windows 组件是可拖动、置顶、记忆位置的无边框窗口，并带系统托盘与开机自启。
-构建和使用见 [windows-widget/README.md](windows-widget/README.md)。
-
-The Windows frontend is a draggable, always-on-top frameless window with a
-tray menu, saved position, and autostart. See
-[windows-widget/README.md](windows-widget/README.md).
-
 ## 首次使用 / First Use
 
 1. 正常使用需要显示的官方客户端至少一次。
 2. Use each official client you want to display at least once.
-3. 安装组件并启动 Übersicht，首次显示最多等待一分钟。
-4. Install the widget, start Übersicht, and allow up to one minute for the
-   first refresh.
+3. 打开 QuotaWidget.app，首次显示最多等待一分钟。
+4. Open QuotaWidget.app and allow up to one minute for the first refresh.
 5. 若 macOS 询问 Python 或 `security` 是否可访问 Claude Code Keychain 项，
    只有在你希望显示 Claude 用量时才允许。
 6. If macOS asks whether Python or `security` may access the Claude Code
@@ -383,12 +335,12 @@ Balance trend history stores only timestamp, amount, and currency at
 - 令牌不会写入仓库、缓存、日志或命令行参数。
 - Tokens are never written to the repository, cache, logs, or process arguments.
 - QuotaWidget 的 DeepSeek / SiliconFlow / OpenRouter API key 保存在 macOS Keychain，
-  不进入应用沙箱扩展。
+  不写入仓库、缓存或日志。
 - QuotaWidget stores DeepSeek / SiliconFlow / OpenRouter API keys in the macOS
-  Keychain; they are not exposed to the app sandbox extension.
-- WidgetKit 扩展只读取 App Group 中的 JSON 契约，永远不接触原始 key。
-- The WidgetKit extension only reads the JSON contract from the App Group and
-  never sees raw keys.
+  Keychain; they are never written to the repository, cache, or logs.
+- 菜单栏 app 与 Touch Bar 前端只交换已脱敏的 JSON 契约，永远不接触原始 key。
+- The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
+  contract and never see raw keys.
 - Claude 用量只发送到 Anthropic；Kimi 用量只发送到 Kimi 官方 API。
 - Claude usage goes only to Anthropic; Kimi usage goes only to Kimi's API.
 - DeepSeek、SiliconFlow、OpenRouter 余额请求只发送到各自官方 API。
@@ -442,40 +394,44 @@ posting publicly.
 
 ### 刷新 / Refresh
 
-组件没有可点击的刷新按钮，每 60 秒自动刷新。需要立即重载时，在 Übersicht 菜单
-中关闭再启用 `usage-widget`，或重启 Übersicht。
+菜单栏面板提供 **Refresh** 按钮；此外每 60 秒自动刷新一次。Touch Bar 前端读取
+同一份数据，无需单独操作。
 
-There is no clickable refresh button. The widget refreshes every 60 seconds.
-To reload immediately, disable and re-enable `usage-widget` in Übersicht, or
-restart Übersicht.
+The menu bar panel has a **Refresh** button, and data refreshes automatically
+every 60 seconds. The Touch Bar frontend reads the same data and needs no
+separate action.
 
 ### 更新 / Update
 
-下载新版或执行 `git pull` 后，在新的 `usage-widget` 目录重新运行：
+从 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases)
+下载新的 DMG 覆盖安装即可；从源码构建时先 `git pull`，再按
+[macwidget/README.md](macwidget/README.md) 重新构建。
 
-After downloading a new version or running `git pull`, run again from the new
-`usage-widget` directory:
-
-```bash
-bash install.sh
-```
+Download the new DMG from
+[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) and
+replace the app. For source builds, `git pull` first and rebuild following
+[macwidget/README.md](macwidget/README.md).
 
 ## 卸载 / Uninstall
 
 ```bash
-rm -rf "$HOME/Library/Application Support/Übersicht/widgets/usage-widget"
 rm -rf "$HOME/.cache/usage-widget"
+rm -rf /Applications/QuotaWidget.app /Applications/QuotaBar.app
 ```
 
 ## 开发 / Development
 
 ```bash
 cd core && python3 -m unittest discover -v          # 数据层 / data layer
-cd usage-widget && python3 -m unittest discover -v  # 桌面组件 / Übersicht widget
 cd touchbar && python3 -m unittest discover -v && ./build.sh   # Touch Bar
-cd windows-widget && node --test src/render.test.mjs           # Windows 渲染 / render
-cd macwidget && QUOTAWIDGET_UNSIGNED=1 ./build.sh              # WidgetKit 构建 / build
+cd macwidget && xcodebuild test -project QuotaWidget.xcodeproj -scheme QuotaWidget \
+  -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO        # 菜单栏 app / menu bar app
 ```
+
+提交前本地无法跑完整套件时，可直接依赖 CI：`main` 的 push 与所有 PR 都会跑
+`.github/workflows/ci.yml` 中的三个 job。
+When you cannot run the full suite locally, rely on CI: pushes to `main` and every
+PR run the three jobs in `.github/workflows/ci.yml`.
 
 贡献说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
@@ -495,9 +451,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
 - 余额可用时长是基于历史余额下降速度的估算，不是服务商保证。
 - Balance days remaining is an estimate from historical balance decline, not a
   provider guarantee.
-- 桌面前端覆盖 macOS（Übersicht、Touch Bar、WidgetKit）与 Windows（Tauri）；Linux 仅有数据层、无原生前端。
-- Desktop frontends cover macOS (Übersicht, Touch Bar, WidgetKit) and Windows
-  (Tauri); Linux has the data layer only, with no native frontend.
+- 原生前端只覆盖 macOS（菜单栏 app 与 Touch Bar）；其他平台只有数据层。
+- Native frontends cover macOS only (menu bar app and Touch Bar); other platforms
+  have the data layer but no native frontend.
 
 ## 品牌与许可 / Trademarks And License
 
