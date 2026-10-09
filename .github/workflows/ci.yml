@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  data-layer:
+    name: Data layer (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Core tests
+        working-directory: core
+        run: python3 -m unittest discover
+      - name: Übersicht widget tests
+        working-directory: usage-widget
+        run: python3 -m unittest discover
+      - name: Touch Bar tests
+        working-directory: touchbar
+        run: python3 -m unittest discover
+
+  node-frontends:
+    name: Node frontends
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Design system tests
+        run: node --test docs/design/tests/design-system.test.mjs
+      - name: Windows widget tests
+        working-directory: windows-widget
+        run: node --test src/render.test.mjs
+
+  macwidget:
+    name: macOS widget (Xcode)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Toolchain
+        run: xcodebuild -version
+      - name: Build and test
+        working-directory: macwidget
+        run: |
+          xcodebuild test \
+            -project QuotaWidget.xcodeproj \
+            -scheme QuotaWidget \
+            -destination 'platform=macOS' \
+            -derivedDataPath build/DerivedData \
+            CODE_SIGNING_ALLOWED=NO
