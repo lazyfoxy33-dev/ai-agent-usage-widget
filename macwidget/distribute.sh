@@ -5,7 +5,7 @@
 #
 # Requirements (one-time, see README "Distribution"):
 #   - A "Developer ID Application" certificate in your keychain.
-#   - The two App IDs (dev.lazyfoxy.QuotaWidget and .extension) with the App
+#   - The App ID dev.lazyfoxy.QuotaWidget with the App
 #     Groups capability enabled (same as for development).
 #   - Stored notarization credentials (xcrun notarytool store-credentials).
 #

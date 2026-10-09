@@ -1,6 +1,6 @@
 # Usage Widget — Design System
 
-AI Agent 用量小组件的设计规范,用于 Touch Bar、桌面 Widget、Übersicht 三端。
+AI Agent 用量小组件的设计规范,用于菜单栏 app 与 Touch Bar 两端。
 每个 `.html` 是自包含预览卡片,首行带 `<!-- @dsCard group="…" name="…" -->` 注释供索引。
 
 ## 核心决策

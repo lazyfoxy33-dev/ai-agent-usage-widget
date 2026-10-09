@@ -8,7 +8,7 @@ import WebKit
 enum ControlPage: String, CaseIterable, Identifiable {
     case accounts
     case refresh
-    case displays
+    case touchBar
     case diagnostics
 
     var id: String { rawValue }
@@ -17,7 +17,7 @@ enum ControlPage: String, CaseIterable, Identifiable {
         switch self {
         case .accounts: return "Accounts"
         case .refresh: return "Refresh"
-        case .displays: return "Displays"
+        case .touchBar: return "Touch Bar"
         case .diagnostics: return "Diagnostics"
         }
     }
@@ -26,7 +26,7 @@ enum ControlPage: String, CaseIterable, Identifiable {
         switch self {
         case .accounts: return "person.2"
         case .refresh: return "arrow.clockwise"
-        case .displays: return "display"
+        case .touchBar: return "display"
         case .diagnostics: return "stethoscope"
         }
     }
@@ -66,8 +66,8 @@ struct ControlCenterView: View {
             AccountsPage(viewModel: accountViewModel, refreshNow: refreshNow)
         case .refresh:
             RefreshPage(refreshNow: refreshNow)
-        case .displays:
-            DisplaysPage(displayStore: displayStore, actions: displayActions)
+        case .touchBar:
+            TouchBarPage(displayStore: displayStore, actions: displayActions)
         case .diagnostics:
             DiagnosticsPage(usageStore: usageStore, displayStore: displayStore)
         }
@@ -960,37 +960,37 @@ struct RefreshPage: View {
     }
 }
 
-// MARK: - Displays Page
+// MARK: - Touch Bar Page
 
 struct DisplayLayerActions {
-    let installUbersicht: @Sendable () throws -> Void
-    let openUbersichtFolder: @Sendable () throws -> Void
-    let refreshWidgetKit: @Sendable () -> Void
-    let openWidgetGallery: @Sendable () throws -> Void
     let installTouchBar: @Sendable () throws -> Void
     let openTouchBar: @Sendable () throws -> Void
 }
 
-struct DisplaysPage: View {
+struct TouchBarPage: View {
     let displayStore: DisplayLayerStore
     let actions: DisplayLayerActions
     @State private var resultText: String?
-    @State private var busyLayer: DisplayLayer?
-    @State private var statuses: [DisplayLayer: DisplayLayerStatus]
+    @State private var busy = false
+    @State private var status: DisplayLayerStatus
 
     init(displayStore: DisplayLayerStore, actions: DisplayLayerActions) {
         self.displayStore = displayStore
         self.actions = actions
-        _statuses = State(initialValue: Self.currentStatuses(from: displayStore))
+        _status = State(initialValue: Self.currentStatus(from: displayStore))
+    }
+
+    private static func currentStatus(from store: DisplayLayerStore) -> DisplayLayerStatus {
+        store.touchBarStatus()
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 3) {
-                    Text("Displays")
+                    Text("Touch Bar")
                         .font(.title2.bold())
-                    Text("Optional presentation layers.")
+                    Text("The Touch Bar frontend installed from this app.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1004,55 +1004,20 @@ struct DisplaysPage: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    HStack(spacing: 10) {
-                        DisplayCard(
-                            title: "Übersicht Widget",
-                            description: "Desktop widget reads shared state first, then falls back to bundled fetcher.",
-                            status: status(for: .ubersicht),
-                            actions: {
-                                HStack(spacing: 8) {
-                                    Button("Install / Update") { run(.ubersicht, "Übersicht updated", actions.installUbersicht) }
-                                        .disabled(busyLayer != nil)
-                                        .buttonStyle(.borderedProminent)
-                                    Button("Open Folder") { run(.ubersicht, "Übersicht folder opened", actions.openUbersichtFolder) }
-                                        .disabled(busyLayer != nil)
-                                }
-                            }
-                        )
-
-                        DisplayCard(
-                            title: "macOS Widget",
-                            description: "Bundled WidgetKit extension. Use refresh when timelines look stale.",
-                            status: status(for: .widgetKit),
-                            actions: {
-                                HStack(spacing: 8) {
-                                    Button("Refresh Timelines") {
-                                        actions.refreshWidgetKit()
-                                        resultText = "Widget timelines refreshed"
-                                    }
-                                    .disabled(busyLayer != nil)
+                    DisplayCard(
+                        title: "Touch Bar / Bar",
+                        description: "Small always-on display for the current provider and balance state.",
+                        status: status,
+                        actions: {
+                            HStack(spacing: 8) {
+                                Button("Install / Update") { run("Touch Bar app updated", actions.installTouchBar) }
+                                    .disabled(busy)
                                     .buttonStyle(.borderedProminent)
-                                    Button("Open Widget Gallery") { run(.widgetKit, "Widget gallery opened", actions.openWidgetGallery) }
-                                        .disabled(busyLayer != nil)
-                                }
+                                Button("Open App") { run("Touch Bar app opened", actions.openTouchBar) }
+                                    .disabled(busy)
                             }
-                        )
-
-                        DisplayCard(
-                            title: "Touch Bar / Bar",
-                            description: "Small always-on display for the current provider and balance state.",
-                            status: status(for: .touchBar),
-                            actions: {
-                                HStack(spacing: 8) {
-                                    Button("Install / Update") { run(.touchBar, "Touch Bar app updated", actions.installTouchBar) }
-                                        .disabled(busyLayer != nil)
-                                        .buttonStyle(.borderedProminent)
-                                    Button("Open App") { run(.touchBar, "Touch Bar app opened", actions.openTouchBar) }
-                                        .disabled(busyLayer != nil)
-                                }
-                            }
-                        )
-                    }
+                        }
+                    )
 
                     if let resultText {
                         Text(resultText)
@@ -1063,11 +1028,11 @@ struct DisplaysPage: View {
                 .padding(24)
             }
         }
-        .onAppear(perform: refreshStatuses)
+        .onAppear(perform: refreshStatus)
     }
 
-    private func run(_ layer: DisplayLayer, _ success: String, _ action: @escaping @Sendable () throws -> Void) {
-        busyLayer = layer
+    private func run(_ success: String, _ action: @escaping @Sendable () throws -> Void) {
+        busy = true
         DispatchQueue.global(qos: .userInitiated).async {
             let result: String
             do {
@@ -1078,38 +1043,20 @@ struct DisplaysPage: View {
             }
             DispatchQueue.main.async {
                 resultText = result
-                busyLayer = nil
-                refreshStatuses()
+                busy = false
+                refreshStatus()
             }
         }
     }
 
-    private func refreshStatuses() {
+    private func refreshStatus() {
         let store = displayStore
         DispatchQueue.global(qos: .userInitiated).async {
-            let updated = Dictionary(uniqueKeysWithValues: DisplayLayer.allCases.map {
-                ($0, store.status(for: $0))
-            })
+            let updated = store.touchBarStatus()
             DispatchQueue.main.async {
-                statuses = updated
+                status = updated
             }
         }
-    }
-
-    private func status(for layer: DisplayLayer) -> DisplayLayerStatus {
-        statuses[layer] ?? Self.defaultStatus(for: layer)
-    }
-
-    private static func defaultStatuses() -> [DisplayLayer: DisplayLayerStatus] {
-        Dictionary(uniqueKeysWithValues: DisplayLayer.allCases.map { ($0, defaultStatus(for: $0)) })
-    }
-
-    private static func currentStatuses(from store: DisplayLayerStore) -> [DisplayLayer: DisplayLayerStatus] {
-        Dictionary(uniqueKeysWithValues: DisplayLayer.allCases.map { ($0, store.status(for: $0)) })
-    }
-
-    private static func defaultStatus(for layer: DisplayLayer) -> DisplayLayerStatus {
-        DisplayLayerStatus(layer: layer, installed: false, running: false, detail: "Checking...")
     }
 }
 
@@ -1186,7 +1133,7 @@ struct StatusPill: View {
 struct DiagnosticsPage: View {
     let usageStore: UsageStore
     let displayStore: DisplayLayerStore
-    @State private var layerStatuses: [DisplayLayer: DisplayLayerStatus] = [:]
+    @State private var touchBarStatus = DisplayLayerStatus.checking
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1194,7 +1141,7 @@ struct DiagnosticsPage: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Diagnostics")
                         .font(.title2.bold())
-                    Text("Inspect shared state and display layer health.")
+                    Text("Inspect shared state and Touch Bar frontend health.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1212,10 +1159,7 @@ struct DiagnosticsPage: View {
 
                     VStack(alignment: .leading, spacing: 0) {
                         DiagnosticRow(label: "Shared usage state", value: status.available ? "Available" : "\(status.reason)")
-                        ForEach(DisplayLayer.allCases) { layer in
-                            let layerStatus = layerStatuses[layer] ?? DisplayLayerStatus(layer: layer, installed: false, running: false, detail: layer == .ubersicht ? "Managed manually" : "Checking...")
-                            DiagnosticRow(label: layer.title, value: layerStatus.detail)
-                        }
+                        DiagnosticRow(label: "Touch Bar frontend", value: touchBarStatus.detail)
                     }
                     .background(Color.white)
                     .cornerRadius(8)
@@ -1224,7 +1168,7 @@ struct DiagnosticsPage: View {
                             .stroke(Color.black.opacity(0.06), lineWidth: 1)
                     )
 
-                    Text("If the widget appears blank, verify that QuotaWidget.app is Developer ID signed and that the WidgetKit extension is registered.")
+                    Text("If the Touch Bar app appears blank, reinstall it from the Touch Bar page.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
@@ -1233,13 +1177,9 @@ struct DiagnosticsPage: View {
         }
         .task {
             DispatchQueue.global(qos: .userInitiated).async {
-                var statuses: [DisplayLayer: DisplayLayerStatus] = [:]
-                for layer in DisplayLayer.allCases {
-                    guard layer != .ubersicht else { continue }
-                    statuses[layer] = displayStore.status(for: layer)
-                }
+                let updated = displayStore.touchBarStatus()
                 DispatchQueue.main.async {
-                    layerStatuses = statuses
+                    touchBarStatus = updated
                 }
             }
         }
@@ -1289,10 +1229,6 @@ struct DiagnosticRow: View {
         usageStore: UsageStore(),
         refreshNow: {},
         displayActions: DisplayLayerActions(
-            installUbersicht: {},
-            openUbersichtFolder: {},
-            refreshWidgetKit: {},
-            openWidgetGallery: {},
             installTouchBar: {},
             openTouchBar: {}
         )

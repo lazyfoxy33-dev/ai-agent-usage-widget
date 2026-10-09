@@ -1,6 +1,6 @@
 import Foundation
 
-// The Touch Bar app shares ONE data layer with the Übersicht widget: the Python
+// The Touch Bar app shares ONE data layer with the menu bar app: the Python
 // package under `core/` (fetch_usage.py + usage/). We never re-implement provider
 // fetching in Swift — we run the exact same script and read its JSON. Credential
 // lifecycle policy remains centralized in the shared Python layer.

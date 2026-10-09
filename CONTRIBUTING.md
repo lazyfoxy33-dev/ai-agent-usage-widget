@@ -36,33 +36,34 @@ python3 fetch_usage.py
 前端验证命令 / Frontend verification commands:
 
 ```bash
-# Übersicht
-cd usage-widget && python3 -m unittest discover -v
-
 # Touch Bar
 cd touchbar
 python3 -m unittest discover -v
 ./build.sh
 
-# macOS WidgetKit（无需签名的本地验证 / unsigned local verification）
+# macOS 菜单栏 app（无需签名的本地验证 / unsigned local verification）
 cd macwidget
 xcodebuild test -project QuotaWidget.xcodeproj -scheme QuotaWidget \
   -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO
 QUOTAWIDGET_UNSIGNED=1 ./build.sh
 
-# Windows Tauri（在 Windows 上运行 / run on Windows）
-cd windows-widget
-node --test src/render.test.mjs
-cargo fmt --manifest-path src-tauri/Cargo.toml --check
-cargo test --manifest-path src-tauri/Cargo.toml
-cargo build --release --manifest-path src-tauri/Cargo.toml
+# 设计系统文档 / design system docs
+node --test docs/design/tests/design-system.test.mjs
 ```
 
-macOS App Group 签名流程必须使用有效 Apple Team 验证；Windows 安装包、托盘与
-开机自启必须在 Windows 10/11 上验证。
+改动 `macwidget/project.yml` 后需用 XcodeGen 重新生成工程：
+After changing `macwidget/project.yml`, regenerate the project with XcodeGen:
 
-Validate the signed macOS App Group flow with a real Apple Team. Validate the
-Windows installer, tray, and autostart behavior on Windows 10/11.
+```bash
+cd macwidget && xcodegen generate
+```
+
+CI（`.github/workflows/ci.yml`）会在每次 push 与 PR 上跑同一批测试。
+CI (`.github/workflows/ci.yml`) runs the same suites on every push and PR.
+
+macOS App Group 签名流程必须使用有效 Apple Team 验证。
+
+Validate the signed macOS App Group flow with a real Apple Team.
 
 `fetch_usage.py` 会读取本机提供商状态。分享输出前请检查并清理隐私信息。
 
