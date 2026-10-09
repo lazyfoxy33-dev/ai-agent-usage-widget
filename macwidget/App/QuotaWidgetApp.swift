@@ -2,6 +2,10 @@ import AppKit
 import SwiftUI
 import WidgetKit
 
+extension Notification.Name {
+    static let quotaWidgetUsagePayloadDidRefresh = Notification.Name("quotaWidgetUsagePayloadDidRefresh")
+}
+
 @MainActor
 final class QuotaWidgetModel: ObservableObject {
     @Published var status = "等待首次刷新"
@@ -113,6 +117,7 @@ final class QuotaWidgetModel: ObservableObject {
             do {
                 try await Self.refreshUsagePayload(providerScope: providerScope)
                 await MainActor.run {
+                    NotificationCenter.default.post(name: .quotaWidgetUsagePayloadDidRefresh, object: nil)
                     self?.status = "已刷新 \(Date().formatted(date: .omitted, time: .shortened))"
                 }
             } catch {
@@ -138,6 +143,9 @@ final class QuotaWidgetAppDelegate: NSObject, NSApplicationDelegate {
         Task.detached {
             do {
                 try await QuotaWidgetModel.refreshUsagePayload()
+                await MainActor.run {
+                    NotificationCenter.default.post(name: .quotaWidgetUsagePayloadDidRefresh, object: nil)
+                }
                 NSLog("[QuotaWidget] launch refresh completed")
             } catch {
                 NSLog("[QuotaWidget] launch refresh failed: %@", String(describing: error))
