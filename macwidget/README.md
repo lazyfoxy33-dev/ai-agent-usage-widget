@@ -13,17 +13,17 @@ JSON 契约写入 App Group 容器。
 
 ## Download / 下载
 
-Most users don't need to build anything: download the notarized
+Most users don't need to build anything: download the Developer ID-signed
 `QuotaWidget.dmg` from
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases), drag
 **QuotaWidget** to Applications, and open it (it lives in the menu bar). It is
-Developer ID-signed and notarized,
-so there is no Gatekeeper warning. You still need `python3` (see the note below).
+Developer ID-signed; if the release note says it is not notarized, right-click →
+Open on first launch. You still need `python3` (see the note below).
 
 大多数用户无需自行构建：从
 [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
-已公证的 `QuotaWidget.dmg`，把 **QuotaWidget** 拖入「应用程序」并打开（在菜单栏）。
-已 Developer ID 签名 + 公证，无 Gatekeeper 拦截；仍需要 `python3`（见下方说明）。
+`QuotaWidget.dmg`（Developer ID 签名），把 **QuotaWidget** 拖入「应用程序」并打开（在菜单栏）。
+若对应 Release 说明标注未公证，首次打开请在 Finder 中右键 → 打开。仍需要 `python3`（见下方说明）。
 
 ## Requirements (building from source) / 要求（从源码构建）
 
