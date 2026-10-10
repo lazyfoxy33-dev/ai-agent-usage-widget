@@ -260,6 +260,7 @@ final class AccountSettingsViewModel: ObservableObject {
     @Published var keyInput = ""
     @Published private(set) var isTesting = false
     @Published private(set) var saveErrorText: String?
+    @Published private(set) var touchBarProviders: [AccountProviderID] = TouchBarSelection.defaultValue
     @Published private(set) var saveStatusText: String?
 
     private let apiKeyStore: APIKeyStore
@@ -300,6 +301,43 @@ final class AccountSettingsViewModel: ObservableObject {
             siliconFlowConsoleConfigured: consoleSession?.isConfigured == true,
             externalCredentials: external
         )
+        touchBarProviders = TouchBarSelection.normalize(configStore.readTouchBarProviders())
+    }
+
+    /// Providers that are not on the Touch Bar yet.
+    var hiddenTouchBarProviders: [AccountProviderID] {
+        AccountProviderID.allCases.filter { !touchBarProviders.contains($0) }
+    }
+
+    func moveTouchBarProvider(_ id: AccountProviderID, by offset: Int) {
+        guard let index = touchBarProviders.firstIndex(of: id) else { return }
+        let target = index + offset
+        guard touchBarProviders.indices.contains(target) else { return }
+        touchBarProviders.swapAt(index, target)
+        persistTouchBarProviders()
+    }
+
+    func setTouchBarProvider(_ id: AccountProviderID, enabled: Bool) {
+        if enabled {
+            guard !touchBarProviders.contains(id) else { return }
+            touchBarProviders.append(id)
+        } else {
+            guard touchBarProviders.count > 1 else {
+                saveErrorText = "Touch Bar 至少保留一个 provider"
+                return
+            }
+            touchBarProviders.removeAll { $0 == id }
+        }
+        persistTouchBarProviders()
+    }
+
+    private func persistTouchBarProviders() {
+        do {
+            try configStore.writeTouchBarProviders(touchBarProviders.map(\.rawValue))
+            saveErrorText = nil
+        } catch {
+            saveErrorText = "保存 Touch Bar 设置失败：\(Self.errorDescription(error))"
+        }
     }
 
     func cancelEdit() {

@@ -30,6 +30,36 @@ struct AppConfigStore {
         try data.write(to: configURL, options: [.atomic])
     }
 
+    /// Provider raw values shown on the Touch Bar, in display order.
+    /// `nil` when the setting was never written (callers apply their own default).
+    func readTouchBarProviders() -> [String]? {
+        guard let data = try? Data(contentsOf: configURL),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let providers = json["touchbar_providers"] as? [String]
+        else {
+            return nil
+        }
+        return providers
+    }
+
+    func writeTouchBarProviders(_ providers: [String]) throws {
+        var payload: [String: Any] = [:]
+        if let data = try? Data(contentsOf: configURL),
+           let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            payload = existing
+        }
+        payload["touchbar_providers"] = providers
+        let data = try JSONSerialization.data(
+            withJSONObject: payload,
+            options: [.sortedKeys]
+        )
+        try FileManager.default.createDirectory(
+            at: baseDirectory,
+            withIntermediateDirectories: true
+        )
+        try data.write(to: configURL, options: [.atomic])
+    }
+
     func readCodexActiveRefresh() -> Bool {
         guard let data = try? Data(contentsOf: configURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
