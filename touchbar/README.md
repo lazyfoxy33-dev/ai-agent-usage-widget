@@ -45,11 +45,22 @@ DeepSeek / SiliconFlow / OpenRouter 显示余额金额与估算可用天数。�
 Claude / Codex / Kimi，没有前台 AI 应用时显示最近用过的，再退到用量最高的那个。设置只决定**展开后**显示
 谁、按什么顺序。
 
-选择的 provider 越多，展开后的格子会自动**变窄**（3 个以内保持原宽度，最多 6 个仍能完整放下），否则超出
-条宽的部分会被系统直接丢掉。排查当前实际生效的配置与宽度：
+选择的 provider 越多，展开后的格子会自动**变窄**，否则超出条宽的部分会被系统直接丢掉（这是 macOS 的
+静默行为：放不下的 item 直接不显示）。实测 13" MacBook Pro 的 modal 条给格子的预算约 600pt：3 个以内保持
+原 170pt，5 个为 105pt，6 个为 86pt；格子窄于 122pt 时自动改用紧凑排版（省掉 `5H`/`Wk` 行标签、字号略小）。
+若某台机器的条更窄，QuotaBar 还会在呈现后自检——发现格子被丢弃就自动再收窄重试（最多 3 次）。
+
+排查命令：
 
 ```bash
+# 当前生效的选择与格子宽度
 ./QuotaBar.app/Contents/MacOS/QuotaBar --layout
+
+# 真机自检：实际呈现一次，报告每个格子是否被显示（高度 0 = 被系统丢弃）
+./QuotaBar.app/Contents/MacOS/QuotaBar --present-test
+
+# 依次用 170→90pt 呈现，量出这台机器能放下多少个格子
+./QuotaBar.app/Contents/MacOS/QuotaBar --present-test --measure
 ```
 
 Which providers appear, and in what order, is configured in **QuotaWidget.app → 设置… →
@@ -67,10 +78,20 @@ the coding tool in front of me doing" — preferring the frontmost Claude / Code
 then the most recently used one, then the most-drained window. The setting only decides
 what the **expanded** bar shows, and in which order.
 
-The more providers you select, the narrower each cell becomes (up to three keep their
-original width) so the strip never drops a cell for not fitting. Run
-`./QuotaBar.app/Contents/MacOS/QuotaBar --layout` to print the effective selection and cell
-widths.
+The more providers you select, the narrower each cell becomes, because macOS silently
+drops items that do not fit. Measured on a 13" MacBook Pro the modal strip offers cells
+about 600pt: up to three keep the original 170pt card, five use 105pt and six use 86pt,
+and below 122pt a cell switches to a compact layout (no `5H`/`Wk` labels, smaller
+figures). If a Mac turns out to be tighter, the agent re-checks its own presentation and
+retries narrower (up to three times).
+
+Diagnostics:
+
+```bash
+./QuotaBar.app/Contents/MacOS/QuotaBar --layout          # effective selection and widths
+./QuotaBar.app/Contents/MacOS/QuotaBar --present-test    # present once, report dropped cells
+./QuotaBar.app/Contents/MacOS/QuotaBar --present-test --measure   # measure this Mac's capacity
+```
 
 ## 数据来源 / Data
 

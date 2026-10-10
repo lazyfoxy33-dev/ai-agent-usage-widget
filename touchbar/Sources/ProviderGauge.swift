@@ -48,7 +48,9 @@ final class ProviderGauge: NSView {
     private let badgeFont = NSFont.systemFont(ofSize: 12, weight: .heavy)
     private let microFont = NSFont.systemFont(ofSize: 8,  weight: .semibold)
     private let weeklyMicroFont = NSFont.systemFont(ofSize: 6,  weight: .semibold)
-    private let pctFont   = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+    private var pctFont: NSFont {
+        NSFont.monospacedDigitSystemFont(ofSize: compact ? 11 : 12, weight: .semibold)
+    }
     private let statusFont = NSFont.systemFont(ofSize: 11, weight: .medium)
     private let amountFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
     private let detailFont = NSFont.systemFont(ofSize: 8.5, weight: .medium)
@@ -57,8 +59,10 @@ final class ProviderGauge: NSView {
     private let badgeX: CGFloat = 6, badgeSize: CGFloat = 20
     private var textX: CGFloat { badgeX + badgeSize + 8 }      // 34
     private let microW: CGFloat = 17
+    /// Narrow cells drop the row labels so the bars and figures keep their room.
+    private var compact: Bool { width < TouchBarMetrics.compactThreshold }
     /// The bar takes whatever is left once the label and the figure have room.
-    private var barW: CGFloat { max(22, width - 88) }
+    private var barW: CGFloat { max(18, width - (compact ? 68 : 88)) }
     private let barH: CGFloat = 4
     private let rowTopY: CGFloat = 20, rowBottomY: CGFloat = 10
 
@@ -170,12 +174,14 @@ final class ProviderGauge: NSView {
                      base: NSColor, centerY: CGFloat) {
         let color = (win?.stale ?? false) ? dim : base.emphasized(by: win?.pct ?? 0)
 
-        let labelFont = label.count > 2 ? weeklyMicroFont : microFont
-        let micro = NSAttributedString(string: label,
-                                       attributes: [.font: labelFont, .foregroundColor: dim])
-        micro.draw(at: NSPoint(x: textX, y: centerY - micro.size().height / 2))
-
-        let barX = textX + microW
+        var barX = textX
+        if !compact {
+            let labelFont = label.count > 2 ? weeklyMicroFont : microFont
+            let micro = NSAttributedString(string: label,
+                                           attributes: [.font: labelFont, .foregroundColor: dim])
+            micro.draw(at: NSPoint(x: textX, y: centerY - micro.size().height / 2))
+            barX += microW
+        }
         let trackRect = NSRect(x: barX, y: centerY - barH / 2, width: barW, height: barH)
         let trackPath = NSBezierPath(roundedRect: trackRect, xRadius: barH / 2, yRadius: barH / 2)
         track.setFill(); trackPath.fill()
