@@ -77,6 +77,28 @@ jobs:
       - name: Touch Bar layout tests
         working-directory: touchbar
         run: ./tests/run-layout-tests.sh
+      - name: Bundled Touch Bar installer works from inside the app
+        run: |
+          # QuotaWidget.app copies these scripts to Resources/display-layers/touchbar
+          # while core/ lives at Resources/core, so the installer must look there.
+          # Run it in a sandbox: temp HOME, stubbed launchctl/pkill.
+          SANDBOX="$(mktemp -d)"
+          mkdir -p "$SANDBOX/stubs" "$SANDBOX/Resources/display-layers" "$SANDBOX/Resources/core/usage"
+          printf '#!/bin/bash\nexit 0\n' > "$SANDBOX/stubs/launchctl"
+          printf '#!/bin/bash\nexit 0\n' > "$SANDBOX/stubs/pkill"
+          chmod +x "$SANDBOX/stubs/launchctl" "$SANDBOX/stubs/pkill"
+          cp -R touchbar "$SANDBOX/Resources/display-layers/touchbar"
+          rm -rf "$SANDBOX/Resources/display-layers/touchbar/QuotaBar.app"
+          cp core/fetch_usage.py "$SANDBOX/Resources/core/"
+          cp core/usage/*.py "$SANDBOX/Resources/core/usage/"
+          (
+            cd "$SANDBOX/Resources/display-layers/touchbar"
+            HOME="$SANDBOX" PATH="$SANDBOX/stubs:$PATH" \
+              QUOTABAR_INSTALL_DESTINATION="$SANDBOX/out/QuotaBar.app" bash install.sh
+          )
+          test -x "$SANDBOX/out/QuotaBar.app/Contents/MacOS/QuotaBar"
+          test -f "$SANDBOX/out/QuotaBar.app/Contents/Resources/core/fetch_usage.py"
+          test -f "$SANDBOX/Library/LaunchAgents/com.quotabar.app.plist"
       - name: Build and test
         working-directory: macwidget
         run: |

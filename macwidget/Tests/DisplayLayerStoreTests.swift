@@ -74,6 +74,19 @@ final class DisplayLayerStoreTests: XCTestCase {
         XCTAssertEqual(status.detail, "Installed, running")
     }
 
+    func testInstallerFailureDescriptionCarriesTheScriptOutput() {
+        let error = DisplayLayerStoreError.installerFailed(
+            command: "install.sh",
+            status: 1,
+            output: "✗ cannot find the shared core/ data layer\ncp: ../core/fetch_usage.py: No such file or directory"
+        )
+
+        let text = error.localizedDescription
+        XCTAssertTrue(text.contains("install.sh"), text)
+        XCTAssertTrue(text.contains("退出码 1"), text)
+        XCTAssertTrue(text.contains("No such file or directory"), text)
+    }
+
     func testTouchBarInstallCommandUsesBundledInstallerAndConfigurableDestination() throws {
         let root = try makeRoot()
         defer { try? FileManager.default.removeItem(at: root) }
