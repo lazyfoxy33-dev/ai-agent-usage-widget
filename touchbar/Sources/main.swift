@@ -13,8 +13,8 @@ if CommandLine.arguments.contains("--layout") {
     let width = TouchBarMetrics.cellWidth(for: providers.count)
     print("config: \(TouchBarLayout.configURL().path)")
     print("providers: \(providers.map { "\($0.rawValue)(\($0.tag))" }.joined(separator: " "))")
-    print("cells: \(providers.count) × \(Int(width))pt + chrome \(Int(TouchBarMetrics.chromeWidth))pt "
-          + "= \(Int(TouchBarMetrics.totalWidth(for: providers.count)))pt of \(Int(TouchBarMetrics.barWidth))pt")
+    print("cells: \(providers.count) × \(Int(width))pt + spacing = "
+          + "\(Int(TouchBarMetrics.cellsWidth(for: providers.count)))pt of \(Int(TouchBarMetrics.cellBudget))pt budget")
     exit(0)
 }
 
@@ -41,6 +41,33 @@ if CommandLine.arguments.contains("--once") {
     line("Codex", u.codex)
     line("Kimi", u.kimi)
     exit(0)
+}
+
+// Debug: `QuotaBar --present-test` presents the strip, reports what macOS kept,
+// then exits. Used to measure the real usable width on a given Mac.
+if CommandLine.arguments.contains("--present-test") {
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+    let probe = TouchBarController()
+    probe.start()
+    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+        probe.presentForDiagnostics()
+    }
+    if CommandLine.arguments.contains("--measure") {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            print("measuring strip capacity with \(TouchBarLayout.load().count) cells:")
+            probe.measureStrip(widths: [170, 150, 130, 120, 110, 100, 90]) {
+                probe.printPresentationReport()
+                exit(0)
+            }
+        }
+    } else {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 4.0) {
+            probe.printPresentationReport()
+            exit(0)
+        }
+    }
+    app.run()
 }
 
 let app = NSApplication.shared

@@ -26,6 +26,13 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     private var layout: [TouchBarProvider] = TouchBarLayout.load()
     private var gauges: [TouchBarProvider: ProviderGauge] = [:]
 
+    /// macOS drops cells that do not fit, so the strip measures itself: when a
+    /// presentation loses cells it retries narrower, up to `maxFitRounds` times.
+    private var widthScale: CGFloat = 1
+    private var fitRounds = 0
+    private let maxFitRounds = 3
+    private var diagnosticsWidth: CGFloat?
+
     private var usage = Usage()
     private let work = DispatchQueue(label: "com.quotabar.fetch")
     private var timer: Timer?
@@ -68,16 +75,26 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
 
     /// Fresh views for the current selection: an NSCustomTouchBarItem takes
     /// ownership of its view, so a gauge must not be reused by a later bar.
+    private func cellWidth() -> CGFloat {
+        if let override = diagnosticsWidth { return override }
+        return (TouchBarMetrics.cellWidth(for: layout.count) * widthScale).rounded(.down)
+    }
+
     private func rebuildGauges() {
         gauges.removeAll()
-        let width = TouchBarMetrics.cellWidth(for: layout.count)
+        let width = cellWidth()
         for provider in layout {
             gauge(for: provider).setWidth(width)
         }
         NSLog(
-            "QuotaBar: strip shows %d cell(s) at %.0fpt (total %.0fpt of %.0fpt)",
-            layout.count, width, TouchBarMetrics.totalWidth(for: layout.count), TouchBarMetrics.barWidth
+            "QuotaBar: strip shows %d cell(s) at %.0fpt (scale %.2f)",
+            layout.count, width, widthScale
         )
+    }
+
+    /// How many cells macOS actually put on the strip (dropped ones stay 0pt tall).
+    private func visibleCellCount() -> Int {
+        layout.filter { (gauges[$0]?.frame.height ?? 0) > 0 }.count
     }
 
     /// Per-provider brand palette, matching the menu bar app (5h = accent,
@@ -181,6 +198,26 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         renderDetail()
         ControlStrip.presentModal(bar)
         modalVisible = true
+        verifyFit()
+    }
+
+    /// If macOS dropped cells, retry with narrower ones instead of leaving a gap.
+    private func verifyFit() {
+        guard diagnosticsWidth == nil else { return }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            guard let self = self, self.modalVisible else { return }
+            let visible = self.visibleCellCount()
+            NSLog("QuotaBar: %d/%d cells visible at %.0fpt", visible, self.layout.count, self.cellWidth())
+            guard visible < self.layout.count,
+                  self.fitRounds < self.maxFitRounds,
+                  self.widthScale > 0.55 else {
+                return
+            }
+            self.fitRounds += 1
+            self.widthScale = (self.widthScale * 0.85 * 100).rounded() / 100
+            self.minimizeModal()
+            self.presentModal()
+        }
     }
 
     private func minimizeModal() {
@@ -221,6 +258,51 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         return it
     }
 
+    // MARK: Diagnostics
+
+    /// Presents the strip so `--present-test` can measure what macOS kept.
+    func presentForDiagnostics() {
+        presentModal()
+    }
+
+    /// Presents the strip at decreasing widths and reports how many cells macOS
+    /// kept, so the usable width of this Mac can be measured.
+    func measureStrip(widths: [CGFloat], completion: @escaping () -> Void) {
+        var remaining = widths
+        func step() {
+            guard let width = remaining.first else { return completion() }
+            remaining.removeFirst()
+            self.diagnosticsWidth = width
+            self.rebuildGauges()
+            self.minimizeModal()
+            self.presentModal()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.9) {
+                let visible = self.visibleCellCount()
+                let frames = self.layout.map { Int(self.gauges[$0]?.frame.height ?? 0) }
+                print("  width=\(Int(width))pt -> \(visible)/\(self.layout.count) cells, heights \(frames)")
+                step()
+            }
+        }
+        step()
+    }
+
+    /// Reports which cells actually landed on the strip, and how wide they are.
+    func printPresentationReport() {
+        print("layout: \(layout.map(\.tag).joined(separator: " "))")
+        print("requested cell width: \(Int(TouchBarMetrics.cellWidth(for: layout.count)))pt")
+        var shown = 0
+        for provider in layout {
+            guard let gauge = gauges[provider] else {
+                print("  \(provider.tag): no gauge")
+                continue
+            }
+            let attached = gauge.superview != nil
+            if attached { shown += 1 }
+            print("  \(provider.tag): \(attached ? "shown" : "dropped") frame=\(Int(gauge.frame.width))x\(Int(gauge.frame.height)) window=\(gauge.window != nil)")
+        }
+        print("cells shown: \(shown)/\(layout.count)")
+    }
+
     // MARK: Refresh
 
     private func refresh() {
@@ -231,6 +313,8 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
             DispatchQueue.main.async {
                 if freshLayout != self.layout {
                     self.layout = freshLayout
+                    self.widthScale = 1
+                    self.fitRounds = 0
                     // Items are cached per NSTouchBar, so rebuild the modal when the
                     // selection or order changed.
                     if self.modalVisible {

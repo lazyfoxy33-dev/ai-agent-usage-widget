@@ -159,12 +159,26 @@ expect(
     "six providers stay above the legible minimum"
 )
 expect(
-    (4...6).allSatisfy { TouchBarMetrics.totalWidth(for: $0) <= TouchBarMetrics.barWidth },
-    "every supported selection fits inside the strip"
+    (1...6).allSatisfy { TouchBarMetrics.cellsWidth(for: $0) <= TouchBarMetrics.cellBudget },
+    "every supported selection fits the measured cell budget"
 )
 expect(
     TouchBarMetrics.cellWidth(for: 5) < TouchBarMetrics.cellWidth(for: 4),
     "more providers means narrower cells"
+)
+// Measured on hardware: five cells survive at 110pt but not at 120pt, so the
+// default for five must sit at or below that.
+expect(
+    TouchBarMetrics.cellWidth(for: 5) <= 110,
+    "five cells are sized for a strip that drops them above 110pt"
+)
+expect(
+    TouchBarMetrics.cellWidth(for: 5) < TouchBarMetrics.compactThreshold,
+    "five cells switch to the compact layout"
+)
+expect(
+    TouchBarMetrics.cellWidth(for: 4) <= 134,
+    "four cells stay within the measured budget"
 )
 
 print(failures == 0 ? "all layout tests passed" : "\(failures) layout test(s) failed")
