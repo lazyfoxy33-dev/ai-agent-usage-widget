@@ -791,7 +791,7 @@ final class UsageContractTests: XCTestCase {
     func testSiliconFlowConfigurationIsOneCombinedRow() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
         let rowStart = source.range(of: "struct SiliconFlowProviderRow: View")!.lowerBound
-        let rowEnd = source.range(of: "struct SourceOptionBadge: View")!.lowerBound
+        let rowEnd = source.range(of: "final class SiliconFlowWebViewHolder")!.lowerBound
         let rowSource = String(source[rowStart..<rowEnd])
 
         XCTAssertTrue(source.contains("SiliconFlowProviderRow"), "SiliconFlow should have one console-selected row")
