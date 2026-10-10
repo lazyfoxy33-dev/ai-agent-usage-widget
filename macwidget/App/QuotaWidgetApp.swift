@@ -94,7 +94,7 @@ final class QuotaWidgetModel: ObservableObject {
         let usageStore = UsageStore()
         let existing = providerScope == .apiKeyOnly ? try? usageStore.read() : nil
         var json = try UsageFetcher.fetch(
-            apiKeys: credentials.apiKeys,
+            apiKeys: UsageFetcher.mergingExternalCredentials(keychain: credentials.apiKeys),
             providerScope: providerScope
         )
         let consoleProvider = await siliconFlowConsoleProvider(

@@ -13,6 +13,7 @@ struct ControlCenterView: View {
     let displayActions: DisplayLayerActions
 
     @State private var showingSiliconFlowConsoleLogin = false
+    @State private var showingOpenRouterLogin = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -51,7 +52,10 @@ struct ControlCenterView: View {
                                     row: row,
                                     onAddKey: row.id.apiKeyID.map { id in { accountViewModel.beginEdit(id) } },
                                     onRemoveKey: row.id.apiKeyID.map { id in { accountViewModel.deleteKey(id) } },
-                                    onTest: { accountViewModel.testProviders() }
+                                    onTest: { accountViewModel.testProviders() },
+                                    onLoginOpenRouter: row.id == .openrouter
+                                        ? { showingOpenRouterLogin = true }
+                                        : nil
                                 )
                             }
                         }
@@ -88,6 +92,17 @@ struct ControlCenterView: View {
                     }
                 },
                 onCancel: { showingSiliconFlowConsoleLogin = false }
+            )
+        }
+        .sheet(isPresented: $showingOpenRouterLogin) {
+            OpenRouterAuthSheet(
+                onAuthorized: { key in
+                    if accountViewModel.saveOpenRouterKey(key) {
+                        showingOpenRouterLogin = false
+                        refreshNow()
+                    }
+                },
+                onCancel: { showingOpenRouterLogin = false }
             )
         }
         .onAppear {
@@ -142,6 +157,7 @@ struct ProviderRow: View {
     var onTest: (() -> Void)?
     var onToggleProbe: (() -> Void)?
     var onLoginHelp: (() -> Void)?
+    var onLoginOpenRouter: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 12) {
@@ -200,24 +216,61 @@ struct ProviderRow: View {
                 .controlSize(.small)
             }
         case .apiKey:
-            if row.configured {
-                Button("更换密钥") { onAddKey?() }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                Button("测试") { onTest?() }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
+            if row.id == .openrouter {
+                openRouterButtons
+            } else {
+                apiKeyButtons
+            }
+        }
+    }
+
+    /// OpenRouter uses the official "Sign in with OpenRouter" flow, so there is
+    /// no key field: the row signs in instead of pasting a key.
+    @ViewBuilder
+    private var openRouterButtons: some View {
+        if row.configured {
+            Button("重新登录") { onLoginOpenRouter?() }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            Button("测试") { onTest?() }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            if row.keychainCredential {
                 Button("移除") { onRemoveKey?() }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-            } else {
-                Button("添加密钥") { onAddKey?() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                Button("测试") { onTest?() }
+            }
+        } else {
+            Button("登录 OpenRouter") { onLoginOpenRouter?() }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            Button("测试") { onTest?() }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+        }
+    }
+
+    @ViewBuilder
+    private var apiKeyButtons: some View {
+        if row.configured {
+            Button("更换密钥") { onAddKey?() }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            Button("测试") { onTest?() }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            if row.keychainCredential {
+                Button("移除") { onRemoveKey?() }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
             }
+        } else {
+            Button("添加密钥") { onAddKey?() }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            Button("测试") { onTest?() }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
         }
     }
 }

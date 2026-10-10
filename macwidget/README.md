@@ -95,6 +95,11 @@ settings window:
 - For **DeepSeek, SiliconFlow, and OpenRouter**, click **Add Key** to enter an API
   key; keys are stored in the macOS Keychain (service `AI Agent Usage Widget`)
   and can be **Test**ed or **Remove**d.
+- **OpenRouter** uses the official "Sign in with OpenRouter" OAuth PKCE flow: click
+  **登录 OpenRouter** and authorize in the window — no pasted key.
+- When the **DeepSeek Harness** (`dsh`) already configured `DEEPSEEK_API_KEY` or
+  `OPENROUTER_API_KEY`, that value is reused read-only from
+  `~/.dsh/.credentials.yaml` (the row shows a `dsh` tag); a Keychain entry wins.
 - The shared data layer still supports `DEEPSEEK_API_KEY`, `SILICONFLOW_API_KEY`,
   `OPENROUTER_API_KEY`, and similar environment variables, but the GUI settings
   are the recommended path.

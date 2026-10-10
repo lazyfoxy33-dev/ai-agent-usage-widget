@@ -59,6 +59,10 @@ struct AccountRowState: Identifiable, Equatable {
     let statusText: String
     let detailText: String?
     let balanceSummary: String?
+    /// Credential stored by this app in the macOS Keychain.
+    let keychainCredential: Bool
+    /// Credential read from dsh's own config (`~/.dsh/.credentials.yaml`).
+    let externalCredential: Bool
 }
 
 struct AccountSettingsModel: Equatable {
@@ -66,17 +70,21 @@ struct AccountSettingsModel: Equatable {
     let configuredAPIKeys: Set<APIKeyProviderID>
     let codexActiveRefresh: Bool
     let siliconFlowConsoleConfigured: Bool
+    /// Providers whose key is not in our Keychain but is available from dsh.
+    let externalCredentials: Set<APIKeyProviderID>
 
     init(
         payload: UsagePayload? = nil,
         configuredAPIKeys: Set<APIKeyProviderID> = [],
         codexActiveRefresh: Bool = false,
-        siliconFlowConsoleConfigured: Bool = false
+        siliconFlowConsoleConfigured: Bool = false,
+        externalCredentials: Set<APIKeyProviderID> = []
     ) {
         self.payload = payload
         self.configuredAPIKeys = configuredAPIKeys
         self.codexActiveRefresh = codexActiveRefresh
         self.siliconFlowConsoleConfigured = siliconFlowConsoleConfigured
+        self.externalCredentials = externalCredentials
     }
 
     var rows: [AccountRowState] {
@@ -128,9 +136,15 @@ struct AccountSettingsModel: Equatable {
     private func row(for id: AccountProviderID) -> AccountRowState {
         let provider = provider(for: id)
         let kind = id.kind
-        let configured = isConfigured(id: id, provider: provider)
+        let keychainCredential = keychainCredential(id: id)
+        let externalCredential = externalCredential(id: id)
+        let configured = isConfigured(
+            id: id,
+            provider: provider,
+            credentialAvailable: keychainCredential || externalCredential
+        )
         let statusText = statusText(for: id, provider: provider, configured: configured)
-        let detailText = detailText(for: id)
+        let detailText = detailText(for: id, externalCredential: externalCredential)
         let balanceSummary = balanceSummary(for: id, provider: provider, configured: configured)
 
         return AccountRowState(
@@ -140,19 +154,34 @@ struct AccountSettingsModel: Equatable {
             configured: configured,
             statusText: statusText,
             detailText: detailText,
-            balanceSummary: balanceSummary
+            balanceSummary: balanceSummary,
+            keychainCredential: keychainCredential,
+            externalCredential: externalCredential
         )
     }
 
-    private func isConfigured(id: AccountProviderID, provider: UsageProvider?) -> Bool {
+    private func keychainCredential(id: AccountProviderID) -> Bool {
+        guard let apiKeyID = id.apiKeyID else { return false }
+        return configuredAPIKeys.contains(apiKeyID)
+    }
+
+    private func externalCredential(id: AccountProviderID) -> Bool {
+        guard let apiKeyID = id.apiKeyID, !configuredAPIKeys.contains(apiKeyID) else { return false }
+        return externalCredentials.contains(apiKeyID)
+    }
+
+    private func isConfigured(
+        id: AccountProviderID,
+        provider: UsageProvider?,
+        credentialAvailable: Bool
+    ) -> Bool {
         switch id {
         case .claude, .kimi:
             return provider?.ok == true
         case .codex:
             return codexActiveRefresh
         case .deepseek, .openrouter:
-            guard let apiKeyID = id.apiKeyID else { return false }
-            return configuredAPIKeys.contains(apiKeyID)
+            return credentialAvailable
         case .siliconflow:
             return siliconFlowConsoleConfigured
         }
@@ -182,12 +211,17 @@ struct AccountSettingsModel: Equatable {
             if provider.isStale {
                 return ProviderPresentation.cachedBalanceMessage()
             }
+            if provider.reason == nil {
+                // Credential is present (Keychain or dsh) but nothing was fetched yet.
+                return "等待首次刷新"
+            }
             return ProviderPresentation.message(for: id.providerKind, provider: provider)
         }
     }
 
-    private func detailText(for id: AccountProviderID) -> String? {
-        id == .siliconflow ? "控制台登录" : nil
+    private func detailText(for id: AccountProviderID, externalCredential: Bool) -> String? {
+        if id == .siliconflow { return "控制台登录" }
+        return externalCredential ? "dsh" : nil
     }
 
     private func balanceSummary(
@@ -195,8 +229,10 @@ struct AccountSettingsModel: Equatable {
         provider: UsageProvider?,
         configured: Bool
     ) -> String? {
-        guard id.kind == .apiKey, configured else { return nil }
-        let provider = provider ?? UsageProvider(ok: false)
+        guard id.kind == .apiKey, configured,
+              let provider, provider.ok, provider.balance != nil else {
+            return nil
+        }
         let amount = ProviderPresentation.balanceAmount(provider.balance)
         let trend = ProviderPresentation.balanceTrend(provider.burnRate)
         return "\(amount) · \(trend)"
@@ -255,12 +291,14 @@ final class AccountSettingsViewModel: ObservableObject {
         let configured = Set(configuredAPIKeys.keys)
         let codexActive = configStore.readCodexActiveRefresh()
         let consoleSession = try? siliconFlowConsoleStore.readSession()
+        let external = Set(DSHCredentials.load().keys)
 
         model = AccountSettingsModel(
             payload: payload,
             configuredAPIKeys: configured,
             codexActiveRefresh: codexActive,
-            siliconFlowConsoleConfigured: consoleSession?.isConfigured == true
+            siliconFlowConsoleConfigured: consoleSession?.isConfigured == true,
+            externalCredentials: external
         )
     }
 
@@ -291,6 +329,25 @@ final class AccountSettingsViewModel: ObservableObject {
             editingProvider = nil
             saveErrorText = nil
             saveStatusText = "\(provider.name) API Key 已保存"
+            reload()
+            return true
+        } catch {
+            saveErrorText = "保存失败：\(Self.errorDescription(error))"
+            return false
+        }
+    }
+
+    @discardableResult
+    func saveOpenRouterKey(_ key: String) -> Bool {
+        let trimmed = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            saveErrorText = "OpenRouter 未返回有效密钥"
+            return false
+        }
+        do {
+            try apiKeyStore.save(trimmed, for: .openrouter)
+            saveErrorText = nil
+            saveStatusText = "OpenRouter 登录成功，密钥已存入钥匙串"
             reload()
             return true
         } catch {
@@ -352,7 +409,9 @@ final class AccountSettingsViewModel: ObservableObject {
         let siliconFlowConsoleStore = self.siliconFlowConsoleStore
         Task.detached { [weak self] in
             do {
-                let keys = (try? QuotaWidgetModel.apiKeys(from: apiKeyStore)) ?? [:]
+                let keys = UsageFetcher.mergingExternalCredentials(
+                    keychain: (try? QuotaWidgetModel.apiKeys(from: apiKeyStore)) ?? [:]
+                )
                 var json = try UsageFetcher.fetch(apiKeys: keys, providerScope: .apiKeyOnly)
                 let consoleSession = try? siliconFlowConsoleStore.readSession()
                 let consoleProvider = await QuotaWidgetModel.siliconFlowConsoleProvider(
