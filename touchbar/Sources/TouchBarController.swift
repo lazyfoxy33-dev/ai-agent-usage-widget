@@ -461,7 +461,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         case "expired": return "登录过期"
         case "rate_limited": return "请求受限"
         case "balance_unavailable": return "余额异常"
-        case "login_required": return "未登录"
+        case "login_required": return "未配置"
         case "loading": return "…"
         default: return "获取失败"
         }

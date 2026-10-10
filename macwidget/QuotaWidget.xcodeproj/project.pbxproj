@@ -280,7 +280,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\nDESTINATION=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/display-layers\"\nrm -rf \"$DESTINATION\"\nmkdir -p \"$DESTINATION\"\nditto \"${SRCROOT}/../touchbar\" \"$DESTINATION/touchbar\"\nfind \"$DESTINATION\" -type d \\( -name __pycache__ -o -name .build -o -name build -o -name dist \\) -prune -exec rm -rf {} +\nfind \"$DESTINATION\" -type f \\( -name '*.pyc' -o -name '*.jsonl' \\) -delete\n";
+			shellScript = "set -eu\nDESTINATION=\"${BUILT_PRODUCTS_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/display-layers\"\nrm -rf \"$DESTINATION\"\nmkdir -p \"$DESTINATION\"\nditto \"${SRCROOT}/../touchbar\" \"$DESTINATION/touchbar\"\nfind \"$DESTINATION\" -type d \\( -name __pycache__ -o -name .build -o -name build -o -name dist -o -name QuotaBar.app \\) -prune -exec rm -rf {} +\nfind \"$DESTINATION\" -type f \\( -name '*.pyc' -o -name '*.jsonl' \\) -delete\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

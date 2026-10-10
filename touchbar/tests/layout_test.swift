@@ -181,5 +181,42 @@ expect(
     "four cells stay within the measured budget"
 )
 
+// MARK: usage source (app mirror vs core layer)
+
+print("UsageSource")
+
+expect(
+    UsageSource.mirrorURL(environment: [:]).path.hasSuffix(".config/ai-agent-usage-widget/usage.json"),
+    "the mirror sits beside the shared config file"
+)
+expect(
+    UsageSource.mirrorURL(environment: ["AI_AGENT_USAGE_CONFIG": "/tmp/x/config.json"]).path == "/tmp/x/usage.json",
+    "the mirror honours the shared config override"
+)
+let now = Date()
+expect(
+    UsageSource.isFresh(modifiedAt: now.addingTimeInterval(-60), now: now),
+    "a minute-old mirror is fresh"
+)
+expect(
+    !UsageSource.isFresh(modifiedAt: now.addingTimeInterval(-3600), now: now),
+    "an hour-old mirror is stale and the core layer is used instead"
+)
+expect(
+    !UsageSource.isFresh(modifiedAt: now.addingTimeInterval(600), now: now),
+    "a far-future timestamp is not trusted"
+)
+let payload = #"{"siliconflow":{"ok":true,"kind":"balance","source":"console_session","balance":{"amount":42.5,"currency":"CNY","available":true,"label":"Console Balance"}},"deepseek":{"ok":false,"reason":"no_data"}}"#
+if let parsed = UsageSource.usage(from: Data(payload.utf8)) {
+    expect(
+        parsed.siliconflow.ok && parsed.siliconflow.balance?.amount == 42.5,
+        "parses a balance provider out of the shared contract"
+    )
+    expect(parsed.siliconflow.source == "console_session", "keeps the credential source")
+    expect(parsed.deepseek.reason == "no_data", "keeps a failure reason")
+} else {
+    expect(false, "parses the shared contract")
+}
+
 print(failures == 0 ? "all layout tests passed" : "\(failures) layout test(s) failed")
 exit(failures == 0 ? 0 : 1)

@@ -52,6 +52,24 @@ final class TouchBarSelectionTests: XCTestCase {
         XCTAssertEqual(store.readTouchBarProviders(), ["claude"])
     }
 
+    func testUsageMirrorIsWrittenOwnerOnly() throws {
+        let root = try makeRoot()
+        defer { try? FileManager.default.removeItem(at: root) }
+        let store = AppConfigStore(baseDirectory: root)
+
+        XCTAssertEqual(store.usageMirrorURL.lastPathComponent, "usage.json")
+
+        try store.writeUsageMirror(#"{"schema_version":1}"#)
+
+        XCTAssertEqual(
+            try String(contentsOf: store.usageMirrorURL, encoding: .utf8),
+            #"{"schema_version":1}"#
+        )
+        let attributes = try FileManager.default.attributesOfItem(atPath: store.usageMirrorURL.path)
+        let permissions = attributes[.posixPermissions] as? NSNumber
+        XCTAssertEqual(permissions?.intValue, 0o600, "balances stay owner-only")
+    }
+
     // MARK: - View model
 
     @MainActor

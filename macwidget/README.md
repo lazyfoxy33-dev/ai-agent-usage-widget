@@ -105,6 +105,10 @@ settings window:
   are the recommended path.
 - The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
   contract and never see raw API keys.
+- The app mirrors its sanitized payload to
+  `~/.config/ai-agent-usage-widget/usage.json` (mode 0600) after every refresh; the
+  Touch Bar agent reads that mirror (under 15 minutes old) so both frontends agree on
+  SiliconFlow / DeepSeek / OpenRouter, whose credentials only this app can reach.
 - **Touch Bar 显示** decides which providers appear on the strip and in which
   order (all six are selectable: Claude / Codex / Kimi render gauges, DeepSeek /
   SiliconFlow / OpenRouter render balances); reordering uses the inline ▲▼
