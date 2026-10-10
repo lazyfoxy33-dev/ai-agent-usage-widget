@@ -38,7 +38,7 @@ targets:
           rm -rf "$DESTINATION"
           mkdir -p "$DESTINATION"
           ditto "${SRCROOT}/../touchbar" "$DESTINATION/touchbar"
-          find "$DESTINATION" -type d \( -name __pycache__ -o -name .build -o -name build -o -name dist \) -prune -exec rm -rf {} +
+          find "$DESTINATION" -type d \( -name __pycache__ -o -name .build -o -name build -o -name dist -o -name QuotaBar.app \) -prune -exec rm -rf {} +
           find "$DESTINATION" -type f \( -name '*.pyc' -o -name '*.jsonl' \) -delete
         basedOnDependencyAnalysis: false
   QuotaWidgetTests:
