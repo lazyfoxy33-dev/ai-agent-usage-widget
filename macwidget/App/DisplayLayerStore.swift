@@ -19,13 +19,21 @@ struct DisplayLayerCommand: Equatable {
 enum DisplayLayerStoreError: Error, LocalizedError {
     case missingBundledTouchBarInstaller(URL)
     case openFailed(URL)
+    case installerFailed(command: String, status: Int32, output: String)
 
     var errorDescription: String? {
         switch self {
         case .missingBundledTouchBarInstaller(let url):
-            return "Bundled Touch Bar installer is missing at \(url.path)"
+            return "找不到内置的 Touch Bar 安装脚本：\(url.path)"
         case .openFailed(let url):
-            return "Could not open \(url.path)"
+            return "无法打开 \(url.path)"
+        case .installerFailed(let command, let status, let output):
+            let tail = output
+                .split(separator: "\n")
+                .suffix(3)
+                .joined(separator: "\n")
+            let detail = tail.isEmpty ? "" : "：\n\(tail)"
+            return "\(command) 失败（退出码 \(status)）\(detail)"
         }
     }
 }
@@ -138,10 +146,22 @@ struct DisplayLayerStore: Sendable {
         task.arguments = command.arguments
         task.currentDirectoryURL = command.workingDirectory
         task.environment = ProcessInfo.processInfo.environment.merging(command.environment) { _, new in new }
+        // Capture both streams so a failing installer reports why it failed
+        // instead of surfacing a bare Cocoa error to the settings window.
+        let pipe = Pipe()
+        task.standardOutput = pipe
+        task.standardError = pipe
         try task.run()
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
         task.waitUntilExit()
         if task.terminationStatus != 0 {
-            throw CocoaError(.executableLoad)
+            let output = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            throw DisplayLayerStoreError.installerFailed(
+                command: command.arguments.joined(separator: " "),
+                status: task.terminationStatus,
+                output: output
+            )
         }
     }
 }

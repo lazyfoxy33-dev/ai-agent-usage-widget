@@ -7,7 +7,22 @@ cd "$(dirname "$0")"
 APP="QuotaBar.app"
 BIN="$APP/Contents/MacOS/QuotaBar"
 RES="$APP/Contents/Resources"
-CORE="../core"
+
+# The shared data layer sits next to the sources in a checkout, but inside
+# QuotaWidget.app the installer is copied to Contents/Resources/display-layers/
+# while core/ lives at Contents/Resources/core. Look in both places so the same
+# script works from a checkout and from the bundled installer.
+CORE=""
+for candidate in "../core" "../../core"; do
+    if [[ -f "$candidate/fetch_usage.py" ]]; then
+        CORE="$candidate"
+        break
+    fi
+done
+if [[ -z "$CORE" ]]; then
+    echo "✗ cannot find the shared core/ data layer (looked in ../core and ../../core)" >&2
+    exit 1
+fi
 
 echo "› compiling…"
 rm -rf "$APP"
