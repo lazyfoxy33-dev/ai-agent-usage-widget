@@ -55,6 +55,18 @@ struct Usage {
     var siliconflow = Provider(ok: false, reason: "loading")
     var openrouter = Provider(ok: false, reason: "loading")
     var updatedAt = Date()
+
+    /// The parsed provider behind a Touch Bar layout entry.
+    func provider(for provider: TouchBarProvider) -> Provider {
+        switch provider {
+        case .claude: return claude
+        case .codex: return codex
+        case .kimi: return kimi
+        case .deepseek: return deepseek
+        case .siliconflow: return siliconflow
+        case .openrouter: return openrouter
+        }
+    }
 }
 
 // MARK: - Source

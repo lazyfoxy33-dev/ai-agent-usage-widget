@@ -3,28 +3,28 @@ import AppKit
 /// Touch Bar presence:
 ///   * a small persistent tray cell that glances the AI app you're using —
 ///     it follows the frontmost Claude / Codex / Kimi app (else the most recent),
-///     and falls back to the most-drained window when none has data;
-///   * a full-width modal bar with one compact gauge per provider, presented on tap.
-/// Percentages are **used %**, matching the menu bar app. Data comes from the
-/// shared `core/fetch_usage.py` via `UsageSource`.
+///     and falls back to the most-drained window when none has data; with balance
+///     providers selected it shows the first one's amount instead;
+///   * a full-width modal bar with one compact gauge per selected provider,
+///     presented on tap.
+/// Which providers appear, and in which order, comes from the shared config
+/// (`touchbar_providers`, written by the menu bar app) and is re-read on every
+/// refresh. Percentages are **used %**, matching the menu bar app. Data comes
+/// from the shared `core/fetch_usage.py` via `UsageSource`.
 final class TouchBarController: NSObject, NSTouchBarDelegate {
 
     private let trayItem = NSCustomTouchBarItem(identifier: NSTouchBarItem.Identifier(ControlStrip.identifier))
     private let trayButton = NSButton()
 
-    private let closeID  = NSTouchBarItem.Identifier("com.quotabar.close")
-    private let claudeID = NSTouchBarItem.Identifier("com.quotabar.claude")
-    private let codexID  = NSTouchBarItem.Identifier("com.quotabar.codex")
-    private let kimiID   = NSTouchBarItem.Identifier("com.quotabar.kimi")
-    private let resetID  = NSTouchBarItem.Identifier("com.quotabar.reset")
+    private let closeID = NSTouchBarItem.Identifier("com.quotabar.close")
+    private let resetID = NSTouchBarItem.Identifier("com.quotabar.reset")
     private let resetField = NSTextField(labelWithString: "")
     private var modalBar: NSTouchBar?
     private var modalVisible = false
 
-    // Per-provider gauges hold their own brand palette; built once and reused.
-    private lazy var claudeGauge = ProviderGauge(letter: "C", accent: accent("C"), soft: soft("C"))
-    private lazy var codexGauge  = ProviderGauge(letter: "X", accent: accent("X"), soft: soft("X"))
-    private lazy var kimiGauge   = ProviderGauge(letter: "K", accent: accent("K"), soft: soft("K"))
+    /// Providers to show, in display order (re-read from config on refresh).
+    private var layout: [TouchBarProvider] = TouchBarLayout.load()
+    private var gauges: [TouchBarProvider: ProviderGauge] = [:]
 
     private var usage = Usage()
     private let work = DispatchQueue(label: "com.quotabar.fetch")
@@ -45,13 +45,38 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     private let dim    = NSColor(white: 0.55, alpha: 1)
     private let bright = NSColor(white: 0.92, alpha: 1)
 
-    // Per-provider brand palette, matching the menu bar app (5h = accent,
-    // weekly = softer tint). C=Claude, X=Codex, K=Kimi.
+    // MARK: Provider identity
+
+    private func itemID(_ provider: TouchBarProvider) -> NSTouchBarItem.Identifier {
+        NSTouchBarItem.Identifier("com.quotabar.\(provider.rawValue)")
+    }
+
+    private func provider(for id: NSTouchBarItem.Identifier) -> TouchBarProvider? {
+        TouchBarProvider.allCases.first { itemID($0) == id }
+    }
+
+    private func gauge(for provider: TouchBarProvider) -> ProviderGauge {
+        if let existing = gauges[provider] { return existing }
+        let created = ProviderGauge(
+            letter: provider.tag,
+            accent: accent(provider.tag),
+            soft: soft(provider.tag)
+        )
+        gauges[provider] = created
+        return created
+    }
+
+    /// Per-provider brand palette, matching the menu bar app (5h = accent,
+    /// weekly = softer tint). C=Claude, X=Codex, K=Kimi, D=DeepSeek,
+    /// S=SiliconFlow, O=OpenRouter.
     private func accent(_ tag: String) -> NSColor {
         switch tag {
         case "C": return rgb(0xD9, 0x77, 0x57)   // Claude terracotta
         case "X": return rgb(0x7B, 0x83, 0xF5)   // Codex purple-blue
         case "K": return rgb(0x2E, 0x8B, 0xFF)   // Kimi blue (brightened for dark bar)
+        case "D": return rgb(0x55, 0x8B, 0xFF)   // DeepSeek blue
+        case "S": return rgb(0xF2, 0x72, 0x72)   // SiliconFlow red
+        case "O": return rgb(0xA0, 0x7B, 0xFF)   // OpenRouter violet
         default:  return bright
         }
     }
@@ -60,6 +85,9 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         case "C": return rgb(0xE3, 0xA7, 0x7F)   // Claude soft
         case "X": return rgb(0xA7, 0x8B, 0xFA)   // Codex purple
         case "K": return rgb(0x7F, 0xB3, 0xFF)   // Kimi soft
+        case "D": return rgb(0x9C, 0xBE, 0xFF)   // DeepSeek soft
+        case "S": return rgb(0xFF, 0xB0, 0xB0)   // SiliconFlow soft
+        case "O": return rgb(0xC7, 0xAE, 0xFF)   // OpenRouter soft
         default:  return dim
         }
     }
@@ -127,11 +155,13 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     private func presentModal() {
         let bar = NSTouchBar()
         bar.delegate = self
-        bar.defaultItemIdentifiers = [
-            closeID, .fixedSpaceLarge,
-            claudeID, .fixedSpaceSmall, codexID, .fixedSpaceSmall, kimiID,
-            .flexibleSpace, resetID,
-        ]
+        var identifiers: [NSTouchBarItem.Identifier] = [closeID, .fixedSpaceLarge]
+        for (index, provider) in layout.enumerated() {
+            if index > 0 { identifiers.append(.fixedSpaceSmall) }
+            identifiers.append(itemID(provider))
+        }
+        identifiers.append(contentsOf: [.flexibleSpace, resetID])
+        bar.defaultItemIdentifiers = identifiers
         modalBar = bar
         renderDetail()
         ControlStrip.presentModal(bar)
@@ -151,9 +181,6 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
             let it = NSCustomTouchBarItem(identifier: id)
             it.view = b
             return it
-        case claudeID: return gaugeItem(id, claudeGauge)
-        case codexID:  return gaugeItem(id, codexGauge)
-        case kimiID:   return gaugeItem(id, kimiGauge)
         case resetID:
             let it = NSCustomTouchBarItem(identifier: id)
             resetField.font = detailFont
@@ -162,7 +189,8 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
             it.view = resetField
             return it
         default:
-            return nil
+            guard let provider = provider(for: id) else { return nil }
+            return gaugeItem(id, gauge(for: provider))
         }
     }
 
@@ -179,7 +207,18 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         work.async { [weak self] in
             guard let self = self else { return }
             let fresh = UsageSource.read()
+            let freshLayout = TouchBarLayout.load()
             DispatchQueue.main.async {
+                if freshLayout != self.layout {
+                    self.layout = freshLayout
+                    self.gauges = self.gauges.filter { freshLayout.contains($0.key) }
+                    // Items are cached per NSTouchBar, so rebuild the modal when the
+                    // selection or order changed.
+                    if self.modalVisible {
+                        self.minimizeModal()
+                        self.presentModal()
+                    }
+                }
                 self.usage = fresh
                 self.renderTray()
                 if self.modalVisible { self.renderDetail() }
@@ -189,8 +228,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
 
     // MARK: Rendering — tray (collapsed)
 
-    /// (tag, window) for every live window across providers, used to surface the
-    /// most-drained one at a glance.
+    /// (tag, window) for every live window across the selected quota providers.
     private func liveWindows() -> [(String, Window)] {
         var out: [(String, Window)] = []
         func add(_ tag: String, _ p: Provider) {
@@ -204,27 +242,59 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
                 out.append((tag, w))
             }
         }
-        add("C", usage.claude); add("X", usage.codex); add("K", usage.kimi)
+        for provider in layout where !provider.isBalance {
+            add(provider.tag, usage.provider(for: provider))
+        }
         return out
+    }
+
+    private enum TrayPick {
+        case quota(tag: String, window: Window)
+        case balance(provider: TouchBarProvider, text: String, dimmed: Bool)
     }
 
     private func renderTray() {
         let s = NSMutableAttributedString()
-        // Prefer the AI app you're using (foreground, else most-recent). When that
-        // provider has no usable window, fall back to the most-drained one overall.
-        let pick = (foregroundTag ?? lastUsedTag).flatMap { tag in
-            tightest(forTag: tag).map { (tag, $0) }
-        } ?? tightestOverall()
-        if let (tag, w) = pick {
-            let pct = Int(w.usedPct.rounded())
-            s.append(seg(tag, trayFont, w.stale ? dim : accent(tag)))
-            s.append(seg(String(pct), trayFont, w.stale ? dim : accent(tag)))
-        } else {
+        switch trayPick() {
+        case .quota(let tag, let window):
+            let pct = Int(window.usedPct.rounded())
+            let color = window.stale ? dim : accent(tag)
+            s.append(seg(tag, trayFont, color))
+            s.append(seg(String(pct), trayFont, color))
+        case .balance(let provider, let text, let dimmed):
+            let color = dimmed ? dim : accent(provider.tag)
+            s.append(seg(provider.tag, trayFont, color))
+            s.append(seg(text, trayFont, color))
+        case nil:
             s.append(seg("··", trayFont, dim))
         }
         trayButton.attributedTitle = s
         let width = ceil(s.size().width) + 16
         trayButton.frame = NSRect(x: 0, y: 0, width: max(width, 40), height: 30)
+    }
+
+    /// Prefers the AI app you're using (foreground, else most-recent), then the
+    /// most-drained window, and finally the first selected provider — so a
+    /// balance-only selection still shows an amount.
+    private func trayPick() -> TrayPick? {
+        let quotaTags = Set(layout.filter { !$0.isBalance }.map(\.tag))
+        if let tag = foregroundTag ?? lastUsedTag,
+           quotaTags.contains(tag),
+           let window = tightest(forTag: tag) {
+            return .quota(tag: tag, window: window)
+        }
+        if let (tag, window) = tightestOverall() {
+            return .quota(tag: tag, window: window)
+        }
+        guard let provider = layout.first else { return nil }
+        if provider.isBalance {
+            let (text, dimmed) = balanceText(provider)
+            return .balance(provider: provider, text: text, dimmed: dimmed)
+        }
+        if let window = tightest(forTag: provider.tag) {
+            return .quota(tag: provider.tag, window: window)
+        }
+        return nil
     }
 
     /// Most-drained live window for one provider. Prefers non-stale figures.
@@ -234,7 +304,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
              ?? wins.max(by: { $0.1.usedPct < $1.1.usedPct }))?.1
     }
 
-    /// Most-drained live window across all providers.
+    /// Most-drained live window across the selected quota providers.
     private func tightestOverall() -> (String, Window)? {
         let wins = liveWindows()
         return wins.filter { !$0.1.stale }.max(by: { $0.1.usedPct < $1.1.usedPct })
@@ -244,9 +314,15 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     // MARK: Rendering — detail (modal, full width)
 
     private func renderDetail() {
-        feed(claudeGauge, usage.claude)
-        feed(codexGauge,  usage.codex)
-        feed(kimiGauge,   usage.kimi)
+        for provider in layout {
+            let gauge = gauge(for: provider)
+            let status = usage.provider(for: provider)
+            if provider.isBalance {
+                feedBalance(gauge, status)
+            } else {
+                feed(gauge, status)
+            }
+        }
 
         if let reset = soonestReset() {
             let s = NSMutableAttributedString()
@@ -270,6 +346,18 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
                      cached: cached)
     }
 
+    private func feedBalance(_ gauge: ProviderGauge, _ p: Provider) {
+        guard p.ok, let balance = p.balance, balance.available else {
+            gauge.updateBalance(ok: false, status: balanceStatus(p), amount: "", detail: "", cached: false)
+            return
+        }
+        let cached = p.reason == "stale" || p.live == false
+        gauge.updateBalance(ok: true, status: "",
+                            amount: amountText(balance),
+                            detail: balanceDetail(p),
+                            cached: cached)
+    }
+
     private func soonestReset() -> Date? {
         let now = Date()
         return liveWindows().compactMap { $0.1.resetsAt }.filter { $0 > now }.min()
@@ -285,6 +373,43 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         case "loading": return "…"
         default:        return "获取失败"
         }
+    }
+
+    private func balanceStatus(_ p: Provider) -> String {
+        switch p.reason {
+        case "no_data": return "未配置"
+        case "expired": return "登录过期"
+        case "rate_limited": return "请求受限"
+        case "balance_unavailable": return "余额异常"
+        case "login_required": return "未登录"
+        case "loading": return "…"
+        default: return "获取失败"
+        }
+    }
+
+    /// Compact amount for the strip: "¥45.8", "$75" — small screens have no room.
+    private func amountText(_ balance: Balance) -> String {
+        let symbol = balance.currency.uppercased() == "CNY" ? "¥" : "$"
+        let value = balance.amount
+        if abs(value) >= 100 { return symbol + String(format: "%.0f", value) }
+        return symbol + String(format: "%.1f", value)
+    }
+
+    /// Trend line under the amount, when the shared layer could estimate it.
+    private func balanceDetail(_ p: Provider) -> String {
+        if let days = p.burnRate?.estimatedDaysLeft, days > 0 { return "≈\(days)天" }
+        if p.reason == "stale" || p.live == false { return "缓存" }
+        return ""
+    }
+
+    /// Tray text for a balance provider (amount, or a dash when unavailable).
+    private func balanceText(_ provider: TouchBarProvider) -> (String, Bool) {
+        let p = usage.provider(for: provider)
+        guard p.ok, let balance = p.balance, balance.available else {
+            return ("—", true)
+        }
+        let dimmed = p.reason == "stale" || p.live == false
+        return (amountText(balance), dimmed)
     }
 
     private func countdown(_ date: Date) -> String {

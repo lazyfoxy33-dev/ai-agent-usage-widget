@@ -27,12 +27,25 @@ class TestTouchBarFreshnessSource(unittest.TestCase):
         self.assertIn("cached:", source)
         self.assertIn("cached ? 0.62 : 1", _read("Sources", "ProviderGauge.swift"))
 
-    def test_modal_lays_out_one_gauge_per_provider(self):
+    def test_modal_lays_out_one_gauge_per_configured_provider(self):
+        # Providers are no longer hardcoded: the modal builds one item per
+        # configured provider, in the configured order.
         source = _read("Sources", "TouchBarController.swift")
 
-        for ident in ("claudeID", "codexID", "kimiID"):
-            self.assertIn(ident, source)
+        self.assertIn("for (index, provider) in layout.enumerated()", source)
+        self.assertIn("identifiers.append(itemID(provider))", source)
+        self.assertIn("TouchBarLayout.load()", source)
+        self.assertNotIn("claudeID", source, "provider identifiers are derived, not fixed")
         self.assertIn("it.visibilityPriority = .high", source)
+
+    def test_balance_providers_render_an_amount(self):
+        gauge = _read("Sources", "ProviderGauge.swift")
+        controller = _read("Sources", "TouchBarController.swift")
+
+        self.assertIn("func updateBalance(", gauge)
+        self.assertIn("balanceRows()", gauge)
+        self.assertIn("provider.isBalance", controller)
+        self.assertIn("feedBalance(", controller)
 
     def test_gauge_has_an_explicit_visible_width(self):
         # The single oversized text field was replaced by fixed-width gauges, so
