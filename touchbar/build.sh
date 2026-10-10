@@ -76,4 +76,4 @@ if ! ./sign_bundle.sh "$APP"; then
 fi
 
 echo "✓ built $APP"
-echo "  run:   open $APP    (or ./$BIN --once to print usage)"
+echo "  run:   open \"$APP\"    (or \"$BIN\" --once to print usage)"

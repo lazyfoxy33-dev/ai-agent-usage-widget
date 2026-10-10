@@ -57,8 +57,14 @@ final class ProviderGauge: NSView {
     private let badgeX: CGFloat = 6, badgeSize: CGFloat = 20
     private var textX: CGFloat { badgeX + badgeSize + 8 }      // 34
     private let microW: CGFloat = 17
-    private let barW: CGFloat = 54, barH: CGFloat = 4
+    /// The bar takes whatever is left once the label and the figure have room.
+    private var barW: CGFloat { max(22, width - 88) }
+    private let barH: CGFloat = 4
     private let rowTopY: CGFloat = 20, rowBottomY: CGFloat = 10
+
+    /// Card width; the strip narrows cards when many providers are selected.
+    private(set) var width: CGFloat = 170
+    private var widthConstraint: NSLayoutConstraint?
 
     init(letter: String, accent: NSColor, soft: NSColor) {
         self.letter = letter
@@ -68,11 +74,21 @@ final class ProviderGauge: NSView {
         wantsLayer = true
         // Touch Bar items lay out with Auto Layout; let intrinsicContentSize drive width.
         translatesAutoresizingMaskIntoConstraints = false
-        widthAnchor.constraint(equalToConstant: 170).isActive = true
+        let constraint = widthAnchor.constraint(equalToConstant: width)
+        constraint.isActive = true
+        widthConstraint = constraint
     }
     required init?(coder: NSCoder) { fatalError("not used") }
 
-    override var intrinsicContentSize: NSSize { NSSize(width: 170, height: 30) }
+    func setWidth(_ newWidth: CGFloat) {
+        guard abs(newWidth - width) > 0.5 else { return }
+        width = newWidth
+        widthConstraint?.constant = newWidth
+        invalidateIntrinsicContentSize()
+        needsDisplay = true
+    }
+
+    override var intrinsicContentSize: NSSize { NSSize(width: width, height: 30) }
     override var allowsVibrancy: Bool { false }
 
     /// `cached` dims the whole card (provider serving non-live data); per-window

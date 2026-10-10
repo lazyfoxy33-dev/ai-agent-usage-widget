@@ -45,6 +45,13 @@ DeepSeek / SiliconFlow / OpenRouter 显示余额金额与估算可用天数。�
 Claude / Codex / Kimi，没有前台 AI 应用时显示最近用过的，再退到用量最高的那个。设置只决定**展开后**显示
 谁、按什么顺序。
 
+选择的 provider 越多，展开后的格子会自动**变窄**（3 个以内保持原宽度，最多 6 个仍能完整放下），否则超出
+条宽的部分会被系统直接丢掉。排查当前实际生效的配置与宽度：
+
+```bash
+./QuotaBar.app/Contents/MacOS/QuotaBar --layout
+```
+
 Which providers appear, and in what order, is configured in **QuotaWidget.app → 设置… →
 Touch Bar 显示**: selected providers are listed in display order and reordered with the
 inline ▲▼ buttons. All six are selectable — Claude / Codex / Kimi render quota gauges,
@@ -59,6 +66,11 @@ The collapsed tray cell is **not affected by the selection**: it always answers 
 the coding tool in front of me doing" — preferring the frontmost Claude / Codex / Kimi,
 then the most recently used one, then the most-drained window. The setting only decides
 what the **expanded** bar shows, and in which order.
+
+The more providers you select, the narrower each cell becomes (up to three keep their
+original width) so the strip never drops a cell for not fitting. Run
+`./QuotaBar.app/Contents/MacOS/QuotaBar --layout` to print the effective selection and cell
+widths.
 
 ## 数据来源 / Data
 
