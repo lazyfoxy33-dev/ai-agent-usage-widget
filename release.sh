@@ -13,12 +13,12 @@
 #   export QUOTABAR_NOTARY_PROFILE="quotabar-notary"
 #
 # Optional:
-#   RELEASE_TAG=macwidget-v1.3.0                   (GitHub Release tag to update)
-#   TOUCHBAR_RELEASE_TAG=touchbar-v1.1.0           (GitHub Release tag to update)
+#   RELEASE_TAG=macwidget-v1.4.0                   (GitHub Release tag to update)
+#   TOUCHBAR_RELEASE_TAG=touchbar-v1.2.0           (GitHub Release tag to update)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")" && pwd)"
-RELEASE_TAG="${RELEASE_TAG:-macwidget-v1.3.0}"
-TOUCHBAR_RELEASE_TAG="${TOUCHBAR_RELEASE_TAG:-touchbar-v1.1.0}"
+RELEASE_TAG="${RELEASE_TAG:-macwidget-v1.4.0}"
+TOUCHBAR_RELEASE_TAG="${TOUCHBAR_RELEASE_TAG:-touchbar-v1.2.0}"
 
 DO_MAC=1; DO_TOUCHBAR=0
 for a in "$@"; do

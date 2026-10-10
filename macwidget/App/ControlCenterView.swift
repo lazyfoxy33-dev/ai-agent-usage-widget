@@ -75,6 +75,8 @@ struct ControlCenterView: View {
                     ProviderSection(title: "Touch Bar", subtitle: "装到这台 Mac 的 Touch Bar 上") {
                         TouchBarRow(displayStore: displayStore, actions: displayActions)
                     }
+
+                    TouchBarSelectionSection(viewModel: accountViewModel)
                 }
                 .padding(20)
             }
@@ -826,6 +828,106 @@ struct SiliconFlowConsoleWebView: NSViewRepresentable {
 struct DisplayLayerActions {
     let installTouchBar: @Sendable () throws -> Void
     let openTouchBar: @Sendable () throws -> Void
+}
+
+// MARK: - Touch Bar selection
+
+/// Which providers the Touch Bar shows, and in which order. The agent re-reads
+/// the shared config every minute, so no restart is needed.
+struct TouchBarSelectionSection: View {
+    @ObservedObject var viewModel: AccountSettingsViewModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Touch Bar 显示")
+                    .font(.system(size: 13, weight: .bold))
+                Spacer()
+                Text("按此顺序显示，改动一分钟内生效")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 2)
+
+            VStack(spacing: 0) {
+                ForEach(Array(viewModel.touchBarProviders.enumerated()), id: \.element) { index, provider in
+                    selectedRow(provider, index: index)
+                }
+                if !viewModel.hiddenTouchBarProviders.isEmpty {
+                    addRow
+                }
+            }
+            .background(Color(nsColor: .controlBackgroundColor))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+            )
+
+            if let error = viewModel.saveErrorText {
+                Text(error)
+                    .font(.system(size: 11))
+                    .foregroundStyle(.red)
+            }
+        }
+    }
+
+    private func selectedRow(_ provider: AccountProviderID, index: Int) -> some View {
+        HStack(spacing: 10) {
+            ProviderLogo(id: provider)
+                .frame(width: 24, height: 24)
+            Text(provider.name)
+                .font(.system(size: 13, weight: .semibold))
+
+            Spacer()
+
+            Button("▲") { viewModel.moveTouchBarProvider(provider, by: -1) }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(index == 0)
+            Button("▼") { viewModel.moveTouchBarProvider(provider, by: 1) }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(index == viewModel.touchBarProviders.count - 1)
+            Button("隐藏") { viewModel.setTouchBarProvider(provider, enabled: false) }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .disabled(viewModel.touchBarProviders.count <= 1)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+        .overlay(
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color(nsColor: .separatorColor).opacity(0.7)),
+            alignment: .bottom
+        )
+    }
+
+    private var addRow: some View {
+        HStack(spacing: 8) {
+            Text("添加")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+            ForEach(viewModel.hiddenTouchBarProviders) { provider in
+                Button {
+                    viewModel.setTouchBarProvider(provider, enabled: true)
+                } label: {
+                    HStack(spacing: 5) {
+                        ProviderLogo(id: provider)
+                            .frame(width: 16, height: 16)
+                        Text(provider.name)
+                            .font(.system(size: 12))
+                    }
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 9)
+    }
 }
 
 #Preview("设置") {

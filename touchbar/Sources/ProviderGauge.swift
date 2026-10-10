@@ -34,11 +34,15 @@ final class ProviderGauge: NSView {
     private let dim   = NSColor(white: 0.55, alpha: 1)
     private let badgeInk = NSColor(white: 0.07, alpha: 1)
 
-    // Snapshot of what to draw, set by `update`.
+    // Snapshot of what to draw, set by `update` / `updateBalance`.
     private var ok = false
     private var statusText = ""
     private var fiveH:  (pct: Double, stale: Bool)?
     private var weekly: (pct: Double, stale: Bool)?
+    // Balance providers show an amount plus a trend/state line instead of bars.
+    private var balanceMode = false
+    private var amountText = ""
+    private var detailText = ""
 
     // Fonts
     private let badgeFont = NSFont.systemFont(ofSize: 12, weight: .heavy)
@@ -46,6 +50,8 @@ final class ProviderGauge: NSView {
     private let weeklyMicroFont = NSFont.systemFont(ofSize: 6,  weight: .semibold)
     private let pctFont   = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
     private let statusFont = NSFont.systemFont(ofSize: 11, weight: .medium)
+    private let amountFont = NSFont.monospacedDigitSystemFont(ofSize: 12, weight: .semibold)
+    private let detailFont = NSFont.systemFont(ofSize: 8.5, weight: .medium)
 
     // Layout constants
     private let badgeX: CGFloat = 6, badgeSize: CGFloat = 20
@@ -77,6 +83,20 @@ final class ProviderGauge: NSView {
         self.statusText = status
         self.fiveH  = fiveH.map  { (pct: $0.0, stale: $0.1) }
         self.weekly = weekly.map { (pct: $0.0, stale: $0.1) }
+        self.balanceMode = false
+        self.alphaValue = cached ? 0.62 : 1
+        needsDisplay = true
+    }
+
+    /// Balance variant: the amount on the first row, a trend or state line below.
+    func updateBalance(ok: Bool, status: String, amount: String, detail: String, cached: Bool) {
+        self.ok = ok
+        self.statusText = status
+        self.fiveH = nil
+        self.weekly = nil
+        self.balanceMode = true
+        self.amountText = amount
+        self.detailText = detail
         self.alphaValue = cached ? 0.62 : 1
         needsDisplay = true
     }
@@ -106,8 +126,28 @@ final class ProviderGauge: NSView {
             return
         }
 
+        if balanceMode {
+            balanceRows()
+            return
+        }
+
         row("5H", fiveH,  base: accent, centerY: rowTopY)
         row("Wk", weekly, base: soft,   centerY: rowBottomY)
+    }
+
+    /// Amount line + small trend/state line, aligned to the quota gauge rows.
+    private func balanceRows() {
+        let amountColor = accent.emphasized(by: 0)
+        let amount = NSAttributedString(
+            string: amountText,
+            attributes: [.font: amountFont, .foregroundColor: amountColor])
+        amount.draw(at: NSPoint(x: textX, y: rowTopY - amount.size().height / 2))
+
+        guard !detailText.isEmpty else { return }
+        let detail = NSAttributedString(
+            string: detailText,
+            attributes: [.font: detailFont, .foregroundColor: dim])
+        detail.draw(at: NSPoint(x: textX, y: rowBottomY - detail.size().height / 2))
     }
 
     private func row(_ label: String, _ win: (pct: Double, stale: Bool)?,
