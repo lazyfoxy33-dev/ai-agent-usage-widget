@@ -93,6 +93,38 @@ Diagnostics:
 ./QuotaBar.app/Contents/MacOS/QuotaBar --present-test --measure   # measure this Mac's capacity
 ```
 
+## 余额数据的来源 / Where balances come from
+
+额度 provider（Claude / Codex / Kimi）由共享 `core/` 数据层直接读取本地客户端，Touch Bar 自己就能拿到。
+
+**余额 provider（DeepSeek / SiliconFlow / OpenRouter）不同**：凭据在 macOS 钥匙串里，而 SiliconFlow 还要走
+控制台会话（WebView 登录），这些只有菜单栏 app 能做——共享数据层里 `siliconflow` 是一个固定的
+`login_required` 占位，真实值由 app 算出后覆盖。
+
+所以菜单栏 app 每次刷新后会把自己那份**脱敏 payload 镜像**到
+`~/.config/ai-agent-usage-widget/usage.json`（权限 0600），Touch Bar 会**优先读这份镜像**（15 分钟内视为
+有效），过期或缺失时才回退到共享数据层。这样 Touch Bar 与设置页显示的 SiliconFlow 状态一致；若菜单栏 app
+没在运行，余额 provider 会显示为未配置/取不到，额度 provider 不受影响。
+
+排查：
+
+```bash
+./QuotaBar.app/Contents/MacOS/QuotaBar --once   # 首行会显示 source: app / core 以及各 provider 的状态
+```
+
+Quota providers (Claude / Codex / Kimi) are read from the local clients by the shared
+`core/` layer, which the agent can run itself. **Balance providers are different**: their
+credentials live in the macOS Keychain and SiliconFlow additionally needs a console
+session (WebView login), so only the menu bar app can fetch them — the shared layer
+reports `siliconflow` as a fixed `login_required` placeholder that the app replaces.
+
+The app therefore mirrors its sanitized payload to
+`~/.config/ai-agent-usage-widget/usage.json` (mode 0600) after every refresh, and the
+agent prefers that mirror when it is under 15 minutes old, falling back to the shared
+layer otherwise. That keeps the strip and the settings window showing the same state; with
+the app closed, balance providers report as unconfigured while quota providers are
+unaffected.
+
 ## 数据来源 / Data
 
 不重复实现取数：运行共享的 `core/fetch_usage.py`（构建时拷入 `QuotaBar.app/Contents/Resources/core`），

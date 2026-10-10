@@ -108,6 +108,9 @@ final class QuotaWidgetModel: ObservableObject {
             json = UsageFetcher.preservingLocalAgentProviders(existing: existing, in: json)
         }
         try usageStore.write(json)
+        // Mirror the same sanitized payload outside the App Group container so the
+        // Touch Bar agent can show the real SiliconFlow/DeepSeek/OpenRouter state.
+        try? AppConfigStore().writeUsageMirror(json)
     }
 
     func refresh(providerScope: UsageFetcher.ProviderScope = .apiKeyOnly) {

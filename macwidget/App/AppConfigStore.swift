@@ -60,6 +60,25 @@ struct AppConfigStore {
         try data.write(to: configURL, options: [.atomic])
     }
 
+    /// Where the sanitized payload is mirrored for the Touch Bar agent, which has
+    /// no App Group entitlement and therefore cannot read the shared container.
+    var usageMirrorURL: URL {
+        baseDirectory.appendingPathComponent("usage.json")
+    }
+
+    func writeUsageMirror(_ json: String) throws {
+        try FileManager.default.createDirectory(
+            at: baseDirectory,
+            withIntermediateDirectories: true
+        )
+        try json.write(to: usageMirrorURL, atomically: true, encoding: .utf8)
+        // Balances are private to this Mac; keep the mirror owner-only.
+        try? FileManager.default.setAttributes(
+            [.posixPermissions: 0o600],
+            ofItemAtPath: usageMirrorURL.path
+        )
+    }
+
     func readCodexActiveRefresh() -> Bool {
         guard let data = try? Data(contentsOf: configURL),
               let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]

@@ -37,9 +37,17 @@ if CommandLine.arguments.contains("--once") {
         print("  weekly \(w(p.weekly))")
     }
     let u = UsageSource.read()
+    print("source: \(u.origin) (\(u.updatedAt.formatted(date: .omitted, time: .standard)))")
     line("Claude", u.claude)
     line("Codex", u.codex)
     line("Kimi", u.kimi)
+    func state(_ name: String, _ p: Provider) {
+        let amount = p.balance.map { _ in "有余额" } ?? "无余额"
+        print("\(name): ok=\(p.ok) reason=\(p.reason ?? "-") source=\(p.source ?? "-") \(amount)")
+    }
+    state("DeepSeek", u.deepseek)
+    state("SiliconFlow", u.siliconflow)
+    state("OpenRouter", u.openrouter)
     exit(0)
 }
 
