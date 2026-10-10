@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>QuotaWidget 设置 — 设计稿</title>
+<style>
+  :root {
+    --window: #ececed;
+    --card: #ffffff;
+    --line: #e2e2e4;
+    --sep: #efeff1;
+    --ink: #1d1d1f;
+    --sub: #6e6e73;
+    --faint: #9a9aa0;
+    --accent: #0a63c9;
+    --good: #2f8f4e;
+    --warn: #b8770a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: #c9c9cf;
+    padding: 20px;
+    font-family: -apple-system, "SF Pro Text", "PingFang SC", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    color: var(--ink);
+  }
+  .window {
+    width: 1000px; height: 660px; background: var(--window);
+    border-radius: 12px; overflow: hidden; display: flex; flex-direction: column;
+    box-shadow: 0 18px 50px rgba(0,0,0,.28);
+  }
+  .chrome {
+    height: 38px; display: flex; align-items: center; padding: 0 14px; gap: 8px;
+    background: linear-gradient(#f6f6f7, #e9e9ea); border-bottom: 1px solid #d8d8da;
+  }
+  .dot { width: 12px; height: 12px; border-radius: 50%; }
+  .dot.r { background: #ff5f57; } .dot.y { background: #febc2e; } .dot.g { background: #28c840; }
+  .chrome .name { flex: 1; text-align: center; font-size: 12px; color: var(--sub); }
+
+  header { display: flex; align-items: center; gap: 16px; padding: 16px 24px 14px; }
+  header h1 { font-size: 17px; font-weight: 600; margin: 0 0 3px; letter-spacing: -.01em; }
+  header .lede { font-size: 12px; color: var(--sub); }
+  header .grow { flex: 1; }
+  button {
+    font: inherit; font-size: 12px; border-radius: 7px; padding: 5px 12px;
+    border: 1px solid #d2d2d6; background: #fff; color: var(--ink); cursor: pointer;
+  }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+
+  main { flex: 1; padding: 0 24px 20px; }
+  .section { margin-top: 14px; }
+  .section:first-child { margin-top: 0; }
+  .section > .head {
+    display: flex; align-items: baseline; gap: 8px; padding: 0 2px 7px;
+    font-size: 11px; font-weight: 700; letter-spacing: .06em; color: var(--faint);
+  }
+  .section > .head .hint { font-weight: 400; letter-spacing: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+
+  .row { display: flex; align-items: center; gap: 12px; padding: 11px 14px; min-height: 56px; }
+  .row + .row { border-top: 1px solid var(--sep); }
+  .row .logo { width: 28px; height: 28px; border-radius: 7px; object-fit: contain; background: #f3f3f5; }
+  .row .id { min-width: 124px; white-space: nowrap; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+  .row .state { flex: 1; font-size: 12px; color: var(--sub); }
+  .row .state b { color: var(--ink); font-weight: 600; }
+  .row .tail { display: flex; align-items: center; gap: 8px; }
+  .tag {
+    font-size: 10.5px; font-weight: 500; padding: 2px 7px; border-radius: 5px;
+    background: #f1f1f3; color: var(--sub);
+  }
+  .pill { font-size: 11.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+  .pill .dot2 { width: 8px; height: 8px; border-radius: 50%; background: var(--good); }
+  .pill.missing { color: var(--warn); }
+  .pill.missing .dot2 { background: var(--warn); }
+</style>
+</head>
+<body>
+  <div class="window">
+    <div class="chrome">
+      <span class="dot r"></span><span class="dot y"></span><span class="dot g"></span>
+      <span class="name">设置</span>
+    </div>
+
+    <header>
+      <div>
+        <h1>AI Agent 用量组件</h1>
+        <div class="lede">已连接 4/6 个提供商</div>
+      </div>
+      <div class="grow"></div>
+      <button>测试全部</button>
+      <button class="primary">立即刷新</button>
+    </header>
+
+    <main>
+      <div class="section">
+        <div class="head">本地客户端 <span class="hint">从本机官方客户端读取</span></div>
+        <div class="card">
+          <div class="row">
+            <img class="logo" src="../design/assets/claude-app.png" alt="Claude">
+            <div class="id">Claude</div>
+            <div class="state">正常 · 5H <b>47%</b> · 周 <b>91%</b></div>
+            <div class="tail">
+              <span class="pill"><span class="dot2"></span>已连接</span>
+              <button>打开客户端</button>
+            </div>
+          </div>
+          <div class="row">
+            <img class="logo" src="../design/assets/codex-app.png" alt="Codex">
+            <div class="id">Codex</div>
+            <div class="state">正常 · 5H <b>4%</b></div>
+            <div class="tail">
+              <span class="pill"><span class="dot2"></span>已连接</span>
+              <button>关闭主动探测</button>
+            </div>
+          </div>
+          <div class="row">
+            <img class="logo" src="../design/assets/kimi-code.png" alt="Kimi Code">
+            <div class="id">Kimi Code</div>
+            <div class="state">未登录</div>
+            <div class="tail">
+              <span class="pill missing"><span class="dot2"></span>未配置</span>
+              <button>打开客户端</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="head">API 余额 <span class="hint">密钥保存在 macOS 钥匙串</span></div>
+        <div class="card">
+          <div class="row">
+            <img class="logo" src="../design/assets/deepseek.png" alt="DeepSeek">
+            <div class="id">DeepSeek</div>
+            <div class="state"><b>¥45.83</b> · 约 12 天</div>
+            <div class="tail">
+              <span class="pill"><span class="dot2"></span>已连接</span>
+              <button>更换密钥</button><button>测试</button><button>移除</button>
+            </div>
+          </div>
+          <div class="row">
+            <img class="logo" src="../design/assets/siliconflow.png" alt="SiliconFlow">
+            <div class="id">SiliconFlow <span class="tag">控制台登录</span></div>
+            <div class="state">未配置</div>
+            <div class="tail">
+              <span class="pill missing"><span class="dot2"></span>未配置</span>
+              <button>登录控制台</button>
+            </div>
+          </div>
+          <div class="row">
+            <img class="logo" src="../design/assets/openrouter.png" alt="OpenRouter">
+            <div class="id">OpenRouter</div>
+            <div class="state"><b>$75.42</b> · 约 4 天</div>
+            <div class="tail">
+              <span class="pill"><span class="dot2"></span>已连接</span>
+              <button>更换密钥</button><button>测试</button><button>移除</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="head">Touch Bar <span class="hint">装到这台 Mac 的 Touch Bar 上</span></div>
+        <div class="card">
+          <div class="row">
+            <div class="logo" style="display:flex;align-items:center;justify-content:center;background:#111;color:#fff;font-weight:800;font-size:13px">T</div>
+            <div class="id">Touch Bar 组件</div>
+            <div class="state">已安装 · 运行中</div>
+            <div class="tail">
+              <span class="pill"><span class="dot2"></span>已连接</span>
+              <button class="primary">安装 / 更新</button><button>打开</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

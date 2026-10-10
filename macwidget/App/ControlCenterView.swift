@@ -3,264 +3,82 @@ import WebKit
 
 // Providers: Claude, Codex, Kimi Code, DeepSeek, SiliconFlow, OpenRouter
 
-// MARK: - Navigation
-
-enum ControlPage: String, CaseIterable, Identifiable {
-    case accounts
-    case refresh
-    case touchBar
-    case diagnostics
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .accounts: return "Accounts"
-        case .refresh: return "Refresh"
-        case .touchBar: return "Touch Bar"
-        case .diagnostics: return "Diagnostics"
-        }
-    }
-
-    var icon: String {
-        switch self {
-        case .accounts: return "person.2"
-        case .refresh: return "arrow.clockwise"
-        case .touchBar: return "display"
-        case .diagnostics: return "stethoscope"
-        }
-    }
-}
-
-// MARK: - Main View
+// MARK: - 设置窗口
 
 struct ControlCenterView: View {
-    @State private var selectedPage: ControlPage = .accounts
     @ObservedObject var accountViewModel: AccountSettingsViewModel
     let displayStore: DisplayLayerStore
-    let usageStore: UsageStore
     let refreshNow: () -> Void
     let displayActions: DisplayLayerActions
 
-    var body: some View {
-        HStack(spacing: 0) {
-            ControlSidebar(
-                selectedPage: $selectedPage,
-                usageStore: usageStore,
-                accountViewModel: accountViewModel
-            )
-            .frame(width: 220)
-
-            Divider()
-
-            contentView
-                .frame(minWidth: 560)
-        }
-        .frame(minWidth: 780, minHeight: 480)
-    }
-
-    @ViewBuilder
-    private var contentView: some View {
-        switch selectedPage {
-        case .accounts:
-            AccountsPage(viewModel: accountViewModel, refreshNow: refreshNow)
-        case .refresh:
-            RefreshPage(refreshNow: refreshNow)
-        case .touchBar:
-            TouchBarPage(displayStore: displayStore, actions: displayActions)
-        case .diagnostics:
-            DiagnosticsPage(usageStore: usageStore, displayStore: displayStore)
-        }
-    }
-}
-
-// MARK: - Sidebar
-
-struct ControlSidebar: View {
-    @Binding var selectedPage: ControlPage
-    let usageStore: UsageStore
-    @ObservedObject var accountViewModel: AccountSettingsViewModel
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("QuotaWidget")
-                    .font(.system(size: 16, weight: .bold))
-                Text("AI Agent Usage control center")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.top, 20)
-            .padding(.bottom, 16)
-
-            VStack(spacing: 2) {
-                ForEach(ControlPage.allCases) { page in
-                    SidebarButton(
-                        page: page,
-                        isSelected: selectedPage == page,
-                        action: { selectedPage = page }
-                    )
-                }
-            }
-            .padding(.horizontal, 8)
-
-            Spacer()
-
-            SidebarStatus(
-                usageStore: usageStore,
-                accountViewModel: accountViewModel
-            )
-            .padding(12)
-        }
-        .background(Color(nsColor: .controlBackgroundColor))
-    }
-}
-
-struct SidebarButton: View {
-    let page: ControlPage
-    let isSelected: Bool
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            HStack(spacing: 8) {
-                Image(systemName: page.icon)
-                    .frame(width: 18, height: 18)
-                Text(page.title)
-                    .font(.system(size: 13))
-                Spacer()
-            }
-            .padding(.horizontal, 10)
-            .frame(height: 32)
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-        .background(isSelected ? Color.white.opacity(0.86) : Color.clear)
-        .cornerRadius(7)
-        .overlay(
-            RoundedRectangle(cornerRadius: 7)
-                .stroke(isSelected ? Color.black.opacity(0.06) : Color.clear, lineWidth: 1)
-        )
-        .fontWeight(isSelected ? .semibold : .regular)
-    }
-}
-
-struct SidebarStatus: View {
-    let usageStore: UsageStore
-    @ObservedObject var accountViewModel: AccountSettingsViewModel
-
-    var body: some View {
-        let configuredCount = accountViewModel.model.rows.filter(\.configured).count
-
-        VStack(spacing: 7) {
-            StatusLine(label: "Shared state", value: "Manual")
-            StatusLine(label: "Last refresh", value: "—")
-            StatusLine(label: "Configured", value: "\(configuredCount) / 6")
-        }
-        .font(.system(size: 12))
-        .foregroundStyle(.secondary)
-        .padding(10)
-        .background(Color.white.opacity(0.62))
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.black.opacity(0.06), lineWidth: 1)
-        )
-    }
-}
-
-struct StatusLine: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack {
-            Text(label)
-            Spacer()
-            Text(value)
-                .fontWeight(.medium)
-        }
-    }
-}
-
-extension UsageStoreStatus.Reason: CustomStringConvertible {
-    var description: String {
-        switch self {
-        case .ok: return "OK"
-        case .missingContainer: return "Missing container"
-        case .missingUsageFile: return "Missing usage file"
-        }
-    }
-}
-
-// MARK: - Accounts Page
-
-struct AccountsPage: View {
-    @ObservedObject var viewModel: AccountSettingsViewModel
-    let refreshNow: () -> Void
     @State private var showingSiliconFlowConsoleLogin = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            AccountsToolbar(refreshNow: refreshNow, onTest: { viewModel.testProviders() }, isTesting: viewModel.isTesting)
+            SettingsHeader(
+                model: accountViewModel.model,
+                isTesting: accountViewModel.isTesting,
+                refreshNow: refreshNow,
+                onTest: { accountViewModel.testProviders() }
+            )
 
             Divider()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    SummaryMetrics(model: viewModel.model)
-
-                    ProviderSection(title: "Local Agents", subtitle: "Read from local authenticated tools") {
-                        ForEach(viewModel.model.rows.filter { $0.kind == .localAgent }) { row in
+                    ProviderSection(title: "本地客户端", subtitle: "从本机官方客户端读取") {
+                        ForEach(accountViewModel.model.rows.filter { $0.kind == .localAgent }) { row in
                             ProviderRow(
                                 row: row,
-                                onToggleProbe: row.id == .codex ? { viewModel.toggleCodexProbe() } : nil,
-                                onLoginHelp: row.id != .codex ? { viewModel.openLoginHelp(for: row.id) } : nil
+                                onToggleProbe: row.id == .codex ? { accountViewModel.toggleCodexProbe() } : nil,
+                                onLoginHelp: row.id != .codex ? { accountViewModel.openLoginHelp(for: row.id) } : nil
                             )
                         }
                     }
 
-                    ProviderSection(title: "API Balance", subtitle: "Keys stay in macOS Keychain") {
-                        ForEach(viewModel.model.rows.filter { $0.kind == .apiKey }) { row in
+                    ProviderSection(title: "API 余额", subtitle: "密钥保存在 macOS 钥匙串") {
+                        ForEach(accountViewModel.model.rows.filter { $0.kind == .apiKey }) { row in
                             if row.id == .siliconflow {
                                 SiliconFlowProviderRow(
                                     row: row,
-                                    consoleConfigured: viewModel.model.siliconFlowConsoleConfigured,
+                                    consoleConfigured: accountViewModel.model.siliconFlowConsoleConfigured,
                                     onConnectConsole: { showingSiliconFlowConsoleLogin = true },
-                                    onDisconnectConsole: { viewModel.deleteSiliconFlowConsoleSession() }
+                                    onDisconnectConsole: { accountViewModel.deleteSiliconFlowConsoleSession() }
                                 )
                             } else {
                                 ProviderRow(
                                     row: row,
-                                    onAddKey: row.id.apiKeyID.map { id in { viewModel.beginEdit(id) } },
-                                    onRemoveKey: row.id.apiKeyID.map { id in { viewModel.deleteKey(id) } },
-                                    onTest: { viewModel.testProviders() }
+                                    onAddKey: row.id.apiKeyID.map { id in { accountViewModel.beginEdit(id) } },
+                                    onRemoveKey: row.id.apiKeyID.map { id in { accountViewModel.deleteKey(id) } },
+                                    onTest: { accountViewModel.testProviders() }
                                 )
                             }
                         }
 
-                        if let editingProvider = viewModel.editingProvider {
+                        if let editingProvider = accountViewModel.editingProvider {
                             APIKeyInlineEditor(
                                 provider: editingProvider,
-                                keyInput: $viewModel.keyInput,
-                                errorText: viewModel.saveErrorText,
-                                onSave: { viewModel.saveKey() },
-                                onCancel: {
-                                    viewModel.cancelEdit()
-                                }
+                                keyInput: $accountViewModel.keyInput,
+                                errorText: accountViewModel.saveErrorText,
+                                onSave: { accountViewModel.saveKey() },
+                                onCancel: { accountViewModel.cancelEdit() }
                             )
-                            .padding(.top, 8)
+                            .padding(12)
                         }
+                    }
+
+                    ProviderSection(title: "Touch Bar", subtitle: "装到这台 Mac 的 Touch Bar 上") {
+                        TouchBarRow(displayStore: displayStore, actions: displayActions)
                     }
                 }
                 .padding(20)
             }
         }
+        .frame(minWidth: 860, minHeight: 560)
         .sheet(isPresented: $showingSiliconFlowConsoleLogin) {
             SiliconFlowConsoleLoginSheet(
                 onSave: { session in
-                    if viewModel.saveSiliconFlowConsoleSession(
+                    if accountViewModel.saveSiliconFlowConsoleSession(
                         cookieHeader: session.cookieHeader,
                         subjectID: session.subjectID
                     ) {
@@ -272,25 +90,26 @@ struct AccountsPage: View {
             )
         }
         .onAppear {
-            viewModel.reload()
+            accountViewModel.reload()
         }
         .onReceive(NotificationCenter.default.publisher(for: .quotaWidgetUsagePayloadDidRefresh)) { _ in
-            viewModel.reload()
+            accountViewModel.reload()
         }
     }
 }
 
-struct AccountsToolbar: View {
+struct SettingsHeader: View {
+    let model: AccountSettingsModel
+    let isTesting: Bool
     let refreshNow: () -> Void
     let onTest: () -> Void
-    let isTesting: Bool
 
     var body: some View {
-        HStack {
+        HStack(alignment: .center) {
             VStack(alignment: .leading, spacing: 3) {
-                Text("Accounts")
+                Text("AI Agent 用量组件")
                     .font(.title2.bold())
-                Text("Configure local agents and API-balance providers from one place.")
+                Text(summaryText)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -298,9 +117,9 @@ struct AccountsToolbar: View {
             Spacer()
 
             HStack(spacing: 8) {
-                Button("↻ Test Providers", action: onTest)
+                Button("测试全部", action: onTest)
                     .disabled(isTesting)
-                Button("Refresh Now", action: refreshNow)
+                Button("立即刷新", action: refreshNow)
                     .buttonStyle(.borderedProminent)
             }
         }
@@ -308,84 +127,190 @@ struct AccountsToolbar: View {
         .padding(.vertical, 16)
         .frame(height: 78)
     }
-}
 
-struct SummaryMetrics: View {
-    let model: AccountSettingsModel
-
-    var body: some View {
-        HStack(spacing: 10) {
-            MetricCard(
-                label: "Local agents",
-                value: localAgentsText,
-                note: localAgentsNote
-            )
-            MetricCard(
-                label: "API balance",
-                value: apiBalanceText,
-                note: apiBalanceNote
-            )
-            MetricCard(
-                label: "Shared state",
-                value: sharedStateText,
-                note: sharedStateNote
-            )
-        }
-    }
-
-    private var localAgentsText: String {
-        let ready = model.rows.filter { $0.kind == .localAgent && $0.configured }.count
-        return "\(ready) ready"
-    }
-
-    private var localAgentsNote: String {
-        let names = model.rows.filter { $0.kind == .localAgent && $0.configured }.map(\.name)
-        return names.isEmpty ? "None configured" : names.joined(separator: ", ")
-    }
-
-    private var apiBalanceText: String {
-        let active = model.rows.filter { $0.kind == .apiKey && $0.configured }.count
-        return "\(active) active"
-    }
-
-    private var apiBalanceNote: String {
-        let missing = model.rows.filter { $0.kind == .apiKey && !$0.configured }.map(\.name)
-        return missing.isEmpty ? "All keys configured" : "\(missing.joined(separator: ", ")) key missing"
-    }
-
-    private var sharedStateText: String {
-        model.payload != nil ? "Live" : "Unavailable"
-    }
-
-    private var sharedStateNote: String {
-        model.payload != nil ? "App Group usage.json available" : "No data available"
+    private var summaryText: String {
+        let connected = model.rows.filter(\.configured).count
+        return "已连接 \(connected)/\(model.rows.count) 个提供商"
     }
 }
 
-struct MetricCard: View {
-    let label: String
-    let value: String
-    let note: String
+struct ProviderRow: View {
+    let row: AccountRowState
+    var onAddKey: (() -> Void)?
+    var onRemoveKey: (() -> Void)?
+    var onTest: (() -> Void)?
+    var onToggleProbe: (() -> Void)?
+    var onLoginHelp: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Text(label)
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            Text(value)
-                .font(.system(size: 20, weight: .bold))
-            Text(note)
-                .font(.system(size: 11))
-                .foregroundStyle(.tertiary)
+        HStack(spacing: 12) {
+            ProviderLogo(id: row.id)
+                .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 5) {
+                HStack(spacing: 8) {
+                    Text(row.name)
+                        .font(.system(size: 14, weight: .bold))
+                    if let detailText = row.detailText {
+                        Tag(text: detailText)
+                    }
+                }
+                Text(row.balanceSummary ?? row.statusText)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            ProviderStatus(configured: row.configured)
+
+            HStack(spacing: 8) {
+                actionButtons
+            }
         }
-        .padding(12)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .cornerRadius(8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .frame(minHeight: 68)
+        .background(Color.white)
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.black.opacity(0.06), lineWidth: 1)
+            Rectangle()
+                .frame(height: 1)
+                .foregroundColor(Color.black.opacity(0.04)),
+            alignment: .bottom
         )
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        switch row.id.kind {
+        case .localAgent:
+            if row.id == .codex {
+                Button(row.configured ? "关闭主动探测" : "开启主动探测") {
+                    onToggleProbe?()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            } else {
+                Button("打开客户端") {
+                    onLoginHelp?()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+        case .apiKey:
+            if row.configured {
+                Button("更换密钥") { onAddKey?() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                Button("测试") { onTest?() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                Button("移除") { onRemoveKey?() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            } else {
+                Button("添加密钥") { onAddKey?() }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+                Button("测试") { onTest?() }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+            }
+        }
+    }
+}
+
+struct TouchBarRow: View {
+    let displayStore: DisplayLayerStore
+    let actions: DisplayLayerActions
+
+    @State private var status = DisplayLayerStatus.checking
+    @State private var busy = false
+    @State private var resultText: String?
+
+    var body: some View {
+        HStack(spacing: 12) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(Color.black)
+                Text("T")
+                    .font(.system(size: 13, weight: .heavy))
+                    .foregroundColor(.white)
+            }
+            .frame(width: 30, height: 30)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Touch Bar 组件")
+                    .font(.system(size: 14, weight: .bold))
+                Text(statusText)
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+
+            Spacer()
+
+            if let resultText {
+                Text(resultText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+
+            ProviderStatus(configured: status.installed)
+
+            HStack(spacing: 8) {
+                Button("安装 / 更新") {
+                    run("Touch Bar 组件已更新", actions.installTouchBar)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+
+                Button("打开") {
+                    run("已打开 Touch Bar 组件", actions.openTouchBar)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+            }
+            .disabled(busy)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .frame(minHeight: 68)
+        .background(Color.white)
+        .onAppear(perform: refreshStatus)
+    }
+
+    private var statusText: String {
+        guard status.installed else { return "未安装" }
+        return status.running ? "已安装 · 运行中" : "已安装"
+    }
+
+    private func run(_ success: String, _ action: @escaping @Sendable () throws -> Void) {
+        busy = true
+        DispatchQueue.global(qos: .userInitiated).async {
+            let result: String
+            do {
+                try action()
+                result = success
+            } catch {
+                result = error.localizedDescription
+            }
+            DispatchQueue.main.async {
+                resultText = result
+                busy = false
+                refreshStatus()
+            }
+        }
+    }
+
+    private func refreshStatus() {
+        let store = displayStore
+        DispatchQueue.global(qos: .userInitiated).async {
+            let updated = store.touchBarStatus()
+            DispatchQueue.main.async {
+                status = updated
+            }
+        }
     }
 }
 
@@ -415,90 +340,6 @@ struct ProviderSection<Content: View>: View {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(Color.black.opacity(0.06), lineWidth: 1)
             )
-        }
-    }
-}
-
-struct ProviderRow: View {
-    let row: AccountRowState
-    var onAddKey: (() -> Void)?
-    var onRemoveKey: (() -> Void)?
-    var onTest: (() -> Void)?
-    var onToggleProbe: (() -> Void)?
-    var onLoginHelp: (() -> Void)?
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ProviderLogo(id: row.id)
-                .frame(width: 30, height: 30)
-
-            VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 8) {
-                    Text(row.name)
-                        .font(.system(size: 14, weight: .bold))
-                    if let detailText = row.detailText {
-                        Tag(text: detailText)
-                    }
-                }
-                Text(row.statusText)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-            }
-
-            Spacer()
-
-            HStack(spacing: 8) {
-                if let balanceSummary = row.balanceSummary {
-                    Text(balanceSummary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                ProviderStatus(configured: row.configured)
-
-                rowActionButton
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
-        .frame(minHeight: 68)
-        .background(Color.white)
-        .overlay(
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(Color.black.opacity(0.04)),
-            alignment: .bottom
-        )
-    }
-
-    @ViewBuilder
-    private var rowActionButton: some View {
-        switch row.id.kind {
-        case .localAgent:
-            if row.id == .codex {
-                Button(row.configured ? "Settings" : "Enable Probe") {
-                    onToggleProbe?()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            } else {
-                Button("Open") {
-                    onLoginHelp?()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
-        case .apiKey:
-            if row.configured {
-                Button("Edit") { onAddKey?() }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-            } else {
-                Button("Add Key") { onAddKey?() }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-            }
         }
     }
 }
@@ -561,7 +402,7 @@ struct ProviderStatus: View {
             Circle()
                 .fill(configured ? Color.green : Color.orange)
                 .frame(width: 8, height: 8)
-            Text(configured ? "Active" : "Missing")
+            Text(configured ? "已连接" : "未配置")
                 .font(.system(size: 12, weight: .semibold))
         }
     }
@@ -577,10 +418,10 @@ struct APIKeyInlineEditor: View {
     var body: some View {
         HStack(spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("\(provider.name) API Key")
+                Text("\(provider.name) API 密钥")
                     .font(.caption)
                     .foregroundStyle(.secondary)
-                SecureField("API Key", text: $keyInput)
+                SecureField("API 密钥", text: $keyInput)
                     .textFieldStyle(.roundedBorder)
             }
 
@@ -592,8 +433,8 @@ struct APIKeyInlineEditor: View {
 
             Spacer()
 
-            Button("Cancel", action: onCancel)
-            Button("Save") {
+            Button("取消", action: onCancel)
+            Button("保存") {
                 _ = onSave()
             }
             .buttonStyle(.borderedProminent)
@@ -631,7 +472,7 @@ struct SiliconFlowProviderRow: View {
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                 HStack(spacing: 6) {
-                    SourceOptionBadge(title: "Console", active: consoleConfigured, preferred: true)
+                    SourceOptionBadge(title: "控制台登录", active: consoleConfigured, preferred: true)
                 }
             }
 
@@ -647,17 +488,17 @@ struct SiliconFlowProviderRow: View {
 
             HStack(spacing: 8) {
                 if consoleConfigured {
-                    Button("Reconnect", action: onConnectConsole)
+                    Button("重新登录", action: onConnectConsole)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 } else {
-                    Button("Connect Console", action: onConnectConsole)
+                    Button("登录控制台", action: onConnectConsole)
                         .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                 }
 
                 if consoleConfigured {
-                    Button("Disconnect", action: onDisconnectConsole)
+                    Button("退出登录", action: onDisconnectConsole)
                         .buttonStyle(.bordered)
                         .controlSize(.small)
                 }
@@ -676,7 +517,7 @@ struct SiliconFlowProviderRow: View {
     }
 
     private var sourceLabel: String {
-        "Console"
+        "控制台登录"
     }
 }
 
@@ -690,7 +531,7 @@ struct SourceOptionBadge: View {
             Circle()
                 .fill(active ? Color.green : Color.secondary.opacity(0.35))
                 .frame(width: 6, height: 6)
-            Text(preferred ? "\(title) · selected" : title)
+            Text(preferred ? "\(title) · 已选用" : title)
                 .font(.system(size: 10.5, weight: preferred ? .semibold : .regular))
         }
         .padding(.horizontal, 7)
@@ -714,21 +555,21 @@ struct SiliconFlowConsoleLoginSheet: View {
     let onSave: (SiliconFlowConsoleSessionSnapshot) -> Void
     let onCancel: () -> Void
     @StateObject private var holder = SiliconFlowWebViewHolder()
-    @State private var statusText = "Log in to SiliconFlow, then save the current session."
+    @State private var statusText = "登录 SiliconFlow 后保存当前会话。"
 
     var body: some View {
         VStack(spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("SiliconFlow Console")
+                    Text("SiliconFlow 控制台")
                         .font(.headline)
                     Text(statusText)
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Cancel", action: onCancel)
-                Button("Save Session") {
+                Button("取消", action: onCancel)
+                Button("保存会话") {
                     saveCurrentSession()
                 }
                 .buttonStyle(.borderedProminent)
@@ -824,11 +665,11 @@ struct SiliconFlowConsoleLoginSheet: View {
             let header = HTTPCookie.requestHeaderFields(with: siliconFlowCookies)["Cookie"] ?? ""
             DispatchQueue.main.async {
                 if header.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                    statusText = "No SiliconFlow session found yet."
+                    statusText = "尚未找到 SiliconFlow 会话。"
                 } else if !StoredSiliconFlowConsoleSession.isValidSubjectID(
                     subjectID.trimmingCharacters(in: .whitespacesAndNewlines)
                 ) {
-                    statusText = "No SiliconFlow account id found yet."
+                    statusText = "尚未找到 SiliconFlow 账号 ID。"
                 } else {
                     onSave(SiliconFlowConsoleSessionSnapshot(
                         cookieHeader: header,
@@ -923,315 +764,28 @@ struct SiliconFlowConsoleWebView: NSViewRepresentable {
 
 // MARK: - Refresh Page
 
-struct RefreshPage: View {
-    let refreshNow: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Refresh")
-                        .font(.title2.bold())
-                    Text("Pull fresh usage data for all providers.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            .frame(height: 78)
-
-            Divider()
-
-            VStack(alignment: .leading, spacing: 16) {
-                Text("All display layers read from the shared usage state.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-
-                Button("Refresh Now", action: refreshNow)
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.large)
-            }
-            .padding(24)
-
-            Spacer()
-        }
-    }
-}
-
-// MARK: - Touch Bar Page
-
 struct DisplayLayerActions {
     let installTouchBar: @Sendable () throws -> Void
     let openTouchBar: @Sendable () throws -> Void
 }
 
-struct TouchBarPage: View {
-    let displayStore: DisplayLayerStore
-    let actions: DisplayLayerActions
-    @State private var resultText: String?
-    @State private var busy = false
-    @State private var status: DisplayLayerStatus
-
-    init(displayStore: DisplayLayerStore, actions: DisplayLayerActions) {
-        self.displayStore = displayStore
-        self.actions = actions
-        _status = State(initialValue: Self.currentStatus(from: displayStore))
-    }
-
-    private static func currentStatus(from store: DisplayLayerStore) -> DisplayLayerStatus {
-        store.touchBarStatus()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Touch Bar")
-                        .font(.title2.bold())
-                    Text("The Touch Bar frontend installed from this app.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            .frame(height: 78)
-
-            Divider()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    DisplayCard(
-                        title: "Touch Bar / Bar",
-                        description: "Small always-on display for the current provider and balance state.",
-                        status: status,
-                        actions: {
-                            HStack(spacing: 8) {
-                                Button("Install / Update") { run("Touch Bar app updated", actions.installTouchBar) }
-                                    .disabled(busy)
-                                    .buttonStyle(.borderedProminent)
-                                Button("Open App") { run("Touch Bar app opened", actions.openTouchBar) }
-                                    .disabled(busy)
-                            }
-                        }
-                    )
-
-                    if let resultText {
-                        Text(resultText)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                .padding(24)
-            }
-        }
-        .onAppear(perform: refreshStatus)
-    }
-
-    private func run(_ success: String, _ action: @escaping @Sendable () throws -> Void) {
-        busy = true
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result: String
-            do {
-                try action()
-                result = success
-            } catch {
-                result = error.localizedDescription
-            }
-            DispatchQueue.main.async {
-                resultText = result
-                busy = false
-                refreshStatus()
-            }
-        }
-    }
-
-    private func refreshStatus() {
-        let store = displayStore
-        DispatchQueue.global(qos: .userInitiated).async {
-            let updated = store.touchBarStatus()
-            DispatchQueue.main.async {
-                status = updated
-            }
-        }
-    }
-}
-
-struct DisplayCard<Actions: View>: View {
-    let title: String
-    let description: String
-    let status: DisplayLayerStatus
-    let actions: Actions
-
-    init(
-        title: String,
-        description: String,
-        status: DisplayLayerStatus,
-        @ViewBuilder actions: () -> Actions
-    ) {
-        self.title = title
-        self.description = description
-        self.status = status
-        self.actions = actions()
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(title)
-                    .font(.system(size: 13, weight: .bold))
-                Spacer()
-                StatusPill(installed: status.installed)
-            }
-
-            Text(description)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .lineLimit(3)
-
-            HStack(spacing: 8) {
-                actions
-            }
-            .padding(.top, 4)
-
-            Spacer()
-        }
-        .padding(14)
-        .frame(maxWidth: .infinity, minHeight: 140, alignment: .topLeading)
-        .background(Color.white)
-        .cornerRadius(8)
-        .overlay(
-            RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.black.opacity(0.06), lineWidth: 1)
-        )
-    }
-}
-
-struct StatusPill: View {
-    let installed: Bool
-
-    var body: some View {
-        Text(installed ? "Installed" : "Not Installed")
-            .font(.system(size: 11, weight: .semibold))
-            .padding(.horizontal, 8)
-            .padding(.vertical, 2)
-            .background(Color(nsColor: .controlBackgroundColor))
-            .foregroundStyle(installed ? .green : .orange)
-            .cornerRadius(999)
-            .overlay(
-                RoundedRectangle(cornerRadius: 999)
-                    .stroke(Color.black.opacity(0.08), lineWidth: 1)
-            )
-    }
-}
-
-// MARK: - Diagnostics Page
-
-struct DiagnosticsPage: View {
-    let usageStore: UsageStore
-    let displayStore: DisplayLayerStore
-    @State private var touchBarStatus = DisplayLayerStatus.checking
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack {
-                VStack(alignment: .leading, spacing: 3) {
-                    Text("Diagnostics")
-                        .font(.title2.bold())
-                    Text("Inspect shared state and Touch Bar frontend health.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                Spacer()
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 16)
-            .frame(height: 78)
-
-            Divider()
-
-            ScrollView {
-                VStack(alignment: .leading, spacing: 18) {
-                    let status = usageStore.status()
-
-                    VStack(alignment: .leading, spacing: 0) {
-                        DiagnosticRow(label: "Shared usage state", value: status.available ? "Available" : "\(status.reason)")
-                        DiagnosticRow(label: "Touch Bar frontend", value: touchBarStatus.detail)
-                    }
-                    .background(Color.white)
-                    .cornerRadius(8)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 8)
-                            .stroke(Color.black.opacity(0.06), lineWidth: 1)
-                    )
-
-                    Text("If the Touch Bar app appears blank, reinstall it from the Touch Bar page.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .padding(24)
-            }
-        }
-        .task {
-            DispatchQueue.global(qos: .userInitiated).async {
-                let updated = displayStore.touchBarStatus()
-                DispatchQueue.main.async {
-                    touchBarStatus = updated
-                }
-            }
-        }
-    }
-}
-
-struct DiagnosticRow: View {
-    let label: String
-    let value: String
-
-    var body: some View {
-        HStack {
-            Text(label)
-                .font(.system(size: 13))
-            Spacer()
-            Text(value)
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .overlay(
-            Rectangle()
-                .frame(height: 1)
-                .foregroundColor(Color.black.opacity(0.04)),
-            alignment: .bottom
-        )
-    }
-}
-
-#Preview("Control Center") {
+#Preview("设置") {
     let viewModel = AccountSettingsViewModel(
         apiKeyStore: APIKeyStore(backend: InMemoryCredentialBackend()),
         configStore: AppConfigStore(
             baseDirectory: FileManager.default.temporaryDirectory
                 .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        ),
-        usageStore: UsageStore(containerURLProvider: {
-            FileManager.default.temporaryDirectory
-                .appendingPathComponent(UUID().uuidString, isDirectory: true)
-        })
+        )
     )
     let displayStore = DisplayLayerStore()
     return ControlCenterView(
         accountViewModel: viewModel,
         displayStore: displayStore,
-        usageStore: UsageStore(),
         refreshNow: {},
         displayActions: DisplayLayerActions(
             installTouchBar: {},
             openTouchBar: {}
         )
     )
-    .frame(width: 920, height: 620)
+    .frame(width: 900, height: 620)
 }

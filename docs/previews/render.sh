@@ -16,3 +16,4 @@ render() { # <html> <w> <h> <out>
 }
 
 render touchbar.html 660  96 preview-touchbar.png
+render settings.html 1040 700 preview-settings.png

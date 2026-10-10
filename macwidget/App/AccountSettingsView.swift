@@ -187,14 +187,7 @@ struct AccountSettingsModel: Equatable {
     }
 
     private func detailText(for id: AccountProviderID) -> String? {
-        switch id.kind {
-        case .localAgent: return "Local Agent"
-        case .apiKey:
-            if id == .siliconflow {
-                return "Console Session"
-            }
-            return "API Key"
-        }
+        id == .siliconflow ? "控制台登录" : nil
     }
 
     private func balanceSummary(

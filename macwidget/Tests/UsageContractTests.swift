@@ -763,32 +763,29 @@ final class UsageContractTests: XCTestCase {
         XCTAssertThrowsError(try SiliconFlowConsoleSessionProvider.parseProfileData(data))
     }
 
-    func testControlCenterHasTwoColumnLayoutWithNavigation() throws {
+    func testControlCenterIsSinglePageWithoutSidebar() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
 
-        XCTAssertFalse(source.contains("TabView"), "should use sidebar layout instead of TabView")
-        XCTAssertTrue(
-            source.contains("ControlSidebar") || source.contains("ControlPage") || source.contains("sidebar"),
-            "should have sidebar/navigation structure"
-        )
-        XCTAssertTrue(source.contains("Accounts"))
-        XCTAssertTrue(source.contains("Refresh"))
-        XCTAssertTrue(source.contains("Touch Bar"))
-        XCTAssertTrue(source.contains("Diagnostics"))
+        XCTAssertFalse(source.contains("TabView"), "should stay a plain SwiftUI settings window")
+        XCTAssertFalse(source.contains("ControlSidebar"), "the sidebar was replaced by a single page")
+        XCTAssertFalse(source.contains("ControlPage"), "navigation pages were removed")
+        XCTAssertFalse(source.contains("DiagnosticsPage"), "diagnostics were removed from the settings window")
+        XCTAssertTrue(source.contains("SettingsHeader"), "the header carries the global actions")
+        XCTAssertTrue(source.contains("立即刷新"))
+        XCTAssertTrue(source.contains("测试全部"))
     }
 
-    func testControlCenterContainsGroupLabelsAndProviders() throws {
+    func testControlCenterShowsBothGroupsAndAllProviders() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
+        let model = try sourceFile("App/AccountSettingsView.swift")
 
-        XCTAssertTrue(source.contains("Local Agents"), "should show Local Agents group")
-        XCTAssertTrue(source.contains("API Balance"), "should show API Balance group")
+        XCTAssertTrue(source.contains("本地客户端"), "should show the local-agent group")
+        XCTAssertTrue(source.contains("API 余额"), "should show the API-balance group")
+        XCTAssertTrue(source.contains("Touch Bar"), "should show the Touch Bar row")
 
-        XCTAssertTrue(source.contains("Claude"), "should show Claude provider")
-        XCTAssertTrue(source.contains("Codex"), "should show Codex provider")
-        XCTAssertTrue(source.contains("Kimi Code"), "should show Kimi Code provider")
-        XCTAssertTrue(source.contains("DeepSeek"), "should show DeepSeek provider")
-        XCTAssertTrue(source.contains("SiliconFlow"), "should show SiliconFlow provider")
-        XCTAssertTrue(source.contains("OpenRouter"), "should show OpenRouter provider")
+        for name in ["Claude", "Codex", "Kimi Code", "DeepSeek", "SiliconFlow", "OpenRouter"] {
+            XCTAssertTrue(model.contains("\"\(name)\""), "provider list is missing \(name)")
+        }
     }
 
     func testSiliconFlowConfigurationIsOneCombinedRow() throws {
@@ -800,6 +797,8 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("SiliconFlowProviderRow"), "SiliconFlow should have one console-selected row")
         XCTAssertFalse(rowSource.contains("onEditAPIKey"), "SiliconFlow should not expose an API key action")
         XCTAssertFalse(rowSource.contains("API Key"), "SiliconFlow should not advertise API-key mode")
+        XCTAssertFalse(rowSource.contains("API 密钥"), "SiliconFlow should not advertise API-key mode")
+        XCTAssertTrue(rowSource.contains("控制台登录"), "SiliconFlow row should name the console session source")
         XCTAssertFalse(source.contains("SiliconFlowConsoleSessionRow"), "Console session should not render as a separate provider row")
         XCTAssertFalse(source.contains("SiliconFlow Console Balance"), "Console balance should be an option inside SiliconFlow, not a separate provider")
         XCTAssertTrue(source.contains("subjectId"), "Console session save should capture the SiliconFlow subject id")
@@ -815,25 +814,25 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("performance.getEntriesByType"))
     }
 
-    func testTouchBarPanelExposesDisplayLayerActions() throws {
+    func testTouchBarRowExposesDisplayLayerActions() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
 
         XCTAssertTrue(source.contains("DisplayLayerActions"))
-        XCTAssertTrue(source.contains("Install / Update"))
-        XCTAssertTrue(source.contains("Open App"))
+        XCTAssertTrue(source.contains("安装 / 更新"))
+        XCTAssertTrue(source.contains("Button(\"打开\")"))
         XCTAssertFalse(source.contains("Open Folder"))
         XCTAssertFalse(source.contains("Refresh Timelines"))
         XCTAssertFalse(source.contains("Open Widget Gallery"))
     }
 
-    func testTouchBarPanelDoesNotSynchronouslyQueryStatusInBody() throws {
+    func testTouchBarRowDoesNotSynchronouslyQueryStatusInBody() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
-        let pageStart = source.range(of: "struct TouchBarPage: View")!.lowerBound
-        let displayCardStart = source.range(of: "struct DisplayCard")!.lowerBound
-        let pageSource = String(source[pageStart..<displayCardStart])
+        let rowStart = source.range(of: "struct TouchBarRow: View")!.lowerBound
+        let nextStruct = source.range(of: "struct ProviderSection")!.lowerBound
+        let rowSource = String(source[rowStart..<nextStruct])
 
-        XCTAssertFalse(pageSource.contains("displayStore.touchBarStatus()"))
-        XCTAssertTrue(pageSource.contains("@State private var status"))
+        XCTAssertFalse(rowSource.contains("displayStore.touchBarStatus()"))
+        XCTAssertTrue(rowSource.contains("@State private var status"))
     }
 
     func testAppBundlesTouchBarInstallSource() throws {
