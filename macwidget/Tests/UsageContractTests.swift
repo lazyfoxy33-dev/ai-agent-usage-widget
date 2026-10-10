@@ -835,6 +835,15 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(rowSource.contains("@State private var status"))
     }
 
+    func testProviderLogosShipWithTheApp() {
+        for id in AccountProviderID.allCases {
+            XCTAssertNotNil(
+                ProviderLogo.image(for: id),
+                "missing bundled brand icon for \(id.rawValue)"
+            )
+        }
+    }
+
     func testAppBundlesTouchBarInstallSource() throws {
         let project = try sourceFile("QuotaWidget.xcodeproj/project.pbxproj")
         let projectYAML = try sourceFile("project.yml")
