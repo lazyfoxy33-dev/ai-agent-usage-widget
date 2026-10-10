@@ -185,9 +185,9 @@ cd ai-agent-usage-widget/touchbar
 bash install.sh
 ```
 
-小格显示用量最高的窗口，点一下展开整条详情。**显示哪些 provider、按什么顺序**可在
-设置里配置（六个都可选：Claude / Codex / Kimi 显示额度，DeepSeek / SiliconFlow /
-OpenRouter 显示余额），改动一分钟内生效。详见 [touchbar/README.md](touchbar/README.md)。
+点一下展开整条详情，**展开后显示哪些 provider、按什么顺序**可在设置里配置（六个都可选：
+Claude / Codex / Kimi 显示额度，DeepSeek / SiliconFlow / OpenRouter 显示余额），改动一分钟内生效；
+收起那一小格不受该设置影响，始终跟随前台的 coding 工具。详见 [touchbar/README.md](touchbar/README.md)。
 The tray cell shows the most-used window; tap to expand the full readout. **Which
 providers appear and in what order** is configurable in settings (all six are
 selectable: Claude / Codex / Kimi render quota gauges, DeepSeek / SiliconFlow /
