@@ -5,7 +5,7 @@ cd "$(dirname "$0")"
 
 ./build.sh
 
-BUILD_APP="$PWD/QuotaBar.app"
+BUILD_APP="${QUOTABAR_BUILD_DIR:-$PWD}/QuotaBar.app"
 INSTALL_APP="${QUOTABAR_INSTALL_DESTINATION:-$HOME/Applications/QuotaBar.app}"
 PLIST="$HOME/Library/LaunchAgents/com.quotabar.app.plist"
 LABEL="com.quotabar.app"

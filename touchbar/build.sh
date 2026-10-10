@@ -4,7 +4,12 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
-APP="QuotaBar.app"
+# Build next to the sources by default (convenient in a checkout). When called
+# from QuotaWidget.app the caller points QUOTABAR_BUILD_DIR elsewhere, so nothing
+# is written inside the signed bundle — that would break its code signature.
+BUILD_ROOT="${QUOTABAR_BUILD_DIR:-$(pwd)}"
+[[ -d "$BUILD_ROOT" ]] || mkdir -p "$BUILD_ROOT"
+APP="$BUILD_ROOT/QuotaBar.app"
 BIN="$APP/Contents/MacOS/QuotaBar"
 RES="$APP/Contents/Resources"
 

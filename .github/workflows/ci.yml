@@ -94,11 +94,14 @@ jobs:
           (
             cd "$SANDBOX/Resources/display-layers/touchbar"
             HOME="$SANDBOX" PATH="$SANDBOX/stubs:$PATH" \
+              QUOTABAR_BUILD_DIR="$SANDBOX/build" \
               QUOTABAR_INSTALL_DESTINATION="$SANDBOX/out/QuotaBar.app" bash install.sh
           )
           test -x "$SANDBOX/out/QuotaBar.app/Contents/MacOS/QuotaBar"
           test -f "$SANDBOX/out/QuotaBar.app/Contents/Resources/core/fetch_usage.py"
           test -f "$SANDBOX/Library/LaunchAgents/com.quotabar.app.plist"
+          # Building inside the bundle would invalidate QuotaWidget.app's signature.
+          test ! -e "$SANDBOX/Resources/display-layers/touchbar/QuotaBar.app"
       - name: Build and test
         working-directory: macwidget
         run: |

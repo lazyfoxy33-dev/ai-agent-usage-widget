@@ -108,7 +108,10 @@ struct DisplayLayerStore: Sendable {
             arguments: ["install.sh"],
             workingDirectory: installer.deletingLastPathComponent(),
             environment: [
-                "QUOTABAR_INSTALL_DESTINATION": touchBarInstallDestination.path
+                "QUOTABAR_INSTALL_DESTINATION": touchBarInstallDestination.path,
+                // Never build inside QuotaWidget.app: writing there invalidates
+                // the app's code signature.
+                "QUOTABAR_BUILD_DIR": Self.buildDirectory().path
             ]
         )
     }
@@ -122,6 +125,13 @@ struct DisplayLayerStore: Sendable {
             throw DisplayLayerStoreError.openFailed(touchBarInstallDestination)
         }
         guard openURL(app) else { throw DisplayLayerStoreError.openFailed(app) }
+    }
+
+    /// Scratch space for building the Touch Bar app outside the signed bundle.
+    static func buildDirectory() -> URL {
+        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return base.appendingPathComponent("dev.lazyfoxy.QuotaWidget/touchbar-build", isDirectory: true)
     }
 
     private static func defaultProcessList() -> [String] {
