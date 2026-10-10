@@ -148,5 +148,24 @@ expect(
     "an unknown tag has no window"
 )
 
+// MARK: strip widths (TouchBarMetrics)
+
+print("TouchBarMetrics")
+
+expect(TouchBarMetrics.cellWidth(for: 3) == 170, "three providers keep the original 170pt card")
+expect(TouchBarMetrics.cellWidth(for: 1) == 170, "a single provider is not stretched beyond the card")
+expect(
+    TouchBarMetrics.cellWidth(for: 6) >= TouchBarMetrics.minCellWidth,
+    "six providers stay above the legible minimum"
+)
+expect(
+    (4...6).allSatisfy { TouchBarMetrics.totalWidth(for: $0) <= TouchBarMetrics.barWidth },
+    "every supported selection fits inside the strip"
+)
+expect(
+    TouchBarMetrics.cellWidth(for: 5) < TouchBarMetrics.cellWidth(for: 4),
+    "more providers means narrower cells"
+)
+
 print(failures == 0 ? "all layout tests passed" : "\(failures) layout test(s) failed")
 exit(failures == 0 ? 0 : 1)

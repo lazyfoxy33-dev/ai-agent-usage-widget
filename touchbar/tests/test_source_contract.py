@@ -47,6 +47,16 @@ class TestTouchBarFreshnessSource(unittest.TestCase):
         self.assertIn("provider.isBalance", controller)
         self.assertIn("feedBalance(", controller)
 
+    def test_strip_narrows_cells_so_nothing_is_dropped(self):
+        controller = _read("Sources", "TouchBarController.swift")
+        gauge = _read("Sources", "ProviderGauge.swift")
+        metrics = _read("Sources", "TouchBarMetrics.swift")
+
+        self.assertIn("TouchBarMetrics.cellWidth(for: layout.count)", controller)
+        self.assertIn("rebuildGauges()", controller, "a bar must get fresh gauges")
+        self.assertIn("func setWidth(", gauge)
+        self.assertIn("TouchBarMetrics", metrics)
+
     def test_gauge_has_an_explicit_visible_width(self):
         # The single oversized text field was replaced by fixed-width gauges, so
         # the modal's total length stays bounded.

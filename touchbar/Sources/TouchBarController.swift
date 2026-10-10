@@ -66,6 +66,20 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         return created
     }
 
+    /// Fresh views for the current selection: an NSCustomTouchBarItem takes
+    /// ownership of its view, so a gauge must not be reused by a later bar.
+    private func rebuildGauges() {
+        gauges.removeAll()
+        let width = TouchBarMetrics.cellWidth(for: layout.count)
+        for provider in layout {
+            gauge(for: provider).setWidth(width)
+        }
+        NSLog(
+            "QuotaBar: strip shows %d cell(s) at %.0fpt (total %.0fpt of %.0fpt)",
+            layout.count, width, TouchBarMetrics.totalWidth(for: layout.count), TouchBarMetrics.barWidth
+        )
+    }
+
     /// Per-provider brand palette, matching the menu bar app (5h = accent,
     /// weekly = softer tint). C=Claude, X=Codex, K=Kimi, D=DeepSeek,
     /// S=SiliconFlow, O=OpenRouter.
@@ -153,6 +167,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     }
 
     private func presentModal() {
+        rebuildGauges()
         let bar = NSTouchBar()
         bar.delegate = self
         var identifiers: [NSTouchBarItem.Identifier] = [closeID, .fixedSpaceLarge]
@@ -189,8 +204,13 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
             it.view = resetField
             return it
         default:
-            guard let provider = provider(for: id) else { return nil }
-            return gaugeItem(id, gauge(for: provider))
+            guard let provider = provider(for: id) else {
+                NSLog("QuotaBar: no provider for item %@", id.rawValue)
+                return nil
+            }
+            let item = gaugeItem(id, gauge(for: provider))
+            NSLog("QuotaBar: built item %@", id.rawValue)
+            return item
         }
     }
 
@@ -211,7 +231,6 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
             DispatchQueue.main.async {
                 if freshLayout != self.layout {
                     self.layout = freshLayout
-                    self.gauges = self.gauges.filter { freshLayout.contains($0.key) }
                     // Items are cached per NSTouchBar, so rebuild the modal when the
                     // selection or order changed.
                     if self.modalVisible {

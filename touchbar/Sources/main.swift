@@ -7,6 +7,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 }
 
+// Debug: `QuotaBar --layout` prints what the strip would show, then exits.
+if CommandLine.arguments.contains("--layout") {
+    let providers = TouchBarLayout.load()
+    let width = TouchBarMetrics.cellWidth(for: providers.count)
+    print("config: \(TouchBarLayout.configURL().path)")
+    print("providers: \(providers.map { "\($0.rawValue)(\($0.tag))" }.joined(separator: " "))")
+    print("cells: \(providers.count) × \(Int(width))pt + chrome \(Int(TouchBarMetrics.chromeWidth))pt "
+          + "= \(Int(TouchBarMetrics.totalWidth(for: providers.count)))pt of \(Int(TouchBarMetrics.barWidth))pt")
+    exit(0)
+}
+
 // Debug: `QuotaBar --once` fetches via the shared core layer, prints, and exits.
 if CommandLine.arguments.contains("--once") {
     func line(_ name: String, _ p: Provider) {
