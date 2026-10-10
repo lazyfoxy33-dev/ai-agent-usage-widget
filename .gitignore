@@ -42,3 +42,7 @@ usage.json
 *.usage.json
 
 usage-widget/dist/
+
+# DeepSeek Harness credentials (never part of this repo)
+.credentials.yaml
+.dsh/
