@@ -88,5 +88,65 @@ expect(
     "honours the shared config override"
 )
 
+// MARK: collapsed cell (TrayGlance)
+
+print("TrayGlance")
+
+func candidate(_ tag: String, _ fiveH: Double?, _ weekly: Double? = nil, stale: Bool = false) -> TrayGlance.Candidate {
+    func window(_ pct: Double?) -> TrayGlance.Window? {
+        guard let pct else { return nil }
+        return TrayGlance.Window(usedPct: pct, stale: stale)
+    }
+    return TrayGlance.Candidate(tag: tag, fiveH: window(fiveH), weekly: window(weekly))
+}
+
+let claude = candidate("C", 30)
+let codex = candidate("X", 80)
+let kimi = candidate("K", 95)
+
+expect(
+    TrayGlance.pick(candidates: [claude, codex, kimi], foreground: "C", lastUsed: "K")
+        == TrayGlance.Pick(tag: "C", usedPct: 30, stale: false),
+    "the frontmost coding tool wins even when another provider is more drained"
+)
+expect(
+    TrayGlance.pick(candidates: [claude, codex, kimi], foreground: nil, lastUsed: "X")
+        == TrayGlance.Pick(tag: "X", usedPct: 80, stale: false),
+    "without a frontmost tool the most recently used one is used"
+)
+expect(
+    TrayGlance.pick(candidates: [candidate("C", nil), codex, kimi], foreground: "C", lastUsed: nil)
+        == TrayGlance.Pick(tag: "K", usedPct: 95, stale: false),
+    "a frontmost tool without data falls back to the most-drained one"
+)
+expect(
+    TrayGlance.pick(candidates: [claude], foreground: nil, lastUsed: nil)
+        == TrayGlance.Pick(tag: "C", usedPct: 30, stale: false),
+    "with no frontmost context the only provider is shown"
+)
+expect(
+    TrayGlance.pick(candidates: [], foreground: "C", lastUsed: "C") == nil,
+    "no candidates yields no cell content"
+)
+expect(
+    TrayGlance.mostDrained([candidate("C", 95, stale: true), candidate("X", 80)])
+        == TrayGlance.Pick(tag: "X", usedPct: 80, stale: false),
+    "a fresh figure beats a staler, higher one"
+)
+expect(
+    TrayGlance.pick(candidates: [candidate("K", 100, nil, stale: true)], foreground: "K", lastUsed: nil)
+        == TrayGlance.Pick(tag: "K", usedPct: 100, stale: true),
+    "stale data is still shown, flagged as stale"
+)
+expect(
+    TrayGlance.tightest(in: [candidate("C", 10, 70)], tag: "C")
+        == TrayGlance.Pick(tag: "C", usedPct: 70, stale: false),
+    "the more-drained window of a provider is used"
+)
+expect(
+    TrayGlance.tightest(in: [candidate("C", 10)], tag: "X") == nil,
+    "an unknown tag has no window"
+)
+
 print(failures == 0 ? "all layout tests passed" : "\(failures) layout test(s) failed")
 exit(failures == 0 ? 0 : 1)

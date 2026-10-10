@@ -56,6 +56,26 @@ class TestTouchBarFreshnessSource(unittest.TestCase):
 
 
 class TestTouchBarForegroundGlance(unittest.TestCase):
+    def test_collapsed_cell_ignores_the_touch_bar_selection(self):
+        # The collapsed cell answers "what is the coding tool in front doing", so
+        # it scans every quota provider and delegates to the pure glance logic
+        # rather than to the selected layout.
+        controller = _read("Sources", "TouchBarController.swift")
+        glance = _read("Sources", "TrayGlance.swift")
+
+        self.assertIn("trayCandidates()", controller)
+        self.assertIn("TouchBarProvider.allCases.compactMap", controller)
+        self.assertIn("TrayGlance.pick(", controller)
+        self.assertNotIn("layout.first", controller, "the tray must not fall back to the selection")
+        self.assertIn("static func pick(candidates:", glance)
+
+    def test_expanded_bar_uses_the_selected_order(self):
+        controller = _read("Sources", "TouchBarController.swift")
+
+        self.assertIn("for (index, provider) in layout.enumerated()", controller)
+        self.assertIn("for provider in layout {", controller, "gauges are fed from the selection")
+        self.assertIn("selectedWindows()", controller, "the reset countdown follows the selection")
+
     def test_collapsed_cell_follows_frontmost_ai_app(self):
         source = _read("Sources", "TouchBarController.swift")
 

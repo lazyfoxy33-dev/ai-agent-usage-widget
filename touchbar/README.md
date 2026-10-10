@@ -39,8 +39,11 @@ provider 按列表顺序排列，用行内 ▲▼ 调整顺序。六个 provider
 DeepSeek / SiliconFlow / OpenRouter 显示余额金额与估算可用天数。默认是 `Claude, Codex, Kimi`。
 
 设置写入共享配置 `~/.config/ai-agent-usage-widget/config.json` 的 `touchbar_providers`，QuotaBar 每
-60 秒刷新时重读一次，因此**改完一分钟内生效，无需重启**。收起那一小格仍沿用原逻辑（跟随前台 AI 应用 →
-最近用过 → 用量最高），只是全部限定在所选集合内；若只选了余额 provider，则显示列表第一个的金额。
+60 秒刷新时重读一次，因此**改完一分钟内生效，无需重启**。
+
+收起那一小格**不受这个选择影响**：它始终回答「我面前这个 coding 工具现在怎么样」——优先显示**前台**的
+Claude / Codex / Kimi，没有前台 AI 应用时显示最近用过的，再退到用量最高的那个。设置只决定**展开后**显示
+谁、按什么顺序。
 
 Which providers appear, and in what order, is configured in **QuotaWidget.app → 设置… →
 Touch Bar 显示**: selected providers are listed in display order and reordered with the
@@ -50,10 +53,12 @@ days-left trend. The default is `Claude, Codex, Kimi`.
 
 The choice is stored as `touchbar_providers` in the shared
 `~/.config/ai-agent-usage-widget/config.json`; QuotaBar re-reads it on its 60-second
-refresh, so **changes apply within a minute without a restart**. The collapsed tray cell
-keeps its existing rule (frontmost AI app → most recently used → most drained) restricted
-to the selection, and falls back to the first selected provider's amount when only
-balance providers are selected.
+refresh, so **changes apply within a minute without a restart**.
+
+The collapsed tray cell is **not affected by the selection**: it always answers "what is
+the coding tool in front of me doing" — preferring the frontmost Claude / Codex / Kimi,
+then the most recently used one, then the most-drained window. The setting only decides
+what the **expanded** bar shows, and in which order.
 
 ## 数据来源 / Data
 

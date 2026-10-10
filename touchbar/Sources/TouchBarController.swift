@@ -1,14 +1,14 @@
 import AppKit
 
 /// Touch Bar presence:
-///   * a small persistent tray cell that glances the AI app you're using —
+///   * a small persistent tray cell that glances the coding tool you're using —
 ///     it follows the frontmost Claude / Codex / Kimi app (else the most recent),
-///     and falls back to the most-drained window when none has data; with balance
-///     providers selected it shows the first one's amount instead;
-///   * a full-width modal bar with one compact gauge per selected provider,
-///     presented on tap.
-/// Which providers appear, and in which order, comes from the shared config
-/// (`touchbar_providers`, written by the menu bar app) and is re-read on every
+///     then the most-drained window. This cell ignores the Touch Bar selection:
+///     it always answers "what is the tool in front of me doing";
+///   * a full-width modal bar with one compact gauge per **selected** provider,
+///     in the configured order, presented on tap.
+/// The selection and its order come from the shared config
+/// (`touchbar_providers`, written by the menu bar app) and are re-read on every
 /// refresh. Percentages are **used %**, matching the menu bar app. Data comes
 /// from the shared `core/fetch_usage.py` via `UsageSource`.
 final class TouchBarController: NSObject, NSTouchBarDelegate {
@@ -228,8 +228,8 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
 
     // MARK: Rendering — tray (collapsed)
 
-    /// (tag, window) for every live window across the selected quota providers.
-    private func liveWindows() -> [(String, Window)] {
+    /// (tag, window) for live quota windows of the given providers.
+    private func windows(of providers: [TouchBarProvider]) -> [(String, Window)] {
         var out: [(String, Window)] = []
         func add(_ tag: String, _ p: Provider) {
             guard p.ok else { return }
@@ -242,73 +242,50 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
                 out.append((tag, w))
             }
         }
-        for provider in layout where !provider.isBalance {
+        for provider in providers where !provider.isBalance {
             add(provider.tag, usage.provider(for: provider))
         }
         return out
     }
 
-    private enum TrayPick {
-        case quota(tag: String, window: Window)
-        case balance(provider: TouchBarProvider, text: String, dimmed: Bool)
+    /// The collapsed cell follows the coding tool in front, so it looks at every
+    /// quota provider rather than at the Touch Bar selection.
+    private func trayCandidates() -> [TrayGlance.Candidate] {
+        TouchBarProvider.allCases.compactMap { provider in
+            guard !provider.isBalance else { return nil }
+            let p = usage.provider(for: provider)
+            guard p.ok else { return nil }
+            func glance(_ window: Window?) -> TrayGlance.Window? {
+                guard let window else { return nil }
+                return TrayGlance.Window(usedPct: window.usedPct, stale: window.stale || p.live == false)
+            }
+            return TrayGlance.Candidate(tag: provider.tag, fiveH: glance(p.fiveH), weekly: glance(p.weekly))
+        }
+    }
+
+    /// The expanded bar shows the selected providers, so its reset countdown only
+    /// considers those.
+    private func selectedWindows() -> [(String, Window)] {
+        windows(of: layout)
     }
 
     private func renderTray() {
         let s = NSMutableAttributedString()
-        switch trayPick() {
-        case .quota(let tag, let window):
-            let pct = Int(window.usedPct.rounded())
-            let color = window.stale ? dim : accent(tag)
-            s.append(seg(tag, trayFont, color))
-            s.append(seg(String(pct), trayFont, color))
-        case .balance(let provider, let text, let dimmed):
-            let color = dimmed ? dim : accent(provider.tag)
-            s.append(seg(provider.tag, trayFont, color))
-            s.append(seg(text, trayFont, color))
+        switch TrayGlance.pick(
+            candidates: trayCandidates(),
+            foreground: foregroundTag,
+            lastUsed: lastUsedTag
+        ) {
+        case let pick?:
+            let color = pick.stale ? dim : accent(pick.tag)
+            s.append(seg(pick.tag, trayFont, color))
+            s.append(seg(String(Int(pick.usedPct.rounded())), trayFont, color))
         case nil:
             s.append(seg("··", trayFont, dim))
         }
         trayButton.attributedTitle = s
         let width = ceil(s.size().width) + 16
         trayButton.frame = NSRect(x: 0, y: 0, width: max(width, 40), height: 30)
-    }
-
-    /// Prefers the AI app you're using (foreground, else most-recent), then the
-    /// most-drained window, and finally the first selected provider — so a
-    /// balance-only selection still shows an amount.
-    private func trayPick() -> TrayPick? {
-        let quotaTags = Set(layout.filter { !$0.isBalance }.map(\.tag))
-        if let tag = foregroundTag ?? lastUsedTag,
-           quotaTags.contains(tag),
-           let window = tightest(forTag: tag) {
-            return .quota(tag: tag, window: window)
-        }
-        if let (tag, window) = tightestOverall() {
-            return .quota(tag: tag, window: window)
-        }
-        guard let provider = layout.first else { return nil }
-        if provider.isBalance {
-            let (text, dimmed) = balanceText(provider)
-            return .balance(provider: provider, text: text, dimmed: dimmed)
-        }
-        if let window = tightest(forTag: provider.tag) {
-            return .quota(tag: provider.tag, window: window)
-        }
-        return nil
-    }
-
-    /// Most-drained live window for one provider. Prefers non-stale figures.
-    private func tightest(forTag tag: String) -> Window? {
-        let wins = liveWindows().filter { $0.0 == tag }
-        return (wins.filter { !$0.1.stale }.max(by: { $0.1.usedPct < $1.1.usedPct })
-             ?? wins.max(by: { $0.1.usedPct < $1.1.usedPct }))?.1
-    }
-
-    /// Most-drained live window across the selected quota providers.
-    private func tightestOverall() -> (String, Window)? {
-        let wins = liveWindows()
-        return wins.filter { !$0.1.stale }.max(by: { $0.1.usedPct < $1.1.usedPct })
-            ?? wins.max(by: { $0.1.usedPct < $1.1.usedPct })
     }
 
     // MARK: Rendering — detail (modal, full width)
@@ -360,7 +337,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
 
     private func soonestReset() -> Date? {
         let now = Date()
-        return liveWindows().compactMap { $0.1.resetsAt }.filter { $0 > now }.min()
+        return selectedWindows().compactMap { $0.1.resetsAt }.filter { $0 > now }.min()
     }
 
     // MARK: Helpers
@@ -400,16 +377,6 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         if let days = p.burnRate?.estimatedDaysLeft, days > 0 { return "≈\(days)天" }
         if p.reason == "stale" || p.live == false { return "缓存" }
         return ""
-    }
-
-    /// Tray text for a balance provider (amount, or a dash when unavailable).
-    private func balanceText(_ provider: TouchBarProvider) -> (String, Bool) {
-        let p = usage.provider(for: provider)
-        guard p.ok, let balance = p.balance, balance.available else {
-            return ("—", true)
-        }
-        let dimmed = p.reason == "stale" || p.live == false
-        return (amountText(balance), dimmed)
     }
 
     private func countdown(_ date: Date) -> String {

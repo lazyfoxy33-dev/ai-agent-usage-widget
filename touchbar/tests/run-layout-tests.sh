@@ -11,5 +11,7 @@ trap 'rm -rf "$OUT"' EXIT
 
 # Top-level statements must live in main.swift when several files are compiled.
 cp tests/layout_test.swift "$OUT/main.swift"
-swiftc -O -o "$OUT/layout-tests" Sources/TouchBarLayout.swift "$OUT/main.swift"
+swiftc -O -o "$OUT/layout-tests" \
+    Sources/TouchBarLayout.swift Sources/TrayGlance.swift \
+    "$OUT/main.swift"
 "$OUT/layout-tests"
