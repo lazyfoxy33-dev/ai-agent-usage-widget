@@ -44,6 +44,20 @@ struct UsageFetcher {
         return env
     }
 
+    /// Credentials the Keychain does not have are filled in from `dsh`'s config,
+    /// so a provider configured there works without pasting the key again.
+    static func mergingExternalCredentials(
+        keychain: [APIKeyProviderID: String],
+        external: [APIKeyProviderID: String] = DSHCredentials.load()
+    ) -> [APIKeyProviderID: String] {
+        var merged = external
+        for (provider, key) in keychain
+        where !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            merged[provider] = key
+        }
+        return merged
+    }
+
     static func providerStatus(from json: String, providerKey: String) -> UsageProvider? {
         guard let data = json.data(using: .utf8),
               let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any],

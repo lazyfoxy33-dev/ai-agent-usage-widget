@@ -303,16 +303,35 @@ browser cookies.
 
 ### DeepSeek / SiliconFlow / OpenRouter
 
-API 余额面板通过环境变量或 QuotaWidget 的 **Settings...** 读取 API key：
+API 余额面板按下面的顺序取凭据：QuotaWidget 自己的钥匙串 → **DeepSeek Harness（dsh）
+配置**（见下）→ 环境变量：
 
-API balance panels read API keys from environment variables or from QuotaWidget’s
-**Settings...**:
+API balance panels resolve credentials in this order: QuotaWidget's own Keychain →
+the **DeepSeek Harness (`dsh`) config** (below) → environment variables:
 
 ```bash
 export DEEPSEEK_API_KEY="..."
 export SILICONFLOW_API_KEY="..."
 export OPENROUTER_API_KEY="..."
 ```
+
+**OpenRouter 不需要粘贴密钥**：在设置里点 **登录 OpenRouter**，走官方
+[Sign in with OpenRouter](https://openrouter.ai/docs/guides/overview/auth/oauth)
+OAuth PKCE 授权（无需注册 client id/secret），授权完成后密钥自动存入钥匙串。
+
+**OpenRouter needs no pasted key:** click **登录 OpenRouter** in settings and authorize
+with the official OAuth PKCE flow; the API key is stored in the Keychain afterwards.
+
+**复用 dsh 的配置**：若本机装了 dsh 且已在其中配置过 `DEEPSEEK_API_KEY` /
+`OPENROUTER_API_KEY`，QuotaWidget 会只读复用
+`~/.dsh/.credentials.yaml` 里的同一个值（设置页对应行会标注 `dsh`），无需再次粘贴。
+钥匙串里的密钥始终优先；dsh 的值不会被复制进 QuotaWidget 的存储，也不会写入日志。
+
+**Reusing `dsh` credentials:** when dsh already configured `DEEPSEEK_API_KEY` /
+`OPENROUTER_API_KEY`, QuotaWidget reads the same value from
+`~/.dsh/.credentials.yaml` (the row is tagged `dsh`), so nothing has to be pasted
+twice. A Keychain entry always wins, and the dsh value is never copied into our
+storage or written to logs.
 
 macOS 用户在 QuotaWidget 账户设置里添加的 key 会存入 macOS Keychain。缺少 key
 时对应面板会显示“未配置 API 密钥”。组件不会把 key 写入缓存或命令行参数。余额
@@ -341,6 +360,10 @@ Balance trend history stores only timestamp, amount, and currency at
   不写入仓库、缓存或日志。
 - QuotaWidget stores DeepSeek / SiliconFlow / OpenRouter API keys in the macOS
   Keychain; they are never written to the repository, cache, or logs.
+- 启用 dsh 复用时，只以**只读**方式读取 `~/.dsh/.credentials.yaml`，其中的值不会被复制进
+  QuotaWidget 的存储，也不会写入日志或命令行参数。
+- When dsh reuse is active, `~/.dsh/.credentials.yaml` is only read; its values are
+  never copied into QuotaWidget storage, logged, or passed on a command line.
 - 菜单栏 app 与 Touch Bar 前端只交换已脱敏的 JSON 契约，永远不接触原始 key。
 - The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
   contract and never see raw keys.

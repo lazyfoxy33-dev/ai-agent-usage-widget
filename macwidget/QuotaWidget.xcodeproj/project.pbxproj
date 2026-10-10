@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		05FAA991A1472BF40CDE5650 /* UsageContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB8541A0C552866932C346F /* UsageContractTests.swift */; };
 		161768EE7688BF587E93623E /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */; };
+		185FE98FA44A4B90F2EE8EC3 /* OpenRouterAuth.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA7A77F08C60E470A287BD31 /* OpenRouterAuth.swift */; };
 		3493D48D5AA911364F7FE25D /* deepseek.png in Resources */ = {isa = PBXBuildFile; fileRef = 2C4361B6E33929E4DD88D669 /* deepseek.png */; };
 		3549281D77E6F25189060489 /* codex-app.png in Resources */ = {isa = PBXBuildFile; fileRef = B9398C118DB4E4C01EAD2901 /* codex-app.png */; };
 		3F742887A1A253E730AFB4F1 /* openrouter.png in Resources */ = {isa = PBXBuildFile; fileRef = EBFB217753FA4BEDF084D65D /* openrouter.png */; };
@@ -16,10 +17,12 @@
 		572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4396386870ACF13B0387F84A /* UsageFetcher.swift */; };
 		58617DC6A19B5F6175E33C1B /* ControlCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 238080F2F39302EA1E45C5DF /* ControlCenterView.swift */; };
 		5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */; };
+		61E8A6DF49FA82433A5822BF /* DSHCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = A43230D6E1D3182C7B1A0A4A /* DSHCredentials.swift */; };
 		74CD11898B71BE0D3AE73420 /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */; };
 		996E6998CA9340194DA5D802 /* AppConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */; };
 		9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10993021F1557349A9B061FA /* UsageStoreTests.swift */; };
 		A96F9CD44F0A5026F37907A6 /* DisplayLayerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B596EF3A6AEF338EC8FE839 /* DisplayLayerStore.swift */; };
+		C6DB4BA69495106AAE73446E /* AuthAndCredentialsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4AF10191CE92902693285D9 /* AuthAndCredentialsTests.swift */; };
 		D38192171F7B63332CC3F2E0 /* APIKeyStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */; };
 		D8111F1E8B4097396AA5D67C /* kimi-code.png in Resources */ = {isa = PBXBuildFile; fileRef = 44223C7F5519A35B5B26725B /* kimi-code.png */; };
 		DF42FE2AF1438A232B506A84 /* DisplayLayerStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B67C688DE1CE31949858A8F /* DisplayLayerStoreTests.swift */; };
@@ -57,8 +60,11 @@
 		9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStore.swift; sourceTree = "<group>"; };
 		9B050D347C435EF158B6A827 /* claude-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "claude-app.png"; sourceTree = "<group>"; };
 		9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStore.swift; sourceTree = "<group>"; };
+		A43230D6E1D3182C7B1A0A4A /* DSHCredentials.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DSHCredentials.swift; sourceTree = "<group>"; };
 		B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuotaWidgetApp.entitlements; sourceTree = "<group>"; };
 		B9398C118DB4E4C01EAD2901 /* codex-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "codex-app.png"; sourceTree = "<group>"; };
+		C4AF10191CE92902693285D9 /* AuthAndCredentialsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthAndCredentialsTests.swift; sourceTree = "<group>"; };
+		CA7A77F08C60E470A287BD31 /* OpenRouterAuth.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenRouterAuth.swift; sourceTree = "<group>"; };
 		E928D1CB72EE1ED85B404C9C /* QuotaWidgetApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigStore.swift; sourceTree = "<group>"; };
 		EBFB217753FA4BEDF084D65D /* openrouter.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = openrouter.png; sourceTree = "<group>"; };
@@ -73,7 +79,9 @@
 				EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */,
 				238080F2F39302EA1E45C5DF /* ControlCenterView.swift */,
 				5B596EF3A6AEF338EC8FE839 /* DisplayLayerStore.swift */,
+				A43230D6E1D3182C7B1A0A4A /* DSHCredentials.swift */,
 				84083F78F49E30915AB023A6 /* Info.plist */,
+				CA7A77F08C60E470A287BD31 /* OpenRouterAuth.swift */,
 				B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */,
 				229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */,
 				4396386870ACF13B0387F84A /* UsageFetcher.swift */,
@@ -127,6 +135,7 @@
 			isa = PBXGroup;
 			children = (
 				4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */,
+				C4AF10191CE92902693285D9 /* AuthAndCredentialsTests.swift */,
 				1B67C688DE1CE31949858A8F /* DisplayLayerStoreTests.swift */,
 				7FB8541A0C552866932C346F /* UsageContractTests.swift */,
 				10993021F1557349A9B061FA /* UsageStoreTests.swift */,
@@ -278,7 +287,9 @@
 				FA82E2D50AF1100A3871F9A1 /* AccountSettingsView.swift in Sources */,
 				996E6998CA9340194DA5D802 /* AppConfigStore.swift in Sources */,
 				58617DC6A19B5F6175E33C1B /* ControlCenterView.swift in Sources */,
+				61E8A6DF49FA82433A5822BF /* DSHCredentials.swift in Sources */,
 				A96F9CD44F0A5026F37907A6 /* DisplayLayerStore.swift in Sources */,
+				185FE98FA44A4B90F2EE8EC3 /* OpenRouterAuth.swift in Sources */,
 				5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */,
 				E1A9D102642B838CEC5E0AC2 /* UsageContract.swift in Sources */,
 				572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */,
@@ -291,6 +302,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				D38192171F7B63332CC3F2E0 /* APIKeyStoreTests.swift in Sources */,
+				C6DB4BA69495106AAE73446E /* AuthAndCredentialsTests.swift in Sources */,
 				DF42FE2AF1438A232B506A84 /* DisplayLayerStoreTests.swift in Sources */,
 				05FAA991A1472BF40CDE5650 /* UsageContractTests.swift in Sources */,
 				9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */,
