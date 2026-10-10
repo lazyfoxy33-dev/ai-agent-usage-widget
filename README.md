@@ -141,7 +141,7 @@ curl --version
 
 #### Account settings / 账户设置（macOS app）
 
-在菜单栏点击 QuotaWidget，选择 **Settings...** 打开设置窗口（单页、中文）：
+在菜单栏点击 QuotaWidget，选择 **设置…** 打开设置窗口（单页、中文）：
 
 - **本地客户端**：Claude、Codex、Kimi Code 从本机官方客户端读取；未登录时点该行的
   **打开客户端**（Codex 则用 **开启主动探测**）。
@@ -152,7 +152,7 @@ curl --version
 - 共享数据层仍支持读取对应 `*_API_KEY` 环境变量，但 app 内的设置为推荐路径。
 - 菜单栏 app 与 Touch Bar 前端只交换脱敏后的 JSON 契约，从不接触原始 key。
 
-In the menu bar, click QuotaWidget and choose **Settings...** for a single-page,
+In the menu bar, click QuotaWidget and choose **设置…** for a single-page,
 Chinese settings window:
 
 - **Local agents**: Claude, Codex, and Kimi Code are read from the official

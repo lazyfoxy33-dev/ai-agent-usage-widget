@@ -814,6 +814,19 @@ final class UsageContractTests: XCTestCase {
         XCTAssertTrue(source.contains("performance.getEntriesByType"))
     }
 
+    func testSettingsViewFollowsTheSystemAppearance() throws {
+        let source = try sourceFile("App/ControlCenterView.swift")
+
+        XCTAssertFalse(
+            source.contains("Color.white"),
+            "card backgrounds must not be hardcoded white; dark mode would hide the text"
+        )
+        XCTAssertFalse(
+            source.contains("Color.black"),
+            "borders and separators must use semantic colours"
+        )
+    }
+
     func testTouchBarRowExposesDisplayLayerActions() throws {
         let source = try sourceFile("App/ControlCenterView.swift")
 
@@ -860,7 +873,8 @@ final class UsageContractTests: XCTestCase {
         let source = try sourceFile("App/QuotaWidgetApp.swift")
 
         XCTAssertTrue(source.contains("ControlCenterView"))
-        XCTAssertTrue(source.contains("Settings..."))
+        XCTAssertTrue(source.contains("设置…"), "the menu item is localised")
+        XCTAssertFalse(source.contains("Settings..."), "the English label was replaced")
         XCTAssertTrue(source.contains("SettingsPresenter"))
         XCTAssertFalse(source.contains(".floating"))
         XCTAssertTrue(source.contains(".canJoinAllSpaces"))
