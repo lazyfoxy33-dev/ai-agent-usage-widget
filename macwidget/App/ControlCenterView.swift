@@ -471,9 +471,6 @@ struct SiliconFlowProviderRow: View {
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
-                HStack(spacing: 6) {
-                    SourceOptionBadge(title: "控制台登录", active: consoleConfigured, preferred: true)
-                }
             }
 
             Spacer()
@@ -518,27 +515,6 @@ struct SiliconFlowProviderRow: View {
 
     private var sourceLabel: String {
         "控制台登录"
-    }
-}
-
-struct SourceOptionBadge: View {
-    let title: String
-    let active: Bool
-    let preferred: Bool
-
-    var body: some View {
-        HStack(spacing: 4) {
-            Circle()
-                .fill(active ? Color.green : Color.secondary.opacity(0.35))
-                .frame(width: 6, height: 6)
-            Text(preferred ? "\(title) · 已选用" : title)
-                .font(.system(size: 10.5, weight: preferred ? .semibold : .regular))
-        }
-        .padding(.horizontal, 7)
-        .padding(.vertical, 3)
-        .background(preferred ? Color.blue.opacity(0.09) : Color(nsColor: .controlBackgroundColor))
-        .foregroundStyle(active ? .primary : .secondary)
-        .cornerRadius(999)
     }
 }
 
