@@ -189,11 +189,11 @@ struct ProviderRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
         .frame(minHeight: 68)
-        .background(Color.white)
+        .background(Color(nsColor: .controlBackgroundColor))
         .overlay(
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(Color.black.opacity(0.04)),
+                .foregroundColor(Color(nsColor: .separatorColor).opacity(0.7)),
             alignment: .bottom
         )
     }
@@ -287,10 +287,10 @@ struct TouchBarRow: View {
         HStack(spacing: 12) {
             ZStack {
                 RoundedRectangle(cornerRadius: 7)
-                    .fill(Color.black)
+                    .fill(Color.primary)
                 Text("T")
                     .font(.system(size: 13, weight: .heavy))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color(nsColor: .windowBackgroundColor))
             }
             .frame(width: 30, height: 30)
 
@@ -330,7 +330,7 @@ struct TouchBarRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
         .frame(minHeight: 68)
-        .background(Color.white)
+        .background(Color(nsColor: .controlBackgroundColor))
         .onAppear(perform: refreshStatus)
     }
 
@@ -388,11 +388,11 @@ struct ProviderSection<Content: View>: View {
             VStack(spacing: 0) {
                 content
             }
-            .background(Color.white)
+            .background(Color(nsColor: .controlBackgroundColor))
             .cornerRadius(8)
             .overlay(
                 RoundedRectangle(cornerRadius: 8)
-                    .stroke(Color.black.opacity(0.06), lineWidth: 1)
+                    .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
             )
         }
     }
@@ -587,11 +587,11 @@ struct SiliconFlowProviderRow: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 11)
         .frame(minHeight: 78)
-        .background(Color.white)
+        .background(Color(nsColor: .controlBackgroundColor))
         .overlay(
             Rectangle()
                 .frame(height: 1)
-                .foregroundColor(Color.black.opacity(0.04)),
+                .foregroundColor(Color(nsColor: .separatorColor).opacity(0.7)),
             alignment: .bottom
         )
     }

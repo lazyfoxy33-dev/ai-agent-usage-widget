@@ -160,7 +160,7 @@ struct MenuBarContentView: View {
     var body: some View {
         Text(model.status)
         Divider()
-        Button("Settings...") { SettingsPresenter.app(openSettings: { openSettings() }).present() }
+        Button("设置…") { SettingsPresenter.app(openSettings: { openSettings() }).present() }
         Button("立即刷新") { model.refreshAPIKeyProviders() }
         Divider()
         Button("退出") { NSApplication.shared.terminate(nil) }
