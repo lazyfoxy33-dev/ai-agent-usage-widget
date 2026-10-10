@@ -141,26 +141,29 @@ curl --version
 
 #### Account settings / 账户设置（macOS app）
 
-在菜单栏点击 QuotaWidget，选择 **Settings...** 打开账户设置：
+在菜单栏点击 QuotaWidget，选择 **Settings...** 打开设置窗口（单页、中文）：
 
-- **Claude、Codex、Kimi Code** 从本地官方客户端存储自动检测；未配置时点对应行的
-  **Open**（或启用 Codex 的 **Enable Probe**）按提示使用官方客户端。
-- **DeepSeek、SiliconFlow、OpenRouter** 点 **Add Key** 输入 API key；key 会存入
-  macOS Keychain（服务名 `AI Agent Usage Widget`），可随时 **Test** 或 **Remove**。
-- 共享数据层仍支持读取对应 `*_API_KEY` 环境变量，但 macOS app 的 GUI 设置是推荐路径。
+- **本地客户端**：Claude、Codex、Kimi Code 从本机官方客户端读取；未登录时点该行的
+  **打开客户端**（Codex 则用 **开启主动探测**）。
+- **API 余额**：DeepSeek、SiliconFlow、OpenRouter 点 **添加密钥** 输入 API key，密钥存入
+  macOS 钥匙串（服务名 `AI Agent Usage Widget`），可随时 **测试** 或 **移除**；
+  SiliconFlow 走 **登录控制台**。
+- **Touch Bar**：一行 **安装 / 更新** + **打开**。
+- 共享数据层仍支持读取对应 `*_API_KEY` 环境变量，但 app 内的设置为推荐路径。
 - 菜单栏 app 与 Touch Bar 前端只交换脱敏后的 JSON 契约，从不接触原始 key。
 
-In the menu bar, click QuotaWidget and choose **Settings...** to open account
-settings:
+In the menu bar, click QuotaWidget and choose **Settings...** for a single-page,
+Chinese settings window:
 
-- **Claude, Codex, and Kimi Code** are auto-detected from local official-client
-  storage; if unconfigured, click **Open** (or **Enable Probe** for Codex) and
-  follow the official-client setup.
-- For **DeepSeek, SiliconFlow, and OpenRouter**, click **Add Key** to enter an API
-  key; keys are stored in the macOS Keychain (service `AI Agent Usage Widget`)
-  and can be **Test**ed or **Remove**d at any time.
+- **Local agents**: Claude, Codex, and Kimi Code are read from the official
+  clients on this Mac; when not signed in, use **打开客户端** on that row (or
+  **开启主动探测** for Codex).
+- **API balance**: click **添加密钥** for DeepSeek, SiliconFlow, or OpenRouter
+  keys (stored in the macOS Keychain, service `AI Agent Usage Widget`) and use
+  **测试** / **移除** at any time; SiliconFlow goes through **登录控制台**.
+- **Touch Bar**: a single row with **安装 / 更新** and **打开**.
 - The shared data layer still reads the corresponding `*_API_KEY` environment
-  variables, but the macOS app's GUI settings are the recommended path.
+  variables, but the app's settings are the recommended path.
 - The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
   contract and never see raw keys.
 

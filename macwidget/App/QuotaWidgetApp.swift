@@ -225,7 +225,6 @@ struct QuotaWidgetApp: App {
             ControlCenterView(
                 accountViewModel: settingsModel,
                 displayStore: displayStore,
-                usageStore: UsageStore(),
                 refreshNow: { model.refreshAllProviders() },
                 displayActions: DisplayLayerActions(
                     installTouchBar: { try displayStore.installTouchBar() },
