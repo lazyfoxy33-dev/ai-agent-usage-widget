@@ -55,9 +55,9 @@ final class AuthAndCredentialsTests: XCTestCase {
         let yaml = """
         version: 1
         refs:
-          DEEPSEEK_API_KEY: sk-deepseek-value
-          OPENROUTER_API_KEY: sk-or-value
-          KIMI_CODING_API_KEY: kimi-value
+          DEEPSEEK_API_KEY: test-deepseek-key
+          OPENROUTER_API_KEY: test-openrouter-key
+          KIMI_CODING_API_KEY: test-kimi-key
         records:
           deepseek-account-platform/default:
             kind: oauth
@@ -71,8 +71,8 @@ final class AuthAndCredentialsTests: XCTestCase {
 
         let loaded = DSHCredentials.load(path: path)
 
-        XCTAssertEqual(loaded[.deepseek], "sk-deepseek-value")
-        XCTAssertEqual(loaded[.openrouter], "sk-or-value")
+        XCTAssertEqual(loaded[.deepseek], "test-deepseek-key")
+        XCTAssertEqual(loaded[.openrouter], "test-openrouter-key")
         XCTAssertEqual(loaded.count, 2, "only providers this app can use are read")
     }
 

@@ -5,11 +5,11 @@
 #   ./release.sh --touchbar      # only rebuild + notarize the Touch Bar dmg
 #
 # Required for the macwidget part (Developer ID notarization):
-#   export QUOTAWIDGET_TEAM="9AVXU7V6Q8"
+#   export QUOTAWIDGET_TEAM="YOUR_TEAM_ID"
 #   export QUOTAWIDGET_NOTARY_PROFILE="quotawidget-notary"
 #
 # Required for the Touch Bar part:
-#   export QUOTABAR_TEAM="9AVXU7V6Q8"
+#   export QUOTABAR_TEAM="YOUR_TEAM_ID"
 #   export QUOTABAR_NOTARY_PROFILE="quotabar-notary"
 #
 # Optional:

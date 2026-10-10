@@ -16,7 +16,13 @@ This repository is **public**. When committing, opening PRs, or pushing anything
   ```bash
   git config core.hooksPath .githooks
   ```
-  Before pushing, also `grep` your diff for the username / home path / personal email.
+- CI runs `.github/scripts/secret_scan.py` over the committed tree **and** every
+  blob in the pushed range. Run it yourself before pushing:
+  ```bash
+  python3 .github/scripts/secret_scan.py
+  python3 .github/scripts/secret_scan.py --range origin/main...HEAD
+  ```
+  It reports matches masked, so a failing run never prints the secret itself.
 
 ## Secrets
 

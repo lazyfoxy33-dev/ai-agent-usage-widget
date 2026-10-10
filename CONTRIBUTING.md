@@ -87,6 +87,12 @@ This repo is public. **No commit may leak machine-local or personal info.**
 
   AI agent 另见根目录 `AGENTS.md`。AI agents: see `AGENTS.md`.
 
+- 推送前跑一次密钥扫描（CI 也会跑；命中时输出已打码，不会打印密钥）：
+  Run the secret scanner before pushing (CI runs it too; matches are masked):
+  ```bash
+  python3 .github/scripts/secret_scan.py
+  ```
+
 ## Pull Request
 
 1. 数据层改动必须添加或更新测试。
