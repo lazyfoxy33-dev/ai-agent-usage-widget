@@ -32,6 +32,29 @@ so the UI has two levels:
   percentages — plus the nearest reset countdown. Fixed-width cards keep the
   bar's total length bounded. Tap `✕` or the tray cell again to close it.
 
+## 显示哪些 provider / Which providers
+
+Touch Bar 上显示谁、按什么顺序，可在 **QuotaWidget.app → 设置… → Touch Bar 显示** 里配置：勾选的
+provider 按列表顺序排列，用行内 ▲▼ 调整顺序。六个 provider 都可以选——Claude / Codex / Kimi 是额度仪表，
+DeepSeek / SiliconFlow / OpenRouter 显示余额金额与估算可用天数。默认是 `Claude, Codex, Kimi`。
+
+设置写入共享配置 `~/.config/ai-agent-usage-widget/config.json` 的 `touchbar_providers`，QuotaBar 每
+60 秒刷新时重读一次，因此**改完一分钟内生效，无需重启**。收起那一小格仍沿用原逻辑（跟随前台 AI 应用 →
+最近用过 → 用量最高），只是全部限定在所选集合内；若只选了余额 provider，则显示列表第一个的金额。
+
+Which providers appear, and in what order, is configured in **QuotaWidget.app → 设置… →
+Touch Bar 显示**: selected providers are listed in display order and reordered with the
+inline ▲▼ buttons. All six are selectable — Claude / Codex / Kimi render quota gauges,
+while DeepSeek / SiliconFlow / OpenRouter render a balance amount with an estimated
+days-left trend. The default is `Claude, Codex, Kimi`.
+
+The choice is stored as `touchbar_providers` in the shared
+`~/.config/ai-agent-usage-widget/config.json`; QuotaBar re-reads it on its 60-second
+refresh, so **changes apply within a minute without a restart**. The collapsed tray cell
+keeps its existing rule (frontmost AI app → most recently used → most drained) restricted
+to the selection, and falls back to the first selected provider's amount when only
+balance providers are selected.
+
 ## 数据来源 / Data
 
 不重复实现取数：运行共享的 `core/fetch_usage.py`（构建时拷入 `QuotaBar.app/Contents/Resources/core`），

@@ -9,7 +9,7 @@ QuotaWidget 是 macOS 菜单栏 app：状态栏常驻图标，展示 Claude、Co
 与 DeepSeek、SiliconFlow、OpenRouter 余额。它定时运行共享 Python 数据层，并把脱敏后的
 JSON 契约写入 App Group 容器。
 
-`QuotaWidget.app` is the primary macOS entry point. Use **设置…** (Settings) to open the settings window: a single page lists the local-agent and API-balance providers with their status and actions, plus a Touch Bar row. The window is in Chinese.
+`QuotaWidget.app` is the primary macOS entry point. Use **设置…** (Settings) to open the settings window: a single page lists the local-agent and API-balance providers with their status and actions, plus a Touch Bar row and a **Touch Bar 显示** section where you choose and reorder the providers shown on the strip. The window is in Chinese.
 
 ## Download / 下载
 
@@ -105,6 +105,10 @@ settings window:
   are the recommended path.
 - The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
   contract and never see raw API keys.
+- **Touch Bar 显示** decides which providers appear on the strip and in which
+  order (all six are selectable: Claude / Codex / Kimi render gauges, DeepSeek /
+  SiliconFlow / OpenRouter render balances); reordering uses the inline ▲▼
+  buttons and the agent picks the change up on its next refresh.
 
 ## Distribution / 分发
 
