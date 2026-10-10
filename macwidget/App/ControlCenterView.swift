@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 import WebKit
 
@@ -348,16 +349,45 @@ struct ProviderLogo: View {
     let id: AccountProviderID
 
     var body: some View {
-        ZStack {
-            RoundedRectangle(cornerRadius: 7)
-                .fill(logoColor)
-            Text(logoText)
-                .font(.system(size: 13, weight: .heavy))
-                .foregroundColor(.white)
+        Group {
+            if let image = Self.image(for: id) {
+                Image(nsImage: image)
+                    .resizable()
+                    .interpolation(.high)
+                    .aspectRatio(contentMode: .fit)
+            } else {
+                ZStack {
+                    RoundedRectangle(cornerRadius: 7)
+                        .fill(Self.fallbackColor(for: id))
+                    Text(Self.fallbackText(for: id))
+                        .font(.system(size: 13, weight: .heavy))
+                        .foregroundColor(.white)
+                }
+            }
+        }
+        .accessibilityLabel(id.name)
+    }
+
+    /// The bundled brand icon, or nil when the asset is missing.
+    static func image(for id: AccountProviderID) -> NSImage? {
+        guard let url = Bundle.main.url(forResource: assetName(for: id), withExtension: "png") else {
+            return nil
+        }
+        return NSImage(contentsOf: url)
+    }
+
+    static func assetName(for id: AccountProviderID) -> String {
+        switch id {
+        case .claude: return "claude-app"
+        case .codex: return "codex-app"
+        case .kimi: return "kimi-code"
+        case .deepseek: return "deepseek"
+        case .siliconflow: return "siliconflow"
+        case .openrouter: return "openrouter"
         }
     }
 
-    private var logoColor: Color {
+    static func fallbackColor(for id: AccountProviderID) -> Color {
         switch id {
         case .claude: return Color(red: 0.851, green: 0.467, blue: 0.341)
         case .codex: return Color(red: 0.482, green: 0.514, blue: 0.961)
@@ -368,7 +398,7 @@ struct ProviderLogo: View {
         }
     }
 
-    private var logoText: String {
+    static func fallbackText(for id: AccountProviderID) -> String {
         switch id {
         case .claude: return "✳"
         case .codex: return "◆"

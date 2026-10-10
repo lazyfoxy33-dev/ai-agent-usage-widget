@@ -9,6 +9,10 @@
 /* Begin PBXBuildFile section */
 		05FAA991A1472BF40CDE5650 /* UsageContractTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FB8541A0C552866932C346F /* UsageContractTests.swift */; };
 		161768EE7688BF587E93623E /* UsageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */; };
+		3493D48D5AA911364F7FE25D /* deepseek.png in Resources */ = {isa = PBXBuildFile; fileRef = 2C4361B6E33929E4DD88D669 /* deepseek.png */; };
+		3549281D77E6F25189060489 /* codex-app.png in Resources */ = {isa = PBXBuildFile; fileRef = B9398C118DB4E4C01EAD2901 /* codex-app.png */; };
+		3F742887A1A253E730AFB4F1 /* openrouter.png in Resources */ = {isa = PBXBuildFile; fileRef = EBFB217753FA4BEDF084D65D /* openrouter.png */; };
+		45CAB94F2554CF0076FBA899 /* siliconflow.png in Resources */ = {isa = PBXBuildFile; fileRef = 80CEFEB579C3E638B4793BD2 /* siliconflow.png */; };
 		572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4396386870ACF13B0387F84A /* UsageFetcher.swift */; };
 		58617DC6A19B5F6175E33C1B /* ControlCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 238080F2F39302EA1E45C5DF /* ControlCenterView.swift */; };
 		5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */; };
@@ -17,8 +21,10 @@
 		9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10993021F1557349A9B061FA /* UsageStoreTests.swift */; };
 		A96F9CD44F0A5026F37907A6 /* DisplayLayerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B596EF3A6AEF338EC8FE839 /* DisplayLayerStore.swift */; };
 		D38192171F7B63332CC3F2E0 /* APIKeyStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */; };
+		D8111F1E8B4097396AA5D67C /* kimi-code.png in Resources */ = {isa = PBXBuildFile; fileRef = 44223C7F5519A35B5B26725B /* kimi-code.png */; };
 		DF42FE2AF1438A232B506A84 /* DisplayLayerStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B67C688DE1CE31949858A8F /* DisplayLayerStoreTests.swift */; };
 		E1A9D102642B838CEC5E0AC2 /* UsageContract.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */; };
+		E2F72F39CB54A614C7FE4569 /* claude-app.png in Resources */ = {isa = PBXBuildFile; fileRef = 9B050D347C435EF158B6A827 /* claude-app.png */; };
 		FA82E2D50AF1100A3871F9A1 /* AccountSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 809D8D69348687DB661CCEA0 /* AccountSettingsView.swift */; };
 /* End PBXBuildFile section */
 
@@ -37,19 +43,25 @@
 		1B67C688DE1CE31949858A8F /* DisplayLayerStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLayerStoreTests.swift; sourceTree = "<group>"; };
 		229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaWidgetApp.swift; sourceTree = "<group>"; };
 		238080F2F39302EA1E45C5DF /* ControlCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ControlCenterView.swift; sourceTree = "<group>"; };
+		2C4361B6E33929E4DD88D669 /* deepseek.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deepseek.png; sourceTree = "<group>"; };
 		4396386870ACF13B0387F84A /* UsageFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageFetcher.swift; sourceTree = "<group>"; };
+		44223C7F5519A35B5B26725B /* kimi-code.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "kimi-code.png"; sourceTree = "<group>"; };
 		4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStoreTests.swift; sourceTree = "<group>"; };
 		5B596EF3A6AEF338EC8FE839 /* DisplayLayerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLayerStore.swift; sourceTree = "<group>"; };
 		6AC74E158F9E7CF5C7A45A26 /* QuotaWidgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QuotaWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		7FB8541A0C552866932C346F /* UsageContractTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageContractTests.swift; sourceTree = "<group>"; };
 		809D8D69348687DB661CCEA0 /* AccountSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AccountSettingsView.swift; sourceTree = "<group>"; };
+		80CEFEB579C3E638B4793BD2 /* siliconflow.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = siliconflow.png; sourceTree = "<group>"; };
 		84083F78F49E30915AB023A6 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		8B5CDF4D8233F9FA6ABA439B /* UsageContract.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageContract.swift; sourceTree = "<group>"; };
 		9276ED3F8D8B5C21B74D7BA8 /* UsageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStore.swift; sourceTree = "<group>"; };
+		9B050D347C435EF158B6A827 /* claude-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "claude-app.png"; sourceTree = "<group>"; };
 		9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStore.swift; sourceTree = "<group>"; };
 		B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = QuotaWidgetApp.entitlements; sourceTree = "<group>"; };
+		B9398C118DB4E4C01EAD2901 /* codex-app.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "codex-app.png"; sourceTree = "<group>"; };
 		E928D1CB72EE1ED85B404C9C /* QuotaWidgetApp.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QuotaWidgetApp.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfigStore.swift; sourceTree = "<group>"; };
+		EBFB217753FA4BEDF084D65D /* openrouter.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = openrouter.png; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -65,8 +77,22 @@
 				B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */,
 				229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */,
 				4396386870ACF13B0387F84A /* UsageFetcher.swift */,
+				4E7061C017A6970D1E105763 /* Resources */,
 			);
 			path = App;
+			sourceTree = "<group>";
+		};
+		4E7061C017A6970D1E105763 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				9B050D347C435EF158B6A827 /* claude-app.png */,
+				B9398C118DB4E4C01EAD2901 /* codex-app.png */,
+				2C4361B6E33929E4DD88D669 /* deepseek.png */,
+				44223C7F5519A35B5B26725B /* kimi-code.png */,
+				EBFB217753FA4BEDF084D65D /* openrouter.png */,
+				80CEFEB579C3E638B4793BD2 /* siliconflow.png */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		999EAC01D44EC8CDA4333603 = {
@@ -136,6 +162,7 @@
 				36893CAD1322C5810D2654EC /* Bundle shared Python core */,
 				4B988FE49E5A3A17E2E0A62F /* Bundle Touch Bar frontend */,
 				851324600138BA9D2C4032E4 /* Sources */,
+				2E041847111BCF81DD908415 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -184,6 +211,22 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		2E041847111BCF81DD908415 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E2F72F39CB54A614C7FE4569 /* claude-app.png in Resources */,
+				3549281D77E6F25189060489 /* codex-app.png in Resources */,
+				3493D48D5AA911364F7FE25D /* deepseek.png in Resources */,
+				D8111F1E8B4097396AA5D67C /* kimi-code.png in Resources */,
+				3F742887A1A253E730AFB4F1 /* openrouter.png in Resources */,
+				45CAB94F2554CF0076FBA899 /* siliconflow.png in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
 
 /* Begin PBXShellScriptBuildPhase section */
 		36893CAD1322C5810D2654EC /* Bundle shared Python core */ = {
