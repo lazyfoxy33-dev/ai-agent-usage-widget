@@ -245,16 +245,21 @@ enum SiliconFlowConsoleSessionError: Error {
 
 struct SiliconFlowConsoleSessionProvider: Sendable {
     typealias FetchData = @Sendable (URLRequest) async throws -> (Data, HTTPURLResponse)
+    /// Records the balance and returns the same estimate the shared Python layer
+    /// gives DeepSeek/OpenRouter — nil while there is not enough history yet.
+    typealias BurnRateLookup = @Sendable (Double, String) -> BurnRateInfo?
 
     static let profileURL = URL(string: "https://cloud.siliconflow.cn/walletd-server/api/v1/subject/profile/peek")!
 
     private let sessionStore: SiliconFlowConsoleSessionStore
     private let sessionOverride: StoredSiliconFlowConsoleSession?
+    private let burnRateLookup: BurnRateLookup
     private let fetchData: FetchData
 
     init(
         sessionStore: SiliconFlowConsoleSessionStore = SiliconFlowConsoleSessionStore(),
         session: StoredSiliconFlowConsoleSession? = nil,
+        burnRateLookup: @escaping BurnRateLookup = SiliconFlowConsoleSessionProvider.recordedBurnRate,
         fetchData: @escaping FetchData = { request in
             let (data, response) = try await URLSession.shared.data(for: request)
             guard let httpResponse = response as? HTTPURLResponse else {
@@ -265,6 +270,7 @@ struct SiliconFlowConsoleSessionProvider: Sendable {
     ) {
         self.sessionStore = sessionStore
         self.sessionOverride = session
+        self.burnRateLookup = burnRateLookup
         self.fetchData = fetchData
     }
 
@@ -327,6 +333,74 @@ struct SiliconFlowConsoleSessionProvider: Sendable {
         )
     }
 
+    /// The balance-history algorithm lives in the shared Python layer, so delegate to
+    /// it instead of reimplementing the estimate in Swift. Recording a sample is a
+    /// side effect, which is why the Touch Bar only shows a trend once the app has
+    /// seen the balance at least twice.
+    static func recordedBurnRate(amount: Double, currency: String) -> BurnRateInfo? {
+        // Never touch the real history file from a test run.
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else {
+            return nil
+        }
+        guard let coreDirectory = bundledCoreDirectory() else { return nil }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/python3")
+        process.arguments = [
+            "-c",
+            """
+            import json, sys
+            sys.path.insert(0, sys.argv[1])
+            from usage import balance_history, siliconflow
+            print(json.dumps(balance_history.record_and_estimate(
+                siliconflow.HISTORY_PATH, float(sys.argv[2]), sys.argv[3]
+            )))
+            """,
+            coreDirectory.path,
+            String(amount),
+            currency,
+        ]
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = Pipe()
+        do {
+            try process.run()
+        } catch {
+            return nil
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
+        guard process.terminationStatus == 0,
+              let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return burnRate(from: root)
+    }
+
+    /// Maps the shared contract's `burn_rate` object.
+    static func burnRate(from json: [String: Any]) -> BurnRateInfo? {
+        guard let confidence = json["confidence"] as? String else { return nil }
+        return BurnRateInfo(
+            amountPerDay: json["amount_per_day"] as? Double,
+            windowDays: json["window_days"] as? Int,
+            estimatedDaysLeft: json["estimated_days_left"] as? Int,
+            confidence: confidence,
+            reason: json["reason"] as? String
+        )
+    }
+
+    static func bundledCoreDirectory() -> URL? {
+        if let override = ProcessInfo.processInfo.environment["QUOTAWIDGET_CORE"], !override.isEmpty {
+            return URL(fileURLWithPath: override, isDirectory: true)
+        }
+        guard let resources = Bundle.main.resourcePath else { return nil }
+        let url = URL(fileURLWithPath: resources).appendingPathComponent("core", isDirectory: true)
+        guard FileManager.default.fileExists(atPath: url.appendingPathComponent("fetch_usage.py").path) else {
+            return nil
+        }
+        return url
+    }
+
     private static func normalizedConsoleAmount(_ amount: Double?, for key: String) -> Double? {
         guard let amount else { return nil }
         if key == "balance", amount >= 1_000_000_000 {
@@ -363,7 +437,11 @@ struct SiliconFlowConsoleSessionProvider: Sendable {
             let (data, response) = try await fetchData(request)
             switch response.statusCode {
             case 200:
-                return try Self.parseProfileData(data)
+                let provider = try Self.parseProfileData(data)
+                guard let balance = provider.balance else { return provider }
+                return provider.withBurnRate(
+                    burnRateLookup(balance.amount, balance.currency)
+                )
             case 401, 403:
                 return failure("login_required")
             case 429:

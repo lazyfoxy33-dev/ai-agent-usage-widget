@@ -680,6 +680,87 @@ final class UsageContractTests: XCTestCase {
         XCTAssertEqual(result.balance?.amount, 96)
     }
 
+    func testSiliconFlowConsoleProviderAttachesBurnRate() async throws {
+        let backend = InMemoryCredentialBackend()
+        let store = SiliconFlowConsoleSessionStore(backend: backend)
+        try store.saveCookieHeader("sf_session=test")
+        try store.saveSubjectID("subject-test-123456")
+        let provider = SiliconFlowConsoleSessionProvider(
+            sessionStore: store,
+            burnRateLookup: { amount, currency in
+                XCTAssertEqual(amount, 96)
+                XCTAssertEqual(currency, "CNY")
+                return BurnRateInfo(
+                    amountPerDay: 2.5,
+                    windowDays: 7,
+                    estimatedDaysLeft: 38,
+                    confidence: "medium",
+                    reason: nil
+                )
+            },
+            fetchData: { request in
+                let data = Data("""
+                {"data": {"financialInfo": {"chargeBalance": "96", "currency": "CNY"}}}
+                """.utf8)
+                return (data, HTTPURLResponse(
+                    url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil
+                )!)
+            }
+        )
+
+        let result = await provider.fetchBalance()
+
+        XCTAssertTrue(result.ok)
+        XCTAssertEqual(result.balance?.amount, 96)
+        XCTAssertEqual(result.burnRate?.estimatedDaysLeft, 38, "the console balance gets a trend")
+        XCTAssertEqual(result.burnRate?.confidence, "medium")
+    }
+
+    func testSiliconFlowConsoleProviderWithoutHistoryOmitsTheTrend() async throws {
+        let backend = InMemoryCredentialBackend()
+        let store = SiliconFlowConsoleSessionStore(backend: backend)
+        try store.saveCookieHeader("sf_session=test")
+        try store.saveSubjectID("subject-test-123456")
+        let provider = SiliconFlowConsoleSessionProvider(
+            sessionStore: store,
+            burnRateLookup: { _, _ in nil },
+            fetchData: { request in
+                let data = Data("""
+                {"data": {"financialInfo": {"chargeBalance": "96", "currency": "CNY"}}}
+                """.utf8)
+                return (data, HTTPURLResponse(
+                    url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil
+                )!)
+            }
+        )
+
+        let result = await provider.fetchBalance()
+
+        XCTAssertTrue(result.ok, "a missing estimate must not fail the balance")
+        XCTAssertEqual(result.balance?.amount, 96)
+        XCTAssertNil(result.burnRate)
+    }
+
+    func testBurnRateDecodingMapsTheSharedContract() {
+        let decoded = SiliconFlowConsoleSessionProvider.burnRate(from: [
+            "amount_per_day": 3.5,
+            "window_days": 7,
+            "estimated_days_left": 21,
+            "confidence": "high",
+            "reason": "history",
+        ])
+
+        XCTAssertEqual(decoded?.amountPerDay, 3.5)
+        XCTAssertEqual(decoded?.windowDays, 7)
+        XCTAssertEqual(decoded?.estimatedDaysLeft, 21)
+        XCTAssertEqual(decoded?.confidence, "high")
+        XCTAssertEqual(decoded?.reason, "history")
+        XCTAssertNil(
+            SiliconFlowConsoleSessionProvider.burnRate(from: ["amount_per_day": 3.5]),
+            "an estimate without confidence is not usable"
+        )
+    }
+
     func testSiliconFlowConsoleProviderReportsInvalidSubject() async throws {
         let backend = InMemoryCredentialBackend()
         let store = SiliconFlowConsoleSessionStore(backend: backend)
