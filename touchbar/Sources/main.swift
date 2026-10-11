@@ -78,6 +78,35 @@ if CommandLine.arguments.contains("--present-test") {
     app.run()
 }
 
+// Debug: `QuotaBar --tray [--assume-frontmost "<bundle id>|<name>"]` prints what the
+// collapsed cell shows and why, waiting until usage data has arrived.
+if CommandLine.arguments.contains("--tray") {
+    var assume: (bundleID: String, name: String)?
+    if let index = CommandLine.arguments.firstIndex(of: "--assume-frontmost"),
+       index + 1 < CommandLine.arguments.count {
+        let parts = CommandLine.arguments[index + 1].split(separator: "|", maxSplits: 1)
+        assume = (
+            bundleID: parts.first.map(String.init) ?? "",
+            name: parts.count > 1 ? String(parts[1]) : ""
+        )
+    }
+    let app = NSApplication.shared
+    app.setActivationPolicy(.accessory)
+    let probe = TouchBarController()
+    probe.start()
+    var waited: TimeInterval = 0
+    func report() {
+        if probe.hasUsageData || waited >= 12 {
+            probe.printTrayReport(assume: assume)
+            exit(0)
+        }
+        waited += 0.5
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { report() }
+    }
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { report() }
+    app.run()
+}
+
 let app = NSApplication.shared
 let delegate = AppDelegate()
 app.delegate = delegate

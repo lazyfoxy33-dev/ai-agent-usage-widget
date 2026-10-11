@@ -7,6 +7,7 @@
 //
 // The agent has no Xcode test bundle, so this checks the parser that decides
 // what the strip shows.
+import AppKit
 import Foundation
 
 var failures = 0
@@ -289,6 +290,60 @@ expect(
     Set(TouchBarProvider.allCases.map(\.iconAssetName)).count == TouchBarProvider.allCases.count,
     "no two providers share an asset"
 )
+
+// MARK: frontmost tool mapping
+
+print("FrontmostTool")
+
+expect(FrontmostTool.tag(bundleID: "com.deepseek.dsh", name: "DeepSeek Harness") == "D",
+       "DeepSeek Harness maps to DeepSeek")
+expect(FrontmostTool.tag(bundleID: "", name: "DeepSeek Harness Helper") == "D",
+       "helper processes map too")
+expect(FrontmostTool.tag(bundleID: "com.anthropic.claudefordesktop", name: "Claude") == "C",
+       "Claude maps to Claude")
+expect(FrontmostTool.tag(bundleID: "com.moonshot.kimichat", name: "Kimi") == "K",
+       "Kimi maps to Kimi")
+expect(FrontmostTool.tag(bundleID: "com.openai.codex", name: "Codex") == "X",
+       "Codex maps to Codex")
+expect(FrontmostTool.tag(bundleID: "com.apple.finder", name: "Finder") == nil,
+       "anything else has no provider")
+expect(FrontmostTool.tag(bundleID: "com.apple.Terminal", name: "Terminal") == nil,
+       "a terminal in front is not a provider")
+
+// The collapsed cell text: the icon names the provider, so no letter is repeated.
+expect(TrayGlance.label(tag: "D", figure: "¥32.6", hasIcon: true) == "¥32.6",
+       "with an icon only the figure is shown")
+expect(TrayGlance.label(tag: "D", figure: "¥32.6", hasIcon: false) == "D¥32.6",
+       "without an icon the tag letter stays")
+expect(TrayGlance.percentageLabel(tag: "X", usedPct: 5.4, hasIcon: true) == "5%",
+       "percentages are rounded and suffixed")
+
+// MARK: icon plate keying
+
+print("ProviderIcon")
+
+func rgba(_ r: Double, _ g: Double, _ b: Double, _ a: Double) -> [UInt8] {
+    [UInt8((r * a * 255).rounded()), UInt8((g * a * 255).rounded()),
+     UInt8((b * a * 255).rounded()), UInt8((a * 255).rounded())]
+}
+func plate(_ pixel: [UInt8], side: Int) -> [UInt8] {
+    Array(repeating: pixel, count: side * side).flatMap { $0 }
+}
+expect(ProviderIcon.lightPlateColor(pixels: plate(rgba(1, 1, 1, 1), side: 4), side: 4) != nil,
+       "a white plate is detected")
+expect(ProviderIcon.lightPlateColor(pixels: plate(rgba(0, 0, 0, 0), side: 4), side: 4) == nil,
+       "a transparent background is not a plate")
+expect(ProviderIcon.lightPlateColor(pixels: plate(rgba(0.85, 0.47, 0.34, 1), side: 4), side: 4) == nil,
+       "a coloured plate is part of the brand and is kept")
+
+func repoImage(_ name: String) -> NSImage? {
+    let path = "../macwidget/App/Resources/\(name).png"
+    return NSImage(contentsOfFile: path)
+}
+expect(repoImage("codex-app").flatMap { ProviderIcon.keyedOut($0) } != nil,
+       "the Codex asset's white plate is keyed out")
+expect(repoImage("claude-app").flatMap { ProviderIcon.keyedOut($0) } == nil,
+       "the Claude asset keeps its orange plate")
 
 print(failures == 0 ? "all layout tests passed" : "\(failures) layout test(s) failed")
 exit(failures == 0 ? 0 : 1)
