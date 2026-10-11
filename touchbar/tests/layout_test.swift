@@ -218,5 +218,62 @@ if let parsed = UsageSource.usage(from: Data(payload.utf8)) {
     expect(false, "parses the shared contract")
 }
 
+// MARK: stale mirror merge + real mirror reads
+
+let coreJSON: [String: Any] = [
+    "claude": ["ok": true],
+    "siliconflow": ["ok": false, "reason": "login_required", "source": "console_session"],
+    "deepseek": ["ok": false, "reason": "no_data"],
+]
+let mirrorJSON: [String: Any] = [
+    "siliconflow": [
+        "ok": true, "kind": "balance", "source": "console_session",
+        "balance": ["amount": 42.5, "currency": "CNY", "available": true],
+    ],
+    "deepseek": ["ok": false, "reason": "no_data"],
+]
+func parse(_ dict: [String: Any]) -> Usage? {
+    guard let data = try? JSONSerialization.data(withJSONObject: dict) else { return nil }
+    return UsageSource.usage(from: data)
+}
+if let core = parse(coreJSON), let mirror = parse(mirrorJSON) {
+    let merged = UsageSource.merging(core: core, mirror: mirror)
+    expect(
+        merged.siliconflow.ok && merged.siliconflow.balance?.amount == 42.5,
+        "a stale mirror still supplies the real SiliconFlow balance"
+    )
+    expect(
+        merged.siliconflow.reason == "stale" && merged.siliconflow.live == false,
+        "a balance kept from a stale mirror is marked cached"
+    )
+    expect(merged.siliconflow.source == "console_session", "the credential source survives the merge")
+    expect(merged.origin == "core+app", "the merge reports where the data came from")
+    expect(merged.claude.ok, "quota providers come from the fresh core read")
+    expect(!merged.deepseek.ok, "a mirror without a usable balance does not clobber the core result")
+} else {
+    expect(false, "parses the merge fixtures")
+}
+
+// A real mirror file, read through the shared config override.
+let mirrorRoot = FileManager.default.temporaryDirectory
+    .appendingPathComponent("quotabar-mirror-\(UUID().uuidString)", isDirectory: true)
+try? FileManager.default.createDirectory(at: mirrorRoot, withIntermediateDirectories: true)
+defer { try? FileManager.default.removeItem(at: mirrorRoot) }
+let mirrorConfig = mirrorRoot.appendingPathComponent("config.json")
+let mirrorFile = mirrorRoot.appendingPathComponent("usage.json")
+setenv("AI_AGENT_USAGE_CONFIG", mirrorConfig.path, 1)
+try? JSONSerialization.data(withJSONObject: mirrorJSON).write(to: mirrorFile)
+expect(UsageSource.mirrorURL().path == mirrorFile.path, "the mirror is read from beside the config override")
+if let (snapshot, _) = UsageSource.readMirrorSnapshot() {
+    expect(snapshot.siliconflow.balance?.amount == 42.5, "a mirror written to disk is parsed")
+} else {
+    expect(false, "reads the mirror written to disk")
+}
+expect(
+    UsageSource.readMirror(now: Date().addingTimeInterval(3600)) == nil,
+    "the same mirror is rejected once it is stale"
+)
+unsetenv("AI_AGENT_USAGE_CONFIG")
+
 print(failures == 0 ? "all layout tests passed" : "\(failures) layout test(s) failed")
 exit(failures == 0 ? 0 : 1)

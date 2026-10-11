@@ -106,7 +106,9 @@ settings window:
 - The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
   contract and never see raw API keys.
 - The app mirrors its sanitized payload to
-  `~/.config/ai-agent-usage-widget/usage.json` (mode 0600) after every refresh; the
+  `~/.config/ai-agent-usage-widget/usage.json` (mode 0600) after every refresh and
+  refreshes on a 5-minute timer while it runs, so the mirror the Touch Bar reads stays
+  fresh; the
   Touch Bar agent reads that mirror (under 15 minutes old) so both frontends agree on
   SiliconFlow / DeepSeek / OpenRouter, whose credentials only this app can reach.
 - **Touch Bar 显示** decides which providers appear on the strip and in which
