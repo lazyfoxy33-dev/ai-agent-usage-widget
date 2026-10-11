@@ -84,6 +84,15 @@ struct UsageProvider: Codable, Equatable {
         self.burnRate = burnRate
     }
 
+    /// Same provider with a burn-rate estimate attached (or cleared).
+    func withBurnRate(_ burnRate: BurnRateInfo?) -> UsageProvider {
+        UsageProvider(
+            ok: ok, reason: reason, kind: kind, source: source, live: live,
+            fetchedAt: fetchedAt, asOf: asOf, fiveH: fiveH, weekly: weekly,
+            balance: balance, burnRate: burnRate
+        )
+    }
+
     var isStale: Bool {
         live == false || reason == "stale"
             || fiveH?.stale == true || weekly?.stale == true
