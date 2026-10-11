@@ -57,6 +57,19 @@ class TestTouchBarFreshnessSource(unittest.TestCase):
         self.assertIn("func setWidth(", gauge)
         self.assertIn("TouchBarMetrics", metrics)
 
+    def test_gauge_draws_the_brand_icon_with_a_letter_fallback(self):
+        gauge = _read("Sources", "ProviderGauge.swift")
+        controller = _read("Sources", "TouchBarController.swift")
+        build = _read("build.sh")
+
+        self.assertIn("func setIcon(", gauge)
+        self.assertIn("if let icon {", gauge, "the icon is drawn when available")
+        self.assertIn("} else {", gauge, "the letter badge stays as the fallback")
+        self.assertIn("iconURL(for:", controller)
+        self.assertIn("created.setIcon(icon(for: provider))", controller)
+        self.assertIn("trayButton.image = pick", controller, "the collapsed cell shows it too")
+        self.assertIn("bundling provider icons", build, "the icons ship with the agent")
+
     def test_gauge_has_an_explicit_visible_width(self):
         # The single oversized text field was replaced by fixed-width gauges, so
         # the modal's total length stays bounded.

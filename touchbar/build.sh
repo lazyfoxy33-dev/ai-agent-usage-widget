@@ -36,6 +36,27 @@ swiftc -swift-version 5 -O \
     -framework AppKit \
     Sources/*.swift -o "$BIN"
 
+echo "› bundling provider icons…"
+# The settings window and the strip should show the same brand icons. In a
+# checkout they live in macwidget/App/Resources; inside QuotaWidget.app they are
+# copied to Contents/Resources, i.e. two levels above display-layers/touchbar.
+ICON_SRC=""
+for candidate in "../macwidget/App/Resources" "../../"; do
+    if [[ -f "$candidate/claude-app.png" ]]; then
+        ICON_SRC="$candidate"
+        break
+    fi
+done
+if [[ -n "$ICON_SRC" ]]; then
+    mkdir -p "$RES/icons"
+    for name in claude-app codex-app kimi-code deepseek siliconflow openrouter; do
+        cp "$ICON_SRC/$name.png" "$RES/icons/" 2>/dev/null || true
+    done
+    echo "  ($(ls "$RES/icons" | wc -l | tr -d ' ') icons from $ICON_SRC)"
+else
+    echo "  (no icons found — the gauges fall back to their letter badges)"
+fi
+
 echo "› bundling shared core data layer…"
 rm -rf "$RES/core"
 mkdir -p "$RES/core"

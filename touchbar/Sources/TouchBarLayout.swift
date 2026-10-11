@@ -25,6 +25,18 @@ enum TouchBarProvider: String, CaseIterable {
         }
     }
 
+    /// Brand icon shipped with the app, matching the settings window.
+    var iconAssetName: String {
+        switch self {
+        case .claude: return "claude-app"
+        case .codex: return "codex-app"
+        case .kimi: return "kimi-code"
+        case .deepseek: return "deepseek"
+        case .siliconflow: return "siliconflow"
+        case .openrouter: return "openrouter"
+        }
+    }
+
     /// Balance providers render an amount instead of two usage bars.
     var isBalance: Bool {
         switch self {

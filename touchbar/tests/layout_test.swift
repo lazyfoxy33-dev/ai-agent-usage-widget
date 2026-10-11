@@ -275,5 +275,20 @@ expect(
 )
 unsetenv("AI_AGENT_USAGE_CONFIG")
 
+// MARK: brand icons
+
+print("icons")
+
+expect(
+    TouchBarProvider.allCases.map(\.iconAssetName) == [
+        "claude-app", "codex-app", "kimi-code", "deepseek", "siliconflow", "openrouter",
+    ],
+    "every provider maps to the icon the settings window uses"
+)
+expect(
+    Set(TouchBarProvider.allCases.map(\.iconAssetName)).count == TouchBarProvider.allCases.count,
+    "no two providers share an asset"
+)
+
 print(failures == 0 ? "all layout tests passed" : "\(failures) layout test(s) failed")
 exit(failures == 0 ? 0 : 1)
