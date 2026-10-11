@@ -34,6 +34,9 @@ final class ProviderGauge: NSView {
     private let dim   = NSColor(white: 0.55, alpha: 1)
     private let badgeInk = NSColor(white: 0.07, alpha: 1)
 
+    /// Brand icon, drawn in the badge slot; the letter is the fallback.
+    private var icon: NSImage?
+
     // Snapshot of what to draw, set by `update` / `updateBalance`.
     private var ok = false
     private var statusText = ""
@@ -84,6 +87,11 @@ final class ProviderGauge: NSView {
     }
     required init?(coder: NSCoder) { fatalError("not used") }
 
+    func setIcon(_ icon: NSImage?) {
+        self.icon = icon
+        needsDisplay = true
+    }
+
     func setWidth(_ newWidth: CGFloat) {
         guard abs(newWidth - width) > 0.5 else { return }
         width = newWidth
@@ -128,16 +136,25 @@ final class ProviderGauge: NSView {
         accent.withAlphaComponent(0.08).setFill();  card.fill()
         accent.withAlphaComponent(0.22).setStroke(); card.lineWidth = 0.6; card.stroke()
 
-        // Brand badge with the provider initial.
-        let badge = NSBezierPath(roundedRect: NSRect(x: badgeX, y: (30 - badgeSize) / 2,
-                                                     width: badgeSize, height: badgeSize),
-                                 xRadius: 6, yRadius: 6)
-        (ok ? accent : accent.withAlphaComponent(0.45)).setFill(); badge.fill()
-        let bl = NSAttributedString(string: letter,
-                                    attributes: [.font: badgeFont, .foregroundColor: badgeInk])
-        let bsz = bl.size()
-        bl.draw(at: NSPoint(x: badgeX + (badgeSize - bsz.width) / 2,
-                            y: (30 - bsz.height) / 2 + 0.5))
+        // Brand badge: the provider's real icon, or the initial as a fallback.
+        let badgeRect = NSRect(x: badgeX, y: (30 - badgeSize) / 2,
+                               width: badgeSize, height: badgeSize)
+        if let icon {
+            let clip = NSBezierPath(roundedRect: badgeRect, xRadius: 6, yRadius: 6)
+            NSGraphicsContext.saveGraphicsState()
+            clip.addClip()
+            icon.draw(in: badgeRect, from: .zero, operation: .sourceOver,
+                      fraction: ok ? 1 : 0.5)
+            NSGraphicsContext.restoreGraphicsState()
+        } else {
+            let badge = NSBezierPath(roundedRect: badgeRect, xRadius: 6, yRadius: 6)
+            (ok ? accent : accent.withAlphaComponent(0.45)).setFill(); badge.fill()
+            let bl = NSAttributedString(string: letter,
+                                        attributes: [.font: badgeFont, .foregroundColor: badgeInk])
+            let bsz = bl.size()
+            bl.draw(at: NSPoint(x: badgeX + (badgeSize - bsz.width) / 2,
+                                y: (30 - bsz.height) / 2 + 0.5))
+        }
 
         guard ok else {
             let st = NSAttributedString(string: statusText,

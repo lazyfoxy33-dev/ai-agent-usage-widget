@@ -91,6 +91,8 @@ jobs:
           rm -rf "$SANDBOX/Resources/display-layers/touchbar/QuotaBar.app"
           cp core/fetch_usage.py "$SANDBOX/Resources/core/"
           cp core/usage/*.py "$SANDBOX/Resources/core/usage/"
+          # Inside the app the brand icons sit at Contents/Resources/*.png.
+          cp macwidget/App/Resources/*.png "$SANDBOX/Resources/"
           (
             cd "$SANDBOX/Resources/display-layers/touchbar"
             HOME="$SANDBOX" PATH="$SANDBOX/stubs:$PATH" \
@@ -102,6 +104,8 @@ jobs:
           test -f "$SANDBOX/Library/LaunchAgents/com.quotabar.app.plist"
           # Building inside the bundle would invalidate QuotaWidget.app's signature.
           test ! -e "$SANDBOX/Resources/display-layers/touchbar/QuotaBar.app"
+          # The provider icons ship with the agent so the strip matches the settings window.
+          test "$(ls "$SANDBOX/out/QuotaBar.app/Contents/Resources/icons" | wc -l | tr -d ' ')" = "6"
       - name: Build and test
         working-directory: macwidget
         run: |

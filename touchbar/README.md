@@ -131,6 +131,18 @@ layer otherwise. That keeps the strip and the settings window showing the same s
 the app closed, balance providers report as unconfigured while quota providers are
 unaffected.
 
+## 图标 / Icons
+
+展开后的每个格子以及收起那一小格，都用**和设置页面完全相同的品牌图标**（`macwidget/App/Resources/*.png`
+在构建时打包进 `QuotaBar.app/Contents/Resources/icons/`）；图标缺失时自动回退为原来的字母徽章
+（C / X / K / D / S / O），所以构建环境少资源也不会画不出来。
+
+Each cell — and the collapsed tray cell — draws **the same brand icon the settings window
+shows** (`macwidget/App/Resources/*.png`, bundled into
+`QuotaBar.app/Contents/Resources/icons/` at build time). If an icon is missing the gauge
+falls back to its letter badge (C / X / K / D / S / O), so a build without the assets still
+renders.
+
 ## 数据来源 / Data
 
 不重复实现取数：运行共享的 `core/fetch_usage.py`（构建时拷入 `QuotaBar.app/Contents/Resources/core`），

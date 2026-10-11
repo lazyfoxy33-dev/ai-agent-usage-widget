@@ -25,6 +25,7 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     /// Providers to show, in display order (re-read from config on refresh).
     private var layout: [TouchBarProvider] = TouchBarLayout.load()
     private var gauges: [TouchBarProvider: ProviderGauge] = [:]
+    private var icons: [TouchBarProvider: NSImage] = [:]
 
     /// macOS drops cells that do not fit, so the strip measures itself: when a
     /// presentation loses cells it retries narrower, up to `maxFitRounds` times.
@@ -69,8 +70,39 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
             accent: accent(provider.tag),
             soft: soft(provider.tag)
         )
+        created.setIcon(icon(for: provider))
         gauges[provider] = created
         return created
+    }
+
+    /// The same brand icon the settings window shows (letter badge if missing).
+    private func icon(for provider: TouchBarProvider) -> NSImage? {
+        if let cached = icons[provider] { return cached }
+        guard let url = Self.iconURL(for: provider),
+              let image = NSImage(contentsOf: url) else {
+            return nil
+        }
+        icons[provider] = image
+        return image
+    }
+
+    static func iconURL(
+        for provider: TouchBarProvider,
+        resourcePath: String? = Bundle.main.resourcePath,
+        workingDirectory: String = FileManager.default.currentDirectoryPath
+    ) -> URL? {
+        let file = provider.iconAssetName + ".png"
+        var candidates: [String] = []
+        if let resourcePath {
+            candidates.append(resourcePath + "/icons/" + file)
+            candidates.append(resourcePath + "/" + file)
+        }
+        // Dev fallback when running straight out of the source tree.
+        candidates.append(workingDirectory + "/../macwidget/App/Resources/" + file)
+        candidates.append(workingDirectory + "/macwidget/App/Resources/" + file)
+        return candidates
+            .first { FileManager.default.fileExists(atPath: $0) }
+            .map { URL(fileURLWithPath: $0) }
     }
 
     /// Fresh views for the current selection: an NSCustomTouchBarItem takes
@@ -374,11 +406,12 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
 
     private func renderTray() {
         let s = NSMutableAttributedString()
-        switch TrayGlance.pick(
+        let pick = TrayGlance.pick(
             candidates: trayCandidates(),
             foreground: foregroundTag,
             lastUsed: lastUsedTag
-        ) {
+        )
+        switch pick {
         case let pick?:
             let color = pick.stale ? dim : accent(pick.tag)
             s.append(seg(pick.tag, trayFont, color))
@@ -387,7 +420,13 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
             s.append(seg("··", trayFont, dim))
         }
         trayButton.attributedTitle = s
-        let width = ceil(s.size().width) + 16
+        trayButton.image = pick
+            .flatMap { p in TouchBarProvider.allCases.first { $0.tag == p.tag } }
+            .flatMap { icon(for: $0) }
+        trayButton.imagePosition = .imageLeading
+        trayButton.imageScaling = .scaleProportionallyDown
+        let imageWidth: CGFloat = trayButton.image == nil ? 0 : 22
+        let width = ceil(s.size().width) + 16 + imageWidth
         trayButton.frame = NSRect(x: 0, y: 0, width: max(width, 40), height: 30)
     }
 
