@@ -44,10 +44,22 @@ final class QuotaWidgetModel: ObservableObject {
         return nil
     }
 
+    /// How often the payload is refreshed while the app runs. The Touch Bar agent
+    /// reads this app's mirror, so a stale mirror would show placeholder balances —
+    /// keep this well under the agent's freshness window.
+    static let refreshInterval: TimeInterval = 300
+
     func start() {
         guard !hasStarted else { return }
         hasStarted = true
         status = "已启动 · 手动刷新"
+        timer?.invalidate()
+        let timer = Timer(timeInterval: Self.refreshInterval, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.refreshAPIKeyProviders() }
+        }
+        timer.tolerance = 30
+        RunLoop.main.add(timer, forMode: .common)
+        self.timer = timer
     }
 
     nonisolated static func apiKeys(from store: APIKeyStore) throws -> [APIKeyProviderID: String] {

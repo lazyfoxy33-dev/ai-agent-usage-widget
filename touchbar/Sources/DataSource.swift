@@ -60,6 +60,18 @@ struct Usage {
     /// Where this snapshot came from: "app" (the menu bar app's mirror) or "core".
     var origin = "none"
 
+    /// Replaces one provider (used when merging a stale app mirror with fresh core data).
+    mutating func setProvider(_ provider: Provider, for id: TouchBarProvider) {
+        switch id {
+        case .claude: claude = provider
+        case .codex: codex = provider
+        case .kimi: kimi = provider
+        case .deepseek: deepseek = provider
+        case .siliconflow: siliconflow = provider
+        case .openrouter: openrouter = provider
+        }
+    }
+
     /// The parsed provider behind a Touch Bar layout entry.
     func provider(for provider: TouchBarProvider) -> Provider {
         switch provider {
@@ -101,8 +113,32 @@ enum UsageSource {
     /// `login_required` unconditionally, so preferring the mirror is what makes the
     /// Touch Bar agree with the settings window. Off the main thread.
     static func read() -> Usage {
-        if let mirrored = readMirror() { return mirrored }
-        return readFromCoreLayer()
+        let core = readFromCoreLayer()
+        guard let (mirrored, modified) = readMirrorSnapshot() else { return core }
+        if isFresh(modifiedAt: modified) {
+            var fresh = mirrored
+            fresh.origin = "app"
+            fresh.updatedAt = modified
+            return fresh
+        }
+        return merging(core: core, mirror: mirrored)
+    }
+
+    /// A stale mirror is still the only source of real balance figures — the core
+    /// layer reports SiliconFlow as a placeholder — so keep those providers and mark
+    /// them cached, while taking quota providers from the fresh core read.
+    static func merging(core: Usage, mirror: Usage) -> Usage {
+        var merged = core
+        merged.origin = "core+app"
+        for id in TouchBarProvider.allCases where id.isBalance {
+            let provider = mirror.provider(for: id)
+            guard provider.ok || provider.balance != nil else { continue }
+            var cached = provider
+            cached.live = false
+            cached.reason = "stale"
+            merged.setProvider(cached, for: id)
+        }
+        return merged
     }
 
     /// The mirror lives beside the shared config file, so both apps agree on it.
@@ -127,18 +163,27 @@ enum UsageSource {
         return age >= -60 && age <= maxAge
     }
 
-    static func readMirror(now: Date = Date()) -> Usage? {
+    /// The mirror regardless of age, with the time it was written.
+    static func readMirrorSnapshot() -> (Usage, Date)? {
         let url = mirrorURL()
         guard let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
               let modified = attributes[.modificationDate] as? Date,
-              isFresh(modifiedAt: modified, now: now),
               let data = try? Data(contentsOf: url),
-              var usage = usage(from: data) else {
+              let usage = UsageSource.usage(from: data) else {
             return nil
         }
-        usage.origin = "app"
-        usage.updatedAt = modified
-        return usage
+        return (usage, modified)
+    }
+
+    static func readMirror(now: Date = Date()) -> Usage? {
+        guard let (usage, modified) = readMirrorSnapshot(),
+              isFresh(modifiedAt: modified, now: now) else {
+            return nil
+        }
+        var fresh = usage
+        fresh.origin = "app"
+        fresh.updatedAt = modified
+        return fresh
     }
 
     /// Parses a shared-contract payload (both the core layer and the app emit one).

@@ -70,6 +70,17 @@ final class TouchBarSelectionTests: XCTestCase {
         XCTAssertEqual(permissions?.intValue, 0o600, "balances stay owner-only")
     }
 
+    @MainActor
+    func testPayloadRefreshKeepsTheTouchBarMirrorFresh() {
+        // The Touch Bar agent treats a mirror older than 15 minutes as stale.
+        XCTAssertLessThanOrEqual(
+            QuotaWidgetModel.refreshInterval,
+            600,
+            "the periodic refresh must stay well inside the agent's freshness window"
+        )
+        XCTAssertGreaterThan(QuotaWidgetModel.refreshInterval, 0)
+    }
+
     // MARK: - View model
 
     @MainActor

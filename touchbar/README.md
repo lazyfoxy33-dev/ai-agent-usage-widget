@@ -101,10 +101,16 @@ Diagnostics:
 控制台会话（WebView 登录），这些只有菜单栏 app 能做——共享数据层里 `siliconflow` 是一个固定的
 `login_required` 占位，真实值由 app 算出后覆盖。
 
-所以菜单栏 app 每次刷新后会把自己那份**脱敏 payload 镜像**到
-`~/.config/ai-agent-usage-widget/usage.json`（权限 0600），Touch Bar 会**优先读这份镜像**（15 分钟内视为
-有效），过期或缺失时才回退到共享数据层。这样 Touch Bar 与设置页显示的 SiliconFlow 状态一致；若菜单栏 app
-没在运行，余额 provider 会显示为未配置/取不到，额度 provider 不受影响。
+所以菜单栏 app 会把那份**脱敏 payload 镜像**到 `~/.config/ai-agent-usage-widget/usage.json`（权限
+0600），并**每 5 分钟自动刷新一次**（这是镜像保持新鲜的关键）。Touch Bar 的读取策略：
+
+| 镜像状态 | Touch Bar 读什么 |
+|---|---|
+| 15 分钟内 | 完全用镜像（与设置页一致） |
+| 已过期但存在 | 额度 provider 用共享数据层现取；**余额 provider 仍用镜像里的真实数值**，并标记为缓存（格子变暗） |
+| 不存在 | 全部用共享数据层（余额 provider 只能显示未配置） |
+
+也就是说即使菜单栏 app 没开，你最近一次已知的余额也不会退化成「未配置」。
 
 排查：
 
