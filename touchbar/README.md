@@ -41,9 +41,16 @@ DeepSeek / SiliconFlow / OpenRouter 显示余额金额与估算可用天数。�
 设置写入共享配置 `~/.config/ai-agent-usage-widget/config.json` 的 `touchbar_providers`，QuotaBar 每
 60 秒刷新时重读一次，因此**改完一分钟内生效，无需重启**。
 
-收起那一小格**不受这个选择影响**：它始终回答「我面前这个 coding 工具现在怎么样」——优先显示**前台**的
-Claude / Codex / Kimi，没有前台 AI 应用时显示最近用过的，再退到用量最高的那个。设置只决定**展开后**显示
-谁、按什么顺序。
+收起那一小格**不受这个选择影响**：它始终回答「我面前这个工具现在怎么样」——优先显示**前台**应用对应的
+provider，没有识别到时显示最近用过的，再退到用量最高的窗口。设置只决定**展开后**显示谁、按什么顺序。
+
+前台映射表：`DeepSeek Harness (dsh)` / DeepSeek → **DeepSeek**（显示余额金额）、Claude → Claude、
+Kimi / Moonshot → Kimi、Codex / OpenAI / ChatGPT → Codex；其他应用（Finder、终端等）不映射，于是回退到
+最近用过的。文字规则：**有图标时只显示数值**（`5%`、`¥32.6`），图标缺失才补上字母（`X5%`）。
+
+```bash
+./QuotaBar.app/Contents/MacOS/QuotaBar --tray   # 打印前台映射与收起格当前显示的内容
+```
 
 选择的 provider 越多，展开后的格子会自动**变窄**，否则超出条宽的部分会被系统直接丢掉（这是 macOS 的
 静默行为：放不下的 item 直接不显示）。实测 13" MacBook Pro 的 modal 条给格子的预算约 600pt：3 个以内保持
@@ -135,7 +142,9 @@ unaffected.
 
 展开后的每个格子以及收起那一小格，都用**和设置页面完全相同的品牌图标**（`macwidget/App/Resources/*.png`
 在构建时打包进 `QuotaBar.app/Contents/Resources/icons/`）；图标缺失时自动回退为原来的字母徽章
-（C / X / K / D / S / O），所以构建环境少资源也不会画不出来。
+（C / X / K / D / S / O），所以构建环境少资源也不会画不出来。部分图标自带不透明浅色底板（Codex 是白色
+圆角方块），在黑色条上是刺眼的白块，因此绘制前会检测四角是否为「不透明 + 高亮度」，是则把这层底板抠成透明
+（带羽化边缘），保留品牌图形本身。
 
 Each cell — and the collapsed tray cell — draws **the same brand icon the settings window
 shows** (`macwidget/App/Resources/*.png`, bundled into

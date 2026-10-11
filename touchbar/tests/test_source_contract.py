@@ -88,9 +88,11 @@ class TestTouchBarForegroundGlance(unittest.TestCase):
 
         self.assertIn("trayCandidates()", controller)
         self.assertIn("TouchBarProvider.allCases.compactMap", controller)
-        self.assertIn("TrayGlance.pick(", controller)
+        self.assertIn("TrayGlance.tightest(", controller)
+        self.assertIn("TrayGlance.mostDrained(", controller)
         self.assertNotIn("layout.first", controller, "the tray must not fall back to the selection")
-        self.assertIn("static func pick(candidates:", glance)
+        self.assertIn("static func tightest(in candidates:", glance)
+        self.assertIn("static func mostDrained(", glance)
 
     def test_expanded_bar_uses_the_selected_order(self):
         controller = _read("Sources", "TouchBarController.swift")
@@ -98,6 +100,25 @@ class TestTouchBarForegroundGlance(unittest.TestCase):
         self.assertIn("for (index, provider) in layout.enumerated()", controller)
         self.assertIn("for provider in layout {", controller, "gauges are fed from the selection")
         self.assertIn("selectedWindows()", controller, "the reset countdown follows the selection")
+
+    def test_frontmost_tool_mapping_is_shared_and_includes_dsh(self):
+        controller = _read("Sources", "TouchBarController.swift")
+        tool = _read("Sources", "FrontmostTool.swift")
+
+        self.assertIn("FrontmostTool.tag(", controller)
+        self.assertIn('("deepseek", "D")', tool)
+        self.assertIn('("dsh", "D")', tool)
+        self.assertIn("case .balance(let tag, let text, let dimmed):", controller,
+                      "a balance provider can own the collapsed cell")
+
+    def test_icon_plates_are_keyed_out(self):
+        icon = _read("Sources", "ProviderIcon.swift")
+        controller = _read("Sources", "TouchBarController.swift")
+
+        self.assertIn("static func keyedOut(", icon)
+        self.assertIn("lightPlateColor(pixels:", icon)
+        self.assertIn("CGColorSpaceCreateDeviceRGB()", icon, "pixel work avoids AppKit colour APIs")
+        self.assertIn("ProviderIcon.condensed(", controller)
 
     def test_collapsed_cell_follows_frontmost_ai_app(self):
         source = _read("Sources", "TouchBarController.swift")

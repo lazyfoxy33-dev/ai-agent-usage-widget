@@ -27,6 +27,17 @@ enum TrayGlance {
         var stale: Bool
     }
 
+    /// Collapsed-cell text: the icon already names the provider, so only the figure
+    /// is shown; without an icon the tag letter stays (as the gauges do).
+    static func label(tag: String, figure: String, hasIcon: Bool) -> String {
+        hasIcon ? figure : tag + figure
+    }
+
+    /// Convenience for a quota percentage.
+    static func percentageLabel(tag: String, usedPct: Double, hasIcon: Bool) -> String {
+        label(tag: tag, figure: "\(Int(usedPct.rounded()))%", hasIcon: hasIcon)
+    }
+
     static func pick(candidates: [Candidate], foreground: String?, lastUsed: String?) -> Pick? {
         if let tag = foreground ?? lastUsed, let pick = tightest(in: candidates, tag: tag) {
             return pick

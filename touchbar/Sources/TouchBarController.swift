@@ -82,8 +82,9 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
               let image = NSImage(contentsOf: url) else {
             return nil
         }
-        icons[provider] = image
-        return image
+        let prepared = ProviderIcon.condensed(image, cacheKey: provider.iconAssetName)
+        icons[provider] = prepared
+        return prepared
     }
 
     static func iconURL(
@@ -208,11 +209,10 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     /// in its bundle id / name. Returns nil for anything that isn't an AI app.
     private func providerTag(forFrontmost app: NSRunningApplication?) -> String? {
         guard let app = app else { return nil }
-        let s = ((app.bundleIdentifier ?? "") + " " + (app.localizedName ?? "")).lowercased()
-        if s.contains("claude") { return "C" }
-        if s.contains("kimi") || s.contains("moonshot") { return "K" }
-        if s.contains("codex") || s.contains("openai") || s.contains("chatgpt") { return "X" }
-        return nil
+        return FrontmostTool.tag(
+            bundleID: app.bundleIdentifier ?? "",
+            name: app.localizedName ?? ""
+        )
     }
 
     private func presentModal() {
@@ -291,6 +291,31 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
     }
 
     // MARK: Diagnostics
+
+    /// True once a usage snapshot has arrived (for the CLI diagnostics).
+    var hasUsageData: Bool { usage.origin != "none" }
+
+    /// Reports what the collapsed cell is showing and why (`--tray`). `assume`
+    /// pretends a given app is frontmost, so the mapping can be checked without
+    /// switching windows.
+    func printTrayReport(assume: (bundleID: String, name: String)? = nil) {
+        if let assume {
+            foregroundTag = FrontmostTool.tag(bundleID: assume.bundleID, name: assume.name)
+        }
+        let front = NSWorkspace.shared.frontmostApplication
+        print("frontmost: \(front?.localizedName ?? "?") [\(front?.bundleIdentifier ?? "?")]"
+              + " -> tag \(foregroundTag ?? "-")")
+        print("last used: \(lastUsedTag ?? "-")")
+        switch trayPick() {
+        case .quota(let tag, let usedPct, let stale):
+            print("tray: quota \(tag) \(Int(usedPct.rounded()))%\(stale ? " (stale)" : "")")
+        case .balance(let tag, let text, let dimmed):
+            print("tray: balance \(tag) \(text)\(dimmed ? " (cached)" : "")")
+        case nil:
+            print("tray: empty")
+        }
+        print("data source: \(usage.origin)")
+    }
 
     /// Presents the strip so `--present-test` can measure what macOS kept.
     func presentForDiagnostics() {
@@ -404,25 +429,70 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         windows(of: layout)
     }
 
+    /// What the collapsed cell shows: a quota percentage, or a balance amount when
+    /// the tool in front is a balance provider (DeepSeek Harness → DeepSeek).
+    private enum TrayPick {
+        case quota(tag: String, usedPct: Double, stale: Bool)
+        case balance(tag: String, text: String, dimmed: Bool)
+
+        var tag: String {
+            switch self {
+            case .quota(let tag, _, _): return tag
+            case .balance(let tag, _, _): return tag
+            }
+        }
+    }
+
+    private func trayPick() -> TrayPick? {
+        for tag in [foregroundTag, lastUsedTag].compactMap({ $0 }) {
+            guard let provider = TouchBarProvider.allCases.first(where: { $0.tag == tag }) else {
+                continue
+            }
+            if provider.isBalance {
+                let figures = usage.provider(for: provider)
+                if figures.ok, let balance = figures.balance, balance.available {
+                    let dimmed = figures.reason == "stale" || figures.live == false
+                    return .balance(tag: tag, text: amountText(balance), dimmed: dimmed)
+                }
+                continue
+            }
+            if let pick = TrayGlance.tightest(in: trayCandidates(), tag: tag) {
+                return .quota(tag: pick.tag, usedPct: pick.usedPct, stale: pick.stale)
+            }
+        }
+        // Nothing known about the tool in front: glance at the most drained window.
+        if let pick = TrayGlance.mostDrained(trayCandidates()) {
+            return .quota(tag: pick.tag, usedPct: pick.usedPct, stale: pick.stale)
+        }
+        return nil
+    }
+
     private func renderTray() {
         let s = NSMutableAttributedString()
-        let pick = TrayGlance.pick(
-            candidates: trayCandidates(),
-            foreground: foregroundTag,
-            lastUsed: lastUsedTag
-        )
+        let pick = trayPick()
+        let pickedIcon = pick
+            .flatMap { p in TouchBarProvider.allCases.first { $0.tag == p.tag } }
+            .flatMap { icon(for: $0) }
         switch pick {
-        case let pick?:
-            let color = pick.stale ? dim : accent(pick.tag)
-            s.append(seg(pick.tag, trayFont, color))
-            s.append(seg(String(Int(pick.usedPct.rounded())), trayFont, color))
+        case .quota(let tag, let usedPct, let stale):
+            let color = stale ? dim : accent(tag)
+            s.append(seg(
+                TrayGlance.percentageLabel(tag: tag, usedPct: usedPct, hasIcon: pickedIcon != nil),
+                trayFont,
+                color
+            ))
+        case .balance(let tag, let text, let dimmed):
+            let color = dimmed ? dim : accent(tag)
+            s.append(seg(
+                TrayGlance.label(tag: tag, figure: text, hasIcon: pickedIcon != nil),
+                trayFont,
+                color
+            ))
         case nil:
             s.append(seg("··", trayFont, dim))
         }
         trayButton.attributedTitle = s
-        trayButton.image = pick
-            .flatMap { p in TouchBarProvider.allCases.first { $0.tag == p.tag } }
-            .flatMap { icon(for: $0) }
+        trayButton.image = pickedIcon
         trayButton.imagePosition = .imageLeading
         trayButton.imageScaling = .scaleProportionallyDown
         let imageWidth: CGFloat = trayButton.image == nil ? 0 : 22
