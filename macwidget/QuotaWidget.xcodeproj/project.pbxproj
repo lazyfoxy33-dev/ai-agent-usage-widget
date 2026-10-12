@@ -14,12 +14,14 @@
 		3549281D77E6F25189060489 /* codex-app.png in Resources */ = {isa = PBXBuildFile; fileRef = B9398C118DB4E4C01EAD2901 /* codex-app.png */; };
 		3F742887A1A253E730AFB4F1 /* openrouter.png in Resources */ = {isa = PBXBuildFile; fileRef = EBFB217753FA4BEDF084D65D /* openrouter.png */; };
 		45CAB94F2554CF0076FBA899 /* siliconflow.png in Resources */ = {isa = PBXBuildFile; fileRef = 80CEFEB579C3E638B4793BD2 /* siliconflow.png */; };
+		45D0CC24DD0B396F796CA177 /* MenuSummaryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1854F543893D9C34C837B87B /* MenuSummaryTests.swift */; };
 		572B5B2CDA0DED566F50C665 /* UsageFetcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4396386870ACF13B0387F84A /* UsageFetcher.swift */; };
 		58617DC6A19B5F6175E33C1B /* ControlCenterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 238080F2F39302EA1E45C5DF /* ControlCenterView.swift */; };
 		5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */; };
 		61E8A6DF49FA82433A5822BF /* DSHCredentials.swift in Sources */ = {isa = PBXBuildFile; fileRef = A43230D6E1D3182C7B1A0A4A /* DSHCredentials.swift */; };
 		688565133A60319F9F476E56 /* TouchBarSelectionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12716B772FD09656FD18F526 /* TouchBarSelectionTests.swift */; };
 		6959909C56418EA81FD3E01D /* TouchBarSelection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1969488132920951C77965F2 /* TouchBarSelection.swift */; };
+		70973D35B2C7435682F90BC2 /* MenuSummary.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05365C86C0DFC61BCCCADA1F /* MenuSummary.swift */; };
 		74CD11898B71BE0D3AE73420 /* APIKeyStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9CBA43F0FBB592202F55BCEE /* APIKeyStore.swift */; };
 		996E6998CA9340194DA5D802 /* AppConfigStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBCEE7EF1C06A191DE5C4FAB /* AppConfigStore.swift */; };
 		9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10993021F1557349A9B061FA /* UsageStoreTests.swift */; };
@@ -44,8 +46,10 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		05365C86C0DFC61BCCCADA1F /* MenuSummary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuSummary.swift; sourceTree = "<group>"; };
 		10993021F1557349A9B061FA /* UsageStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageStoreTests.swift; sourceTree = "<group>"; };
 		12716B772FD09656FD18F526 /* TouchBarSelectionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBarSelectionTests.swift; sourceTree = "<group>"; };
+		1854F543893D9C34C837B87B /* MenuSummaryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuSummaryTests.swift; sourceTree = "<group>"; };
 		1969488132920951C77965F2 /* TouchBarSelection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TouchBarSelection.swift; sourceTree = "<group>"; };
 		1B67C688DE1CE31949858A8F /* DisplayLayerStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLayerStoreTests.swift; sourceTree = "<group>"; };
 		229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuotaWidgetApp.swift; sourceTree = "<group>"; };
@@ -85,6 +89,7 @@
 				5B596EF3A6AEF338EC8FE839 /* DisplayLayerStore.swift */,
 				A43230D6E1D3182C7B1A0A4A /* DSHCredentials.swift */,
 				84083F78F49E30915AB023A6 /* Info.plist */,
+				05365C86C0DFC61BCCCADA1F /* MenuSummary.swift */,
 				CA7A77F08C60E470A287BD31 /* OpenRouterAuth.swift */,
 				B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */,
 				229A0EDB7D709A8D7C4867E8 /* QuotaWidgetApp.swift */,
@@ -142,6 +147,7 @@
 				4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */,
 				C4AF10191CE92902693285D9 /* AuthAndCredentialsTests.swift */,
 				1B67C688DE1CE31949858A8F /* DisplayLayerStoreTests.swift */,
+				1854F543893D9C34C837B87B /* MenuSummaryTests.swift */,
 				12716B772FD09656FD18F526 /* TouchBarSelectionTests.swift */,
 				7FB8541A0C552866932C346F /* UsageContractTests.swift */,
 				10993021F1557349A9B061FA /* UsageStoreTests.swift */,
@@ -295,6 +301,7 @@
 				58617DC6A19B5F6175E33C1B /* ControlCenterView.swift in Sources */,
 				61E8A6DF49FA82433A5822BF /* DSHCredentials.swift in Sources */,
 				A96F9CD44F0A5026F37907A6 /* DisplayLayerStore.swift in Sources */,
+				70973D35B2C7435682F90BC2 /* MenuSummary.swift in Sources */,
 				185FE98FA44A4B90F2EE8EC3 /* OpenRouterAuth.swift in Sources */,
 				5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */,
 				6959909C56418EA81FD3E01D /* TouchBarSelection.swift in Sources */,
@@ -311,6 +318,7 @@
 				D38192171F7B63332CC3F2E0 /* APIKeyStoreTests.swift in Sources */,
 				C6DB4BA69495106AAE73446E /* AuthAndCredentialsTests.swift in Sources */,
 				DF42FE2AF1438A232B506A84 /* DisplayLayerStoreTests.swift in Sources */,
+				45D0CC24DD0B396F796CA177 /* MenuSummaryTests.swift in Sources */,
 				688565133A60319F9F476E56 /* TouchBarSelectionTests.swift in Sources */,
 				05FAA991A1472BF40CDE5650 /* UsageContractTests.swift in Sources */,
 				9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */,

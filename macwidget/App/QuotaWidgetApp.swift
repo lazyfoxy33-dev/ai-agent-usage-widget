@@ -8,6 +8,8 @@ extension Notification.Name {
 @MainActor
 final class QuotaWidgetModel: ObservableObject {
     @Published var status = "等待首次刷新"
+    /// Provider summary shown in the status-bar menu, in the Touch Bar's order.
+    @Published private(set) var menuLines: [MenuSummary.Line] = []
     private var timer: Timer?
     private var lastUsed: String?
     private var hasStarted = false
@@ -49,10 +51,26 @@ final class QuotaWidgetModel: ObservableObject {
     /// keep this well under the agent's freshness window.
     static let refreshInterval: TimeInterval = 300
 
+    /// Rebuilds the menu summary from the shared payload and the Touch Bar order.
+    func reloadMenuLines() {
+        let payload = (try? UsageStore().read())
+            .flatMap { try? UsagePayload.decode(Data($0.utf8)) }
+        let order = TouchBarSelection.normalize(AppConfigStore().readTouchBarProviders())
+        menuLines = MenuSummary.lines(from: payload, order: order)
+    }
+
     func start() {
         guard !hasStarted else { return }
         hasStarted = true
         status = "已启动 · 手动刷新"
+        reloadMenuLines()
+        NotificationCenter.default.addObserver(
+            forName: .quotaWidgetUsagePayloadDidRefresh,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in self?.reloadMenuLines() }
+        }
         timer?.invalidate()
         let timer = Timer(timeInterval: Self.refreshInterval, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refreshAPIKeyProviders() }
@@ -175,10 +193,29 @@ struct MenuBarContentView: View {
     var body: some View {
         Text(model.status)
         Divider()
+        MenuSummaryView(lines: model.menuLines)
+        Divider()
         Button("设置…") { SettingsPresenter.app(openSettings: { openSettings() }).present() }
         Button("立即刷新") { model.refreshAPIKeyProviders() }
         Divider()
         Button("退出") { NSApplication.shared.terminate(nil) }
+    }
+}
+
+/// The provider summary block of the status-bar menu: one line per provider, in the
+/// order the Touch Bar is configured with.
+struct MenuSummaryView: View {
+    let lines: [MenuSummary.Line]
+
+    var body: some View {
+        if lines.isEmpty {
+            Text("暂无数据 · 点「立即刷新」")
+        } else {
+            Text("余量 · 按 Touch Bar 顺序")
+            ForEach(lines) { line in
+                Text(line.title)
+            }
+        }
     }
 }
 

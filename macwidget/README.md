@@ -105,6 +105,9 @@ settings window:
   are the recommended path.
 - The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
   contract and never see raw API keys.
+- The status-bar menu lists every configured provider with its remaining quota (or
+  balance and days-left trend), in the same order the Touch Bar is configured with,
+  so opening either frontend shows the same sequence.
 - The app mirrors its sanitized payload to
   `~/.config/ai-agent-usage-widget/usage.json` (mode 0600) after every refresh and
   refreshes on a 5-minute timer while it runs, so the mirror the Touch Bar reads stays
