@@ -251,7 +251,12 @@ enum ProviderPresentation {
             return strings.notSignedIn.hasPrefix("Not") ? "No spending trend yet" : "暂无消耗趋势"
         }
         let window = burnRate.windowDays ?? 7
-        return strings.notSignedIn.hasPrefix("Not")
+        let english = strings.notSignedIn.hasPrefix("Not")
+        // A sub-day window means the history is still too short to quote one.
+        guard window > 0 else {
+            return english ? "≈ \(days)d left" : "约可用 \(days) 天"
+        }
+        return english
             ? "≈ \(days)d left (\(window)d)"
             : "近 \(window) 日约可用 \(days) 天"
     }
