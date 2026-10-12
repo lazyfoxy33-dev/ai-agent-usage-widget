@@ -60,19 +60,14 @@ enum MenuSummary {
                 return .unavailable(ProviderPresentation.message(for: id.providerKind, provider: provider))
             }
             let burnRate = provider.burnRate
-            let daysLeft = burnRate?.estimatedDaysLeft
-            let trend: String? = {
-                guard !provider.isStale,
-                      let burnRate,
-                      burnRate.confidence != "none",
-                      let daysLeft,
-                      daysLeft > 0 else { return nil }
-                return ProviderPresentation.balanceTrend(burnRate)
-            }()
+            let usable = ProviderPresentation.isTrendUsable(burnRate)
+            let trend: String? = provider.isStale
+                ? ProviderPresentation.cachedBalanceMessage()
+                : ProviderPresentation.balanceTrendOrCaveat(burnRate)
             return .balance(
                 amount: ProviderPresentation.balanceAmount(balance),
-                trend: provider.isStale ? ProviderPresentation.cachedBalanceMessage() : trend,
-                daysLeft: provider.isStale ? nil : daysLeft,
+                trend: trend,
+                daysLeft: usable && !provider.isStale ? burnRate?.estimatedDaysLeft : nil,
                 cached: provider.isStale
             )
         }

@@ -138,6 +138,23 @@ layer otherwise. That keeps the strip and the settings window showing the same s
 the app closed, balance providers report as unconfigured while quota providers are
 unaffected.
 
+## 余额趋势的可信度 / Trusting the trend
+
+余额格下面的「≈N 天」是**线性外推**：`当前余额 ÷ (窗口内消耗 ÷ 窗口天数)`。参照点是本机记录的余额历史里
+最合适的一条（优先 ≥7 天前，其次 ≥1 天前，都没有才用最早一条），窗口不足 1 天时外推结果就是**单次会话的
+消耗**，没有参考价值——SiliconFlow 接入历史记录的第一天就因此显示过「约可用 1 天」（17 小时样本，
+confidence=low）。
+
+因此现在的规则：**窗口 ≥1 天才显示天数**，不足 1 天显示「样本不足」。样本积累到 1 天以上会自动开始显示，
+≥7 天窗口升为高置信度。
+
+The `≈N days` line is a linear extrapolation: `balance ÷ (spend in window ÷ window days)`,
+with the comparison point taken from this machine's balance history (a record at least
+7 days old, else at least 1 day old, else the oldest one). A window shorter than a day
+just projects one session's spend, so it shows 样本不足 instead of a number — that is how
+SiliconFlow claimed "约可用 1 天" from 17 hours of samples on its first day. Past one day
+of history the figure appears; past seven days it counts as high confidence.
+
 ## 图标 / Icons
 
 展开后的每个格子以及收起那一小格，都用**和设置页面完全相同的品牌图标**（`macwidget/App/Resources/*.png`

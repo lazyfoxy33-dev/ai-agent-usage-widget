@@ -345,5 +345,31 @@ expect(repoImage("codex-app").flatMap { ProviderIcon.keyedOut($0) } != nil,
 expect(repoImage("claude-app").flatMap { ProviderIcon.keyedOut($0) } == nil,
        "the Claude asset keeps its orange plate")
 
+// MARK: balance trend wording
+
+print("BalanceTrend")
+
+func burn(_ window: Int?, _ days: Int?, _ confidence: String) -> BurnRate {
+    BurnRate(
+        amountPerDay: 1,
+        windowDays: window,
+        estimatedDaysLeft: days,
+        confidence: confidence,
+        reason: nil
+    )
+}
+
+expect(BalanceTrend.text(for: burn(1, 30, "medium")) == "≈30天",
+       "a full day of history gives a figure")
+expect(BalanceTrend.text(for: burn(30, 27, "low")) == "≈27天",
+       "a long window is trustworthy even at low confidence")
+expect(BalanceTrend.text(for: burn(0, 1, "low")) == "样本不足",
+       "a sub-day window says the estimate is still forming")
+expect(BalanceTrend.text(for: burn(1, 30, "none")) == nil,
+       "no estimate means no line")
+expect(BalanceTrend.text(for: burn(1, 0, "medium")) == nil,
+       "a zero estimate means no line")
+expect(BalanceTrend.text(for: nil) == nil, "no burn rate means no line")
+
 print(failures == 0 ? "all layout tests passed" : "\(failures) layout test(s) failed")
 exit(failures == 0 ? 0 : 1)
