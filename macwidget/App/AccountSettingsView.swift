@@ -234,7 +234,9 @@ struct AccountSettingsModel: Equatable {
             return nil
         }
         let amount = ProviderPresentation.balanceAmount(provider.balance)
-        let trend = ProviderPresentation.balanceTrend(provider.burnRate)
+        guard let trend = ProviderPresentation.balanceTrendOrCaveat(provider.burnRate) else {
+            return amount
+        }
         return "\(amount) · \(trend)"
     }
 

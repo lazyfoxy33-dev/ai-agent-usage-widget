@@ -14,6 +14,6 @@ cp tests/layout_test.swift "$OUT/main.swift"
 swiftc -O -o "$OUT/layout-tests" \
     Sources/TouchBarLayout.swift Sources/TrayGlance.swift Sources/TouchBarMetrics.swift \
     Sources/DataSource.swift \
-    Sources/FrontmostTool.swift Sources/ProviderIcon.swift \
+    Sources/FrontmostTool.swift Sources/ProviderIcon.swift Sources/BalanceTrend.swift \
     "$OUT/main.swift"
 "$OUT/layout-tests"

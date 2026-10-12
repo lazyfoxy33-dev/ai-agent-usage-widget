@@ -242,6 +242,43 @@ enum ProviderPresentation {
         }
     }
 
+    /// A days-left figure needs at least a full day of comparison history: a sub-day
+    /// window extrapolates a single session into a burn rate (SiliconFlow read
+    /// "约可用 1 天" off 17 hours of samples, at low confidence).
+    static func isTrendUsable(_ burnRate: BurnRateInfo?) -> Bool {
+        guard let burnRate,
+              burnRate.confidence != "none",
+              let days = burnRate.estimatedDaysLeft,
+              days > 0 else {
+            return false
+        }
+        return (burnRate.windowDays ?? 0) >= 1
+    }
+
+    /// An estimate exists, but it rests on less than a day of history.
+    static func awaitsHistory(_ burnRate: BurnRateInfo?) -> Bool {
+        guard let burnRate,
+              burnRate.confidence != "none",
+              burnRate.estimatedDaysLeft != nil else {
+            return false
+        }
+        return (burnRate.windowDays ?? 0) < 1
+    }
+
+    static var insufficientHistoryText: String {
+        strings.notSignedIn.hasPrefix("Not")
+            ? "Not enough history yet"
+            : "样本不足 · 明后天更准"
+    }
+
+    /// The trend line: a figure we can stand behind, an honest caveat while the
+    /// history is still short, or nothing at all.
+    static func balanceTrendOrCaveat(_ burnRate: BurnRateInfo?) -> String? {
+        if isTrendUsable(burnRate) { return balanceTrend(burnRate) }
+        if awaitsHistory(burnRate) { return insufficientHistoryText }
+        return nil
+    }
+
     static func balanceTrend(_ burnRate: BurnRateInfo?) -> String {
         guard
             let burnRate,

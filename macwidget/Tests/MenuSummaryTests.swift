@@ -93,6 +93,50 @@ final class MenuSummaryTests: XCTestCase {
         )
     }
 
+    func testSubDayWindowShowsACaveatInsteadOfADaysLeft() {
+        // SiliconFlow measured "约可用 1 天" from 17 hours of samples: honest wording
+        // matters more than a number nobody can act on.
+        let deepseek = UsageProvider(
+            ok: true,
+            kind: "balance",
+            live: true,
+            balance: BalanceInfo(amount: 19.34, currency: "CNY", available: true, label: "Balance"),
+            burnRate: BurnRateInfo(
+                amountPerDay: 18.23, windowDays: 0, estimatedDaysLeft: 1, confidence: "low", reason: nil
+            )
+        )
+
+        let rows = MenuSummary.rows(from: payload(deepseek: deepseek), order: [.deepseek])
+
+        XCTAssertEqual(
+            rows.first?.metric,
+            .balance(
+                amount: "¥19.34",
+                trend: ProviderPresentation.insufficientHistoryText,
+                daysLeft: nil,
+                cached: false
+            )
+        )
+    }
+
+    func testTrendUsabilityNeedsAFullDayOfHistory() {
+        func burnRate(window: Int?, days: Int?, confidence: String) -> BurnRateInfo {
+            BurnRateInfo(
+                amountPerDay: 1, windowDays: window, estimatedDaysLeft: days,
+                confidence: confidence, reason: nil
+            )
+        }
+
+        XCTAssertTrue(ProviderPresentation.isTrendUsable(burnRate(window: 1, days: 30, confidence: "medium")))
+        XCTAssertTrue(ProviderPresentation.isTrendUsable(burnRate(window: 30, days: 27, confidence: "low")))
+        XCTAssertFalse(ProviderPresentation.isTrendUsable(burnRate(window: 0, days: 1, confidence: "low")))
+        XCTAssertFalse(ProviderPresentation.isTrendUsable(burnRate(window: 1, days: 30, confidence: "none")))
+        XCTAssertFalse(ProviderPresentation.isTrendUsable(burnRate(window: 1, days: 0, confidence: "medium")))
+        XCTAssertFalse(ProviderPresentation.isTrendUsable(nil))
+        XCTAssertTrue(ProviderPresentation.awaitsHistory(burnRate(window: 0, days: 1, confidence: "low")))
+        XCTAssertFalse(ProviderPresentation.awaitsHistory(burnRate(window: 1, days: 30, confidence: "medium")))
+    }
+
     func testStaleBalanceShowsTheCachedMessageInsteadOfTheTrend() {
         let deepseek = UsageProvider(
             ok: true,

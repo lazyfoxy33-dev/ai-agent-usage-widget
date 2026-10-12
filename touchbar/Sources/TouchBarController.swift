@@ -586,9 +586,8 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
 
     /// Trend line under the amount, when the shared layer could estimate it.
     private func balanceDetail(_ p: Provider) -> String {
-        if let days = p.burnRate?.estimatedDaysLeft, days > 0 { return "≈\(days)天" }
         if p.reason == "stale" || p.live == false { return "缓存" }
-        return ""
+        return BalanceTrend.text(for: p.burnRate) ?? ""
     }
 
     private func countdown(_ date: Date) -> String {
