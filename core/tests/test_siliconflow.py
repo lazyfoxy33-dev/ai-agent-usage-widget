@@ -215,13 +215,13 @@ class TestFetchSiliconFlow(unittest.TestCase):
         self.assertEqual(result["balance"]["amount"], 80.0)
         self.assertEqual(result["burn_rate"]["confidence"], "none")
 
-        payload["data"]["totalBalance"] = "40.00"
+        payload["data"]["totalBalance"] = "70.00"
         with mock.patch.object(siliconflow.api_key_http, "bearer_get_json", return_value=payload), \
              mock.patch.object(siliconflow, "HISTORY_PATH", self.history_path):
-            result = siliconflow.fetch_siliconflow(now=86400 * 16)
+            result = siliconflow.fetch_siliconflow(now=86400 * 8 + 20 * 3600)
 
-        self.assertEqual(result["burn_rate"]["confidence"], "high")
-        self.assertEqual(result["burn_rate"]["estimated_days_left"], 8)
+        self.assertEqual(result["burn_rate"]["confidence"], "medium")
+        self.assertEqual(result["burn_rate"]["estimated_days_left"], 5)
 
     def test_fixture_loads(self):
         path = os.path.join(ROOT, "fixtures", "siliconflow_user_info.json")

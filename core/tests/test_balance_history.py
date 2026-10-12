@@ -32,101 +32,116 @@ class TestBalanceHistory(unittest.TestCase):
         result = balance_history.estimate([], 10.0, "USD", 1000)
         self.assertEqual(result, {"confidence": "none", "reason": "insufficient_history"})
 
+    def test_short_span_has_no_estimate(self):
+        # Two samples five minutes apart cannot establish a daily burn rate.
+        now = 86400 * 2
+        history = [{"ts": now - 300, "amount": 100.0, "currency": "USD"}]
+        result = balance_history.estimate(history, 99.0, "USD", now)
+        self.assertEqual(result["confidence"], "none")
+        self.assertEqual(result["reason"], "insufficient_history")
+
+    def test_history_outside_the_window_has_no_estimate(self):
+        # Everything is older than the trailing window: nothing describes today.
+        now = 86400 * 8
+        history = [{"ts": 0, "amount": 100.0, "currency": "USD"}]
+        result = balance_history.estimate(history, 50.0, "USD", now)
+        self.assertEqual(result["confidence"], "none")
+        self.assertEqual(result["reason"], "insufficient_history")
+
     def test_no_recent_spend(self):
-        history = [{"ts": 0, "amount": 10.0, "currency": "USD"}]
-        result = balance_history.estimate(history, 10.0, "USD", 86400 * 8)
+        now = 86400 * 2
+        history = [{"ts": now - 86400, "amount": 10.0, "currency": "USD"}]
+        result = balance_history.estimate(history, 10.0, "USD", now)
         self.assertEqual(result["confidence"], "none")
         self.assertEqual(result["reason"], "no_recent_spend")
 
     def test_balance_increased(self):
-        history = [{"ts": 0, "amount": 5.0, "currency": "USD"}]
-        result = balance_history.estimate(history, 10.0, "USD", 86400 * 8)
+        now = 86400 * 2
+        history = [{"ts": now - 86400, "amount": 5.0, "currency": "USD"}]
+        result = balance_history.estimate(history, 10.0, "USD", now)
         self.assertEqual(result["confidence"], "none")
         self.assertEqual(result["reason"], "balance_increased")
 
     def test_ignores_different_currency(self):
+        now = 86400 * 2
         history = [
-            {"ts": 0, "amount": 100.0, "currency": "CNY"},
-            {"ts": 0, "amount": 10.0, "currency": "USD"},
+            {"ts": now - 86400, "amount": 100.0, "currency": "CNY"},
+            {"ts": now - 86400, "amount": 10.0, "currency": "USD"},
         ]
-        result = balance_history.estimate(history, 5.0, "USD", 86400 * 8)
-        self.assertEqual(result["confidence"], "high")
-        self.assertEqual(result["window_days"], 8)
-        self.assertEqual(result["estimated_days_left"], 8)
-
-    def test_seven_day_high_confidence(self):
-        history = [{"ts": 0, "amount": 100.0, "currency": "USD"}]
-        result = balance_history.estimate(history, 50.0, "USD", 86400 * 7)
-        self.assertEqual(result["confidence"], "high")
-        self.assertAlmostEqual(result["amount_per_day"], 50.0 / 7)
-        self.assertEqual(result["window_days"], 7)
-        self.assertEqual(result["estimated_days_left"], 7)
-
-    def test_twenty_four_hour_medium_confidence(self):
-        history = [
-            {"ts": 0, "amount": 100.0, "currency": "USD"},
-            {"ts": 3600, "amount": 95.0, "currency": "USD"},
-            {"ts": 7200, "amount": 90.0, "currency": "USD"},
-        ]
-        result = balance_history.estimate(history, 80.0, "USD", 86400 * 2)
-        # Newest point at least 24h old is ts=7200 (~1.9 days old).
+        result = balance_history.estimate(history, 5.0, "USD", now)
         self.assertEqual(result["confidence"], "medium")
         self.assertEqual(result["window_days"], 1)
-        self.assertEqual(result["estimated_days_left"], 15)
+        self.assertEqual(result["estimated_days_left"], 1)
 
-    def test_twenty_four_hour_low_confidence_with_few_points(self):
-        history = [{"ts": 0, "amount": 100.0, "currency": "USD"}]
-        result = balance_history.estimate(history, 80.0, "USD", 86400 * 2)
+    def test_full_day_of_samples_is_medium_confidence(self):
+        now = 86400 * 3
+        history = [
+            {"ts": now - 86400, "amount": 100.0, "currency": "USD"},
+            {"ts": now - 3600, "amount": 95.0, "currency": "USD"},
+        ]
+        result = balance_history.estimate(history, 90.0, "USD", now)
+        # The point is the oldest sample inside the window (a day ago).
+        self.assertEqual(result["confidence"], "medium")
+        self.assertEqual(result["window_days"], 1)
+        self.assertAlmostEqual(result["amount_per_day"], 10.0)
+        self.assertEqual(result["estimated_days_left"], 9)
+
+    def test_short_window_is_low_confidence(self):
+        now = 86400 * 10
+        history = [{"ts": now - 7 * 3600, "amount": 110.0, "currency": "USD"}]
+        result = balance_history.estimate(history, 103.0, "USD", now)
         self.assertEqual(result["confidence"], "low")
-        self.assertEqual(result["window_days"], 2)
-        self.assertEqual(result["estimated_days_left"], 8)
+        self.assertEqual(result["window_days"], 0)
+        self.assertAlmostEqual(result["amount_per_day"], 24.0)
+        self.assertEqual(result["estimated_days_left"], 4)
 
-    def test_prefers_seven_day_point(self):
+    def test_week_old_samples_are_ignored(self):
+        # A nine-day-old balance must not dilute today's pace.
         now = 86400 * 10
         history = [
             {"ts": now - 86400 * 9, "amount": 200.0, "currency": "USD"},
-            {"ts": now - 86400 * 2, "amount": 120.0, "currency": "USD"},
-            {"ts": now - 86400 * 1, "amount": 110.0, "currency": "USD"},
+            {"ts": now - 7 * 3600, "amount": 110.0, "currency": "USD"},
         ]
-        result = balance_history.estimate(history, 100.0, "USD", now)
-        # The 9-day-old point is the newest one >= 7 days old.
-        self.assertEqual(result["window_days"], 9)
-        self.assertEqual(result["estimated_days_left"], 9)
+        result = balance_history.estimate(history, 103.0, "USD", now)
+        # 7 spent in 7 hours = 24/day; the nine-day-old point would have said 11/day.
+        self.assertAlmostEqual(result["amount_per_day"], 24.0)
+        self.assertEqual(result["window_days"], 0)
 
-    def test_falls_back_to_one_day_point(self):
-        now = 86400 * 3
+    def test_window_caps_at_a_day(self):
+        # Two days of samples: only the last day is used.
+        now = 86400 * 10
         history = [
-            {"ts": now - 86400 * 2, "amount": 120.0, "currency": "USD"},
-            {"ts": now - 86400 * 1, "amount": 110.0, "currency": "USD"},
-            {"ts": now - 3600, "amount": 105.0, "currency": "USD"},
+            {"ts": now - 86400 * 2, "amount": 500.0, "currency": "USD"},
+            {"ts": now - 86400, "amount": 100.0, "currency": "USD"},
         ]
-        result = balance_history.estimate(history, 100.0, "USD", now)
-        # No point >= 7 days old; newest >= 1 day old is the 1-day-old point.
+        result = balance_history.estimate(history, 90.0, "USD", now)
+        self.assertAlmostEqual(result["amount_per_day"], 10.0)
         self.assertEqual(result["window_days"], 1)
-        self.assertEqual(result["estimated_days_left"], 10)
+        self.assertEqual(result["confidence"], "medium")
 
     def test_record_appends_and_estimates(self):
         result = balance_history.record_and_estimate(self.path, 100.0, "USD", now=0)
         self.assertEqual(result["confidence"], "none")
         self.assertEqual(result["reason"], "insufficient_history")
 
-        result = balance_history.record_and_estimate(self.path, 50.0, "USD", now=86400 * 8)
-        self.assertEqual(result["confidence"], "high")
-        self.assertEqual(result["estimated_days_left"], 8)
+        result = balance_history.record_and_estimate(self.path, 90.0, "USD", now=7 * 3600)
+        self.assertEqual(result["confidence"], "low")
+        self.assertEqual(result["estimated_days_left"], 2)
 
         records = self._read()
         self.assertEqual(len(records), 2)
-        self.assertEqual(records[-1], {"ts": 86400 * 8, "amount": 50.0, "currency": "USD"})
+        self.assertEqual(records[-1], {"ts": 7 * 3600, "amount": 90.0, "currency": "USD"})
 
     def test_prunes_old_records(self):
-        old = [{"ts": i, "amount": float(i), "currency": "USD"} for i in range(10)]
-        # One record older than 45 days
-        old[0]["ts"] = -86400 * 50
-        self._write(old)
-        balance_history.record_and_estimate(self.path, 100.0, "USD", now=86400 * 10)
-        records = self._read()
-        self.assertEqual(len(records), 10)
-        self.assertTrue(all(r["ts"] >= 0 for r in records))
+        now = 86400 * 10
+        records = [{"ts": now - i * 3600, "amount": float(i), "currency": "USD"} for i in range(1, 10)]
+        records.append({"ts": now - 86400 * 8, "amount": 1.0, "currency": "USD"})
+        self._write(records)
+        balance_history.record_and_estimate(self.path, 100.0, "USD", now=now)
+        kept = self._read()
+        # The nine recent samples plus the new one; the eight-day-old record is gone.
+        self.assertEqual(len(kept), 10)
+        self.assertTrue(all(r["ts"] >= now - 86400 * 7 for r in kept))
 
     def test_caps_at_500_records(self):
         many = [{"ts": i * 60, "amount": float(i), "currency": "USD"} for i in range(510)]
@@ -136,9 +151,10 @@ class TestBalanceHistory(unittest.TestCase):
         self.assertEqual(len(records), 500)
 
     def test_ignores_malformed_lines(self):
+        now = 86400 * 8
         with open(self.path, "w") as f:
-            f.write('{"ts":0,"amount":10,"currency":"USD"}\n')
+            f.write(json.dumps({"ts": now - 86400, "amount": 10.0, "currency": "USD"}) + "\n")
             f.write("not json\n")
             f.write('{"incomplete": true}\n')
-        result = balance_history.record_and_estimate(self.path, 5.0, "USD", now=86400 * 8)
-        self.assertEqual(result["confidence"], "high")
+        result = balance_history.record_and_estimate(self.path, 5.0, "USD", now=now)
+        self.assertEqual(result["confidence"], "medium")

@@ -2,16 +2,17 @@ import Foundation
 
 /// The trend line a balance cell shows.
 ///
-/// The strip is tiny, so it only prints a figure it can stand behind: a days-left
-/// estimate needs at least a full day of comparison history. Below that the
-/// extrapolation is a single session's spend (SiliconFlow's first day claimed
-/// "约可用 1 天" from 17 hours of samples), so the cell says the estimate is
-/// still forming instead.
+/// The shared layer averages the trailing day and reports `insufficient_history`
+/// until it has six hours of samples, so the cell shows whatever real estimate it
+/// is given (a young history is a low-confidence recent average, not a guess) and
+/// says the estimate is still forming only when the estimator says so.
 enum BalanceTrend {
     static func text(for burnRate: BurnRate?) -> String? {
-        guard let burnRate, burnRate.confidence != "none" else { return nil }
-        guard let days = burnRate.estimatedDaysLeft, days > 0 else { return nil }
-        guard (burnRate.windowDays ?? 0) >= 1 else { return "样本不足" }
-        return "≈\(days)天"
+        guard let burnRate else { return nil }
+        if burnRate.confidence == "none" {
+            return burnRate.reason == "insufficient_history" ? "样本不足" : nil
+        }
+        guard let days = burnRate.estimatedDaysLeft else { return nil }
+        return days > 0 ? "≈\(days)天" : "不足1天"
     }
 }

@@ -172,12 +172,13 @@ class TestFetchOpenRouter(unittest.TestCase):
         self.assertTrue(result["ok"])
         self.assertEqual(result["burn_rate"]["confidence"], "none")
 
-        credits["data"]["total_usage"] = 40.0
+        credits["data"]["total_usage"] = 10.0
         with mock.patch.object(openrouter.api_key_http, "bearer_get_json", side_effect=fake_get), \
              mock.patch.object(openrouter, "HISTORY_PATH", self.history_path):
-            result = openrouter.fetch_openrouter(now=86400 * 16)
+            result = openrouter.fetch_openrouter(now=86400 * 8 + 20 * 3600)
 
-        self.assertEqual(result["burn_rate"]["confidence"], "high")
+        self.assertEqual(result["burn_rate"]["confidence"], "medium")
+        self.assertEqual(result["burn_rate"]["estimated_days_left"], 5)
 
     def test_fixtures_load(self):
         with open(os.path.join(ROOT, "fixtures", "openrouter_credits.json")) as f:

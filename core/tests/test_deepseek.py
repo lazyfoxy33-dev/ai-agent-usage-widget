@@ -128,13 +128,15 @@ class TestFetchDeepSeek(unittest.TestCase):
         self.assertEqual(result["burn_rate"]["confidence"], "none")
 
         # Second fetch with spend yields an estimate.
-        payload["balance_infos"][0]["total_balance"] = "40.00"
+        payload["balance_infos"][0]["total_balance"] = "70.00"
         with mock.patch.object(deepseek.api_key_http, "bearer_get_json", return_value=payload), \
              mock.patch.object(deepseek, "HISTORY_PATH", self.history_path):
-            result = deepseek.fetch_deepseek(now=86400 * 16)
+            result = deepseek.fetch_deepseek(now=86400 * 8 + 20 * 3600)
 
-        self.assertEqual(result["burn_rate"]["confidence"], "high")
-        self.assertEqual(result["burn_rate"]["estimated_days_left"], 8)
+        # 10 spent over 20 hours = 12/day; the window is inside the trailing day.
+        self.assertEqual(result["burn_rate"]["confidence"], "medium")
+        self.assertEqual(result["burn_rate"]["window_days"], 1)
+        self.assertEqual(result["burn_rate"]["estimated_days_left"], 5)
 
     def test_fixture_loads(self):
         path = os.path.join(ROOT, "fixtures", "deepseek_balance.json")

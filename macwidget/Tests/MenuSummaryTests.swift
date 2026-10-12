@@ -93,16 +93,16 @@ final class MenuSummaryTests: XCTestCase {
         )
     }
 
-    func testSubDayWindowShowsACaveatInsteadOfADaysLeft() {
-        // SiliconFlow measured "约可用 1 天" from 17 hours of samples: honest wording
-        // matters more than a number nobody can act on.
+    func testInsufficientHistoryShowsACaveatInsteadOfADaysLeft() {
+        // The estimator refuses below six hours of samples and says why.
         let deepseek = UsageProvider(
             ok: true,
             kind: "balance",
             live: true,
             balance: BalanceInfo(amount: 19.34, currency: "CNY", available: true, label: "Balance"),
             burnRate: BurnRateInfo(
-                amountPerDay: 18.23, windowDays: 0, estimatedDaysLeft: 1, confidence: "low", reason: nil
+                amountPerDay: nil, windowDays: nil, estimatedDaysLeft: nil,
+                confidence: "none", reason: "insufficient_history"
             )
         )
 
@@ -119,22 +119,74 @@ final class MenuSummaryTests: XCTestCase {
         )
     }
 
-    func testTrendUsabilityNeedsAFullDayOfHistory() {
-        func burnRate(window: Int?, days: Int?, confidence: String) -> BurnRateInfo {
+    func testShortRecentWindowStillShowsItsAverage() {
+        // Seven hours of samples: low confidence, but a real recent average — the
+        // whole point of averaging the trailing window instead of a week-old point.
+        let burnRate = BurnRateInfo(
+            amountPerDay: 24, windowDays: 0, estimatedDaysLeft: 4, confidence: "low", reason: nil
+        )
+        let deepseek = UsageProvider(
+            ok: true,
+            kind: "balance",
+            live: true,
+            balance: BalanceInfo(amount: 103, currency: "CNY", available: true, label: "Balance"),
+            burnRate: burnRate
+        )
+
+        let rows = MenuSummary.rows(from: payload(deepseek: deepseek), order: [.deepseek])
+
+        XCTAssertEqual(
+            rows.first?.metric,
+            .balance(
+                amount: "¥103.00",
+                trend: ProviderPresentation.balanceTrend(burnRate),
+                daysLeft: 4,
+                cached: false
+            )
+        )
+    }
+
+    func testNoSpendEstimateShowsNoTrendLine() {
+        let deepseek = UsageProvider(
+            ok: true,
+            kind: "balance",
+            live: true,
+            balance: BalanceInfo(amount: 19.34, currency: "CNY", available: true, label: "Balance"),
+            burnRate: BurnRateInfo(
+                amountPerDay: nil, windowDays: nil, estimatedDaysLeft: nil,
+                confidence: "none", reason: "no_recent_spend"
+            )
+        )
+
+        let rows = MenuSummary.rows(from: payload(deepseek: deepseek), order: [.deepseek])
+
+        XCTAssertEqual(
+            rows.first?.metric,
+            .balance(amount: "¥19.34", trend: nil, daysLeft: nil, cached: false)
+        )
+    }
+
+    func testTrendUsabilityFollowsTheEstimator() {
+        func burnRate(days: Int?, confidence: String, reason: String? = nil) -> BurnRateInfo {
             BurnRateInfo(
-                amountPerDay: 1, windowDays: window, estimatedDaysLeft: days,
-                confidence: confidence, reason: nil
+                amountPerDay: 1, windowDays: 0, estimatedDaysLeft: days,
+                confidence: confidence, reason: reason
             )
         }
 
-        XCTAssertTrue(ProviderPresentation.isTrendUsable(burnRate(window: 1, days: 30, confidence: "medium")))
-        XCTAssertTrue(ProviderPresentation.isTrendUsable(burnRate(window: 30, days: 27, confidence: "low")))
-        XCTAssertFalse(ProviderPresentation.isTrendUsable(burnRate(window: 0, days: 1, confidence: "low")))
-        XCTAssertFalse(ProviderPresentation.isTrendUsable(burnRate(window: 1, days: 30, confidence: "none")))
-        XCTAssertFalse(ProviderPresentation.isTrendUsable(burnRate(window: 1, days: 0, confidence: "medium")))
+        XCTAssertTrue(ProviderPresentation.isTrendUsable(burnRate(days: 4, confidence: "low")))
+        XCTAssertTrue(ProviderPresentation.isTrendUsable(burnRate(days: 30, confidence: "medium")))
+        XCTAssertFalse(ProviderPresentation.isTrendUsable(burnRate(days: nil, confidence: "none")))
+        XCTAssertTrue(ProviderPresentation.isTrendUsable(burnRate(days: 0, confidence: "medium")),
+                      "less than a day left is a real signal")
         XCTAssertFalse(ProviderPresentation.isTrendUsable(nil))
-        XCTAssertTrue(ProviderPresentation.awaitsHistory(burnRate(window: 0, days: 1, confidence: "low")))
-        XCTAssertFalse(ProviderPresentation.awaitsHistory(burnRate(window: 1, days: 30, confidence: "medium")))
+        XCTAssertTrue(
+            ProviderPresentation.awaitsHistory(burnRate(days: nil, confidence: "none", reason: "insufficient_history"))
+        )
+        XCTAssertFalse(
+            ProviderPresentation.awaitsHistory(burnRate(days: nil, confidence: "none", reason: "no_recent_spend"))
+        )
+        XCTAssertFalse(ProviderPresentation.awaitsHistory(burnRate(days: 4, confidence: "low")))
     }
 
     func testStaleBalanceShowsTheCachedMessageInsteadOfTheTrend() {
@@ -204,6 +256,19 @@ final class MenuSummaryTests: XCTestCase {
         XCTAssertEqual(MenuSummary.remaining(UsageWindow(percentage: 47.4)), 53)
         XCTAssertEqual(MenuSummary.remaining(UsageWindow(percentage: -20)), 100)
         XCTAssertEqual(MenuSummary.remaining(UsageWindow(percentage: 140)), 0)
+    }
+
+    func testLessThanADayIsReportedNotHidden() {
+        // Assert through the shared wording: the test host's language decides the
+        // exact string (CI runs in English, this Mac in Chinese).
+        let burnRate = BurnRateInfo(
+            amountPerDay: 18.8, windowDays: 1, estimatedDaysLeft: 0, confidence: "low", reason: nil
+        )
+
+        let text = ProviderPresentation.balanceTrend(burnRate)
+
+        XCTAssertEqual(text, ProviderPresentation.lessThanADayText)
+        XCTAssertFalse(text.contains("0"), "an exhausted allowance is not quoted as zero days")
     }
 
     func testTrendOmitsASubDayWindow() {
