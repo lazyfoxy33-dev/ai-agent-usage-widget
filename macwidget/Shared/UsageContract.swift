@@ -311,6 +311,9 @@ enum ProviderPresentation {
         return pieces.isEmpty ? nil : pieces.joined(separator: " · ")
     }
 
+    /// The simple form: balance ÷ daily rate, nothing else. The window and the
+    /// confidence stay in the payload for gating but are deliberately not shown —
+    /// a rough idea is what this line is for.
     static func balanceTrend(_ burnRate: BurnRateInfo?) -> String {
         guard
             let burnRate,
@@ -319,19 +322,11 @@ enum ProviderPresentation {
         else {
             return strings.notSignedIn.hasPrefix("Not") ? "No spending trend yet" : "暂无消耗趋势"
         }
-        let window = burnRate.windowDays ?? 7
-        let english = strings.notSignedIn.hasPrefix("Not")
         // Zero days means "less than one" — worth saying, not hiding.
         guard days > 0 else {
             return lessThanADayText
         }
-        // A sub-day window means the history is still too short to quote one.
-        guard window > 0 else {
-            return english ? "≈ \(days)d left" : "约可用 \(days) 天"
-        }
-        return english
-            ? "≈ \(days)d left (\(window)d)"
-            : "近 \(window) 日约可用 \(days) 天"
+        return strings.notSignedIn.hasPrefix("Not") ? "≈ \(days)d left" : "约可用 \(days) 天"
     }
 
     static func code(for label: String) -> String {

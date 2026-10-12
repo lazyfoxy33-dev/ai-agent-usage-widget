@@ -326,14 +326,16 @@ final class MenuSummaryTests: XCTestCase {
         XCTAssertFalse(text.contains("0"), "an exhausted allowance is not quoted as zero days")
     }
 
-    func testTrendOmitsASubDayWindow() {
+    func testTrendShowsOnlyTheDaysNotTheWindow() {
+        // 简单口径：日均 + 天数，窗口与置信度不进文案。
         let burnRate = BurnRateInfo(
-            amountPerDay: 5, windowDays: 0, estimatedDaysLeft: 3, confidence: "low", reason: nil
+            amountPerDay: 5, windowDays: 30, estimatedDaysLeft: 3, confidence: "low", reason: nil
         )
 
         let text = ProviderPresentation.balanceTrend(burnRate)
 
-        XCTAssertFalse(text.contains("0 日"), text)
         XCTAssertTrue(text.contains("3"), text)
+        XCTAssertFalse(text.contains("30"), "the window is not quoted: \(text)")
+        XCTAssertFalse(text.contains("近"), "no window label: \(text)")
     }
 }
