@@ -259,13 +259,16 @@ final class MenuSummaryTests: XCTestCase {
     }
 
     func testLessThanADayIsReportedNotHidden() {
+        // Assert through the shared wording: the test host's language decides the
+        // exact string (CI runs in English, this Mac in Chinese).
         let burnRate = BurnRateInfo(
             amountPerDay: 18.8, windowDays: 1, estimatedDaysLeft: 0, confidence: "low", reason: nil
         )
 
         let text = ProviderPresentation.balanceTrend(burnRate)
 
-        XCTAssertEqual(text, "预计不足 1 天")
+        XCTAssertEqual(text, ProviderPresentation.lessThanADayText)
+        XCTAssertFalse(text.contains("0"), "an exhausted allowance is not quoted as zero days")
     }
 
     func testTrendOmitsASubDayWindow() {

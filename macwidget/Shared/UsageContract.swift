@@ -260,6 +260,12 @@ enum ProviderPresentation {
         burnRate?.confidence == "none" && burnRate?.reason == "insufficient_history"
     }
 
+    static var lessThanADayText: String {
+        strings.notSignedIn.hasPrefix("Not")
+            ? "Less than a day left"
+            : "预计不足 1 天"
+    }
+
     static var insufficientHistoryText: String {
         strings.notSignedIn.hasPrefix("Not")
             ? "Not enough history yet"
@@ -286,7 +292,7 @@ enum ProviderPresentation {
         let english = strings.notSignedIn.hasPrefix("Not")
         // Zero days means "less than one" — worth saying, not hiding.
         guard days > 0 else {
-            return english ? "Less than a day left" : "预计不足 1 天"
+            return lessThanADayText
         }
         // A sub-day window means the history is still too short to quote one.
         guard window > 0 else {
