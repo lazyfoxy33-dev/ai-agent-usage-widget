@@ -18,53 +18,53 @@ final class MenuSummaryTests: XCTestCase {
         )
     }
 
-    func testLinesFollowTheConfiguredOrder() {
-        let lines = MenuSummary.lines(
-            from: payload(),
-            order: [.openrouter, .kimi, .deepseek]
-        )
-
-        XCTAssertEqual(lines.map(\.id), ["openrouter", "kimi", "deepseek"])
-        XCTAssertEqual(lines.first?.title, "OpenRouter · \(ProviderPresentation.message(for: .openrouter, provider: payload().openrouter))")
-    }
-
-    func testQuotaLineShowsRemainingShare() {
-        let claude = UsageProvider(
+    private func quotaProvider(fiveH: Double?, weekly: Double?, stale: Bool = false) -> UsageProvider {
+        UsageProvider(
             ok: true,
+            reason: stale ? "stale" : nil,
             kind: "quota",
-            fiveH: UsageWindow(percentage: 47),
-            weekly: UsageWindow(percentage: 91)
-        )
-
-        let lines = MenuSummary.lines(from: payload(claude: claude), order: [.claude])
-
-        XCTAssertEqual(lines.first?.title, "Claude · 5H 剩 53% · 周 剩 9%")
-    }
-
-    func testSingleWindowQuotaLine() {
-        let claude = UsageProvider(ok: true, kind: "quota", fiveH: UsageWindow(percentage: 100))
-
-        XCTAssertEqual(
-            MenuSummary.lines(from: payload(claude: claude), order: [.claude]).first?.title,
-            "Claude · 5H 剩 0%"
+            live: !stale,
+            fiveH: fiveH.map { UsageWindow(percentage: $0) },
+            weekly: weekly.map { UsageWindow(percentage: $0) }
         )
     }
 
-    func testStaleQuotaLineIsMarkedCached() {
-        let claude = UsageProvider(
-            ok: true,
-            reason: "stale",
-            kind: "quota",
-            live: false,
-            fiveH: UsageWindow(percentage: 20)
-        )
+    func testRowsFollowTheConfiguredOrder() {
+        let rows = MenuSummary.rows(from: payload(), order: [.openrouter, .kimi, .deepseek])
 
-        let title = MenuSummary.lines(from: payload(claude: claude), order: [.claude]).first?.title
-
-        XCTAssertEqual(title, "Claude · 5H 剩 80% · \(ProviderPresentation.cachedMessage())")
+        XCTAssertEqual(rows.map(\.id), [.openrouter, .kimi, .deepseek])
+        XCTAssertEqual(rows.map(\.name), ["OpenRouter", "Kimi Code", "DeepSeek"])
     }
 
-    func testBalanceLineShowsAmountAndTrend() {
+    func testQuotaMetricCarriesRemainingShares() {
+        let rows = MenuSummary.rows(
+            from: payload(claude: quotaProvider(fiveH: 47, weekly: 91)),
+            order: [.claude]
+        )
+
+        XCTAssertEqual(rows.first?.metric, .quota(fiveH: 53, weekly: 9, cached: false))
+    }
+
+    func testSingleWindowQuotaMetric() {
+        let rows = MenuSummary.rows(
+            from: payload(claude: quotaProvider(fiveH: 100, weekly: nil)),
+            order: [.claude]
+        )
+
+        XCTAssertEqual(rows.first?.metric, .quota(fiveH: 0, weekly: nil, cached: false))
+    }
+
+    func testCachedQuotaIsFlagged() {
+        let rows = MenuSummary.rows(
+            from: payload(claude: quotaProvider(fiveH: 20, weekly: nil, stale: true)),
+            order: [.claude]
+        )
+
+        XCTAssertEqual(rows.first?.metric, .quota(fiveH: 80, weekly: nil, cached: true))
+        XCTAssertEqual(rows.first?.isCached, true)
+    }
+
+    func testBalanceMetricCarriesAmountTrendAndDays() {
         let burnRate = BurnRateInfo(
             amountPerDay: 3.0,
             windowDays: 7,
@@ -80,13 +80,20 @@ final class MenuSummaryTests: XCTestCase {
             burnRate: burnRate
         )
 
-        let title = MenuSummary.lines(from: payload(deepseek: deepseek), order: [.deepseek]).first?.title
+        let rows = MenuSummary.rows(from: payload(deepseek: deepseek), order: [.deepseek])
 
-        XCTAssertEqual(title, "DeepSeek · ¥108.00 · \(ProviderPresentation.balanceTrend(burnRate))")
-        XCTAssertTrue(title?.contains("¥108.00") == true)
+        XCTAssertEqual(
+            rows.first?.metric,
+            .balance(
+                amount: "¥108.00",
+                trend: ProviderPresentation.balanceTrend(burnRate),
+                daysLeft: 12,
+                cached: false
+            )
+        )
     }
 
-    func testStaleBalanceShowsCachedMarkerInsteadOfTrend() {
+    func testStaleBalanceShowsTheCachedMessageInsteadOfTheTrend() {
         let deepseek = UsageProvider(
             ok: true,
             reason: "stale",
@@ -98,17 +105,61 @@ final class MenuSummaryTests: XCTestCase {
             )
         )
 
-        let title = MenuSummary.lines(from: payload(deepseek: deepseek), order: [.deepseek]).first?.title
+        let rows = MenuSummary.rows(from: payload(deepseek: deepseek), order: [.deepseek])
 
-        XCTAssertEqual(title, "DeepSeek · ¥8.50 · \(ProviderPresentation.cachedBalanceMessage())")
+        XCTAssertEqual(
+            rows.first?.metric,
+            .balance(
+                amount: "¥8.50",
+                trend: ProviderPresentation.cachedBalanceMessage(),
+                daysLeft: nil,
+                cached: true
+            )
+        )
     }
 
-    func testMissingPayloadShowsWaitingText() {
-        let lines = MenuSummary.lines(from: nil, order: [.claude, .deepseek])
+    func testUnavailableRowsCarryTheLocalisedReason() {
+        let rows = MenuSummary.rows(from: payload(), order: [.claude, .siliconflow])
 
-        XCTAssertEqual(lines.count, 2)
-        XCTAssertEqual(lines[0].title, "Claude · \(MenuSummary.waitingText)")
-        XCTAssertEqual(lines[1].title, "DeepSeek · \(MenuSummary.waitingText)")
+        XCTAssertEqual(
+            rows[0].metric,
+            .unavailable(ProviderPresentation.message(for: .claude, provider: payload().claude))
+        )
+        XCTAssertEqual(
+            rows[1].metric,
+            .unavailable(ProviderPresentation.message(for: .siliconflow, provider: payload().siliconflow))
+        )
+        XCTAssertFalse(rows[0].isAvailable)
+    }
+
+    func testMissingPayloadShowsWaitingRows() {
+        let rows = MenuSummary.rows(from: nil, order: [.claude, .deepseek])
+
+        XCTAssertEqual(rows.map(\.metric), [
+            .unavailable(MenuSummary.waitingText),
+            .unavailable(MenuSummary.waitingText),
+        ])
+        XCTAssertEqual(MenuSummary.connectedCount(from: nil), 0)
+    }
+
+    func testConnectedCountCountsProvidersWithFigures() {
+        let connected = payload(
+            claude: quotaProvider(fiveH: 10, weekly: nil),
+            deepseek: UsageProvider(
+                ok: true,
+                kind: "balance",
+                balance: BalanceInfo(amount: 1, currency: "CNY", available: true, label: "Balance")
+            )
+        )
+
+        XCTAssertEqual(MenuSummary.connectedCount(from: connected), 2)
+        XCTAssertEqual(MenuSummary.connectedCount(from: payload()), 0)
+    }
+
+    func testRemainingIsClampedAndRounded() {
+        XCTAssertEqual(MenuSummary.remaining(UsageWindow(percentage: 47.4)), 53)
+        XCTAssertEqual(MenuSummary.remaining(UsageWindow(percentage: -20)), 100)
+        XCTAssertEqual(MenuSummary.remaining(UsageWindow(percentage: 140)), 0)
     }
 
     func testTrendOmitsASubDayWindow() {
@@ -120,11 +171,5 @@ final class MenuSummaryTests: XCTestCase {
 
         XCTAssertFalse(text.contains("0 日"), text)
         XCTAssertTrue(text.contains("3"), text)
-    }
-
-    func testRemainingIsClampedAndRounded() {
-        XCTAssertEqual(MenuSummary.remaining(UsageWindow(percentage: 47.4)), 53)
-        XCTAssertEqual(MenuSummary.remaining(UsageWindow(percentage: -20)), 100)
-        XCTAssertEqual(MenuSummary.remaining(UsageWindow(percentage: 140)), 0)
     }
 }

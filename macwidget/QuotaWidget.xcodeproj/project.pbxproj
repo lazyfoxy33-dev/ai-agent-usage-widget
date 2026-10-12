@@ -27,6 +27,7 @@
 		9F05509C9233DEA86E5D2475 /* UsageStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 10993021F1557349A9B061FA /* UsageStoreTests.swift */; };
 		A96F9CD44F0A5026F37907A6 /* DisplayLayerStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B596EF3A6AEF338EC8FE839 /* DisplayLayerStore.swift */; };
 		C6DB4BA69495106AAE73446E /* AuthAndCredentialsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4AF10191CE92902693285D9 /* AuthAndCredentialsTests.swift */; };
+		CDE7897D5861481171F265E3 /* MenuBarPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F3639F05CBAC0248776C02E /* MenuBarPanel.swift */; };
 		D38192171F7B63332CC3F2E0 /* APIKeyStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */; };
 		D8111F1E8B4097396AA5D67C /* kimi-code.png in Resources */ = {isa = PBXBuildFile; fileRef = 44223C7F5519A35B5B26725B /* kimi-code.png */; };
 		DF42FE2AF1438A232B506A84 /* DisplayLayerStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B67C688DE1CE31949858A8F /* DisplayLayerStoreTests.swift */; };
@@ -57,6 +58,7 @@
 		2C4361B6E33929E4DD88D669 /* deepseek.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = deepseek.png; sourceTree = "<group>"; };
 		4396386870ACF13B0387F84A /* UsageFetcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsageFetcher.swift; sourceTree = "<group>"; };
 		44223C7F5519A35B5B26725B /* kimi-code.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "kimi-code.png"; sourceTree = "<group>"; };
+		4F3639F05CBAC0248776C02E /* MenuBarPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarPanel.swift; sourceTree = "<group>"; };
 		4F785DDA3D5D8D3265881EA5 /* APIKeyStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIKeyStoreTests.swift; sourceTree = "<group>"; };
 		5B596EF3A6AEF338EC8FE839 /* DisplayLayerStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DisplayLayerStore.swift; sourceTree = "<group>"; };
 		6AC74E158F9E7CF5C7A45A26 /* QuotaWidgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = QuotaWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -89,6 +91,7 @@
 				5B596EF3A6AEF338EC8FE839 /* DisplayLayerStore.swift */,
 				A43230D6E1D3182C7B1A0A4A /* DSHCredentials.swift */,
 				84083F78F49E30915AB023A6 /* Info.plist */,
+				4F3639F05CBAC0248776C02E /* MenuBarPanel.swift */,
 				05365C86C0DFC61BCCCADA1F /* MenuSummary.swift */,
 				CA7A77F08C60E470A287BD31 /* OpenRouterAuth.swift */,
 				B5D60F94C30C7526C27AF788 /* QuotaWidgetApp.entitlements */,
@@ -301,6 +304,7 @@
 				58617DC6A19B5F6175E33C1B /* ControlCenterView.swift in Sources */,
 				61E8A6DF49FA82433A5822BF /* DSHCredentials.swift in Sources */,
 				A96F9CD44F0A5026F37907A6 /* DisplayLayerStore.swift in Sources */,
+				CDE7897D5861481171F265E3 /* MenuBarPanel.swift in Sources */,
 				70973D35B2C7435682F90BC2 /* MenuSummary.swift in Sources */,
 				185FE98FA44A4B90F2EE8EC3 /* OpenRouterAuth.swift in Sources */,
 				5C2371AC688054088F1D331F /* QuotaWidgetApp.swift in Sources */,

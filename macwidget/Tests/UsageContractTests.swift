@@ -952,10 +952,13 @@ final class UsageContractTests: XCTestCase {
 
     func testSettingsMenuOpensControlCenter() throws {
         let source = try sourceFile("App/QuotaWidgetApp.swift")
+        // The dropdown panel owns the action row since the plain menu was replaced.
+        let panel = try sourceFile("App/MenuBarPanel.swift")
 
         XCTAssertTrue(source.contains("ControlCenterView"))
-        XCTAssertTrue(source.contains("设置…"), "the menu item is localised")
-        XCTAssertFalse(source.contains("Settings..."), "the English label was replaced")
+        XCTAssertTrue(panel.contains("设置…"), "the menu item is localised")
+        XCTAssertFalse(panel.contains("Settings..."), "the English label was replaced")
+        XCTAssertTrue(source.contains("MenuBarPanelHost"), "the status-bar dropdown is the panel")
         XCTAssertTrue(source.contains("SettingsPresenter"))
         XCTAssertFalse(source.contains(".floating"))
         XCTAssertTrue(source.contains(".canJoinAllSpaces"))
