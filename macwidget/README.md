@@ -106,11 +106,12 @@ settings window:
 - The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
   contract and never see raw API keys.
 - Burn rates are unified on **日均消耗 (per-day spend)** — the one dimension daily,
-  weekly and monthly sources all convert to — shown alongside the days-left figure
-  (e.g. `日均 ¥7.46 · 近 1 日约可用 13 天`). Local history averages the **trailing
-  24 hours** (never a week-old balance); under six hours of samples the panel says
-  样本不足, and an estimate below a day reads 预计不足 1 天. The window label
-  (近 1 日 / 近 30 日) stays honest about the data's granularity.
+  weekly and monthly sources all convert to — and the days left is simply
+  balance ÷ that rate, shown as `日均 ¥8.42 · 约可用 12 天`. The window and the
+  confidence stay in the payload for gating but are not displayed: the line is meant
+  to give a rough idea. Local history averages the **trailing 24 hours** (never a
+  week-old balance); under six hours of samples it says 样本不足 and an estimate below
+  a day reads 预计不足 1 天.
 - Clicking the menu bar icon opens a **panel** (not a plain menu): a header with the
   connection count and last refresh, one row per configured provider — brand icon, a
   slim progress bar per quota window, the balance amount and days-left estimate, a
