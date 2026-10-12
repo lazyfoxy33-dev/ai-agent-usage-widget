@@ -105,9 +105,9 @@ settings window:
   are the recommended path.
 - The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
   contract and never see raw API keys.
-- Days-left figures only appear once a balance provider has at least a **full day** of
-  comparison history; below that the panel says 样本不足 instead, because a sub-day
-  window extrapolates a single session into a burn rate.
+- Days-left figures average the **trailing 24 hours** (never a week-old balance); a
+  provider with under six hours of samples says 样本不足 instead of guessing, and an
+  estimate below a day reads 预计不足 1 天.
 - Clicking the menu bar icon opens a **panel** (not a plain menu): a header with the
   connection count and last refresh, one row per configured provider — brand icon, a
   slim progress bar per quota window, the balance amount and days-left estimate, a

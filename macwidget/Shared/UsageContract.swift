@@ -242,27 +242,22 @@ enum ProviderPresentation {
         }
     }
 
-    /// A days-left figure needs at least a full day of comparison history: a sub-day
-    /// window extrapolates a single session into a burn rate (SiliconFlow read
-    /// "约可用 1 天" off 17 hours of samples, at low confidence).
+    /// Whether the estimator produced a figure worth showing. The shared layer
+    /// averages the trailing day and refuses below six hours of samples, so the UI
+    /// trusts any real estimate — including a low-confidence one from a young
+    /// history, which is still a recent average rather than a guess.
     static func isTrendUsable(_ burnRate: BurnRateInfo?) -> Bool {
-        guard let burnRate,
-              burnRate.confidence != "none",
-              let days = burnRate.estimatedDaysLeft,
-              days > 0 else {
-            return false
-        }
-        return (burnRate.windowDays ?? 0) >= 1
-    }
-
-    /// An estimate exists, but it rests on less than a day of history.
-    static func awaitsHistory(_ burnRate: BurnRateInfo?) -> Bool {
         guard let burnRate,
               burnRate.confidence != "none",
               burnRate.estimatedDaysLeft != nil else {
             return false
         }
-        return (burnRate.windowDays ?? 0) < 1
+        return true
+    }
+
+    /// The estimator asked for more samples before it will estimate anything.
+    static func awaitsHistory(_ burnRate: BurnRateInfo?) -> Bool {
+        burnRate?.confidence == "none" && burnRate?.reason == "insufficient_history"
     }
 
     static var insufficientHistoryText: String {
@@ -289,6 +284,10 @@ enum ProviderPresentation {
         }
         let window = burnRate.windowDays ?? 7
         let english = strings.notSignedIn.hasPrefix("Not")
+        // Zero days means "less than one" — worth saying, not hiding.
+        guard days > 0 else {
+            return english ? "Less than a day left" : "预计不足 1 天"
+        }
         // A sub-day window means the history is still too short to quote one.
         guard window > 0 else {
             return english ? "≈ \(days)d left" : "约可用 \(days) 天"

@@ -138,22 +138,27 @@ layer otherwise. That keeps the strip and the settings window showing the same s
 the app closed, balance providers report as unconfigured while quota providers are
 unaffected.
 
-## 余额趋势的可信度 / Trusting the trend
+## 余额趋势怎么算 / How the balance trend is derived
 
-余额格下面的「≈N 天」是**线性外推**：`当前余额 ÷ (窗口内消耗 ÷ 窗口天数)`。参照点是本机记录的余额历史里
-最合适的一条（优先 ≥7 天前，其次 ≥1 天前，都没有才用最早一条），窗口不足 1 天时外推结果就是**单次会话的
-消耗**，没有参考价值——SiliconFlow 接入历史记录的第一天就因此显示过「约可用 1 天」（17 小时样本，
-confidence=low）。
+「≈N 天」= **当前余额 ÷ 近 24 小时窗口内的日均消耗**。窗口只取**最近 24 小时**内的采样，更早的记录一律不参与
+（一周前的余额说明不了今天的速度）；历史不足 24 小时就用现有全部采样，并按实际跨度标注置信度：
 
-因此现在的规则：**窗口 ≥1 天才显示天数**，不足 1 天显示「样本不足」。样本积累到 1 天以上会自动开始显示，
-≥7 天窗口升为高置信度。
+| 窗口跨度 | 置信度 | 显示 |
+|---|---|---|
+| ≥ 18 小时 | medium | `近 1 日约可用 N 天` |
+| 6–18 小时 | low | `约可用 N 天`（仍是真实的近期平均，只是样本少） |
+| < 6 小时 | none | `样本不足 · 明后天更准`（不给数字） |
+| 余额没有下降 | none | 不显示趋势（`no_recent_spend` / `balance_increased`） |
+| 估算 < 1 天 | — | **`不足1天`**（关键警告，不隐藏） |
 
-The `≈N days` line is a linear extrapolation: `balance ÷ (spend in window ÷ window days)`,
-with the comparison point taken from this machine's balance history (a record at least
-7 days old, else at least 1 day old, else the oldest one). A window shorter than a day
-just projects one session's spend, so it shows 样本不足 instead of a number — that is how
-SiliconFlow claimed "约可用 1 天" from 17 hours of samples on its first day. Past one day
-of history the figure appears; past seven days it counts as high confidence.
+保留最近 7 天的采样即可，更长的历史不再被使用。
+
+The `≈N days` line is `balance ÷ average daily spend over the trailing 24 hours`. Only
+samples inside that window are used — a week-old balance says nothing about today's pace;
+a younger history uses everything it has and is labelled by its actual span (≥18h medium,
+6–18h low, <6h no estimate at all). A rate that implies less than a day is reported as
+`不足1天` rather than hidden. A week of samples is retained; older ones are never
+consulted.
 
 ## 图标 / Icons
 

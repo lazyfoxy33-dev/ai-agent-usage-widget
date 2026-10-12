@@ -349,26 +349,26 @@ expect(repoImage("claude-app").flatMap { ProviderIcon.keyedOut($0) } == nil,
 
 print("BalanceTrend")
 
-func burn(_ window: Int?, _ days: Int?, _ confidence: String) -> BurnRate {
+func burn(_ window: Int?, _ days: Int?, _ confidence: String, _ reason: String? = nil) -> BurnRate {
     BurnRate(
         amountPerDay: 1,
         windowDays: window,
         estimatedDaysLeft: days,
         confidence: confidence,
-        reason: nil
+        reason: reason
     )
 }
 
 expect(BalanceTrend.text(for: burn(1, 30, "medium")) == "≈30天",
        "a full day of history gives a figure")
-expect(BalanceTrend.text(for: burn(30, 27, "low")) == "≈27天",
-       "a long window is trustworthy even at low confidence")
-expect(BalanceTrend.text(for: burn(0, 1, "low")) == "样本不足",
-       "a sub-day window says the estimate is still forming")
-expect(BalanceTrend.text(for: burn(1, 30, "none")) == nil,
-       "no estimate means no line")
-expect(BalanceTrend.text(for: burn(1, 0, "medium")) == nil,
-       "a zero estimate means no line")
+expect(BalanceTrend.text(for: burn(0, 4, "low")) == "≈4天",
+       "a young history still shows its recent average")
+expect(BalanceTrend.text(for: burn(1, 30, "none", "insufficient_history")) == "样本不足",
+       "the estimator asking for samples becomes a caveat")
+expect(BalanceTrend.text(for: burn(1, 30, "none", "no_recent_spend")) == nil,
+       "no recent spend means no line")
+expect(BalanceTrend.text(for: burn(1, 0, "medium")) == "不足1天",
+       "less than a day left is reported, not hidden")
 expect(BalanceTrend.text(for: nil) == nil, "no burn rate means no line")
 
 print(failures == 0 ? "all layout tests passed" : "\(failures) layout test(s) failed")

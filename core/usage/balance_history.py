@@ -7,7 +7,14 @@ import json
 import os
 import time
 
-_MAX_AGE_DAYS = 45
+# The burn rate averages recent behaviour only: a week-old balance says nothing
+# about today's pace, so samples older than the window are not used at all.
+_WINDOW_SECONDS = 24 * 3600
+# Below this a day-scale estimate is meaningless (a handful of minutes cannot
+# establish a daily burn rate).
+_MIN_SPAN_SECONDS = 6 * 3600
+# Keep a week of samples; longer history is never consulted.
+_MAX_AGE_DAYS = 7
 _MAX_RECORDS = 500
 _SECONDS_PER_DAY = 86400
 
@@ -71,29 +78,19 @@ def _prune(records, now):
     return records
 
 
-def _pick_comparison_point(records, now):
-    """Choose the historical record used to compute spend.
+def _recent_point(records, now):
+    """The oldest sample inside the recent window.
 
-    Preference order:
-    1. Newest record at least 7 days older than ``now``.
-    2. Newest record at least 24 hours older than ``now``.
-    3. Oldest available record.
+    Everything older than the window is ignored — the estimate is an average of
+    recent behaviour, not of the account's whole history. When the history is
+    shorter than the window this is simply the oldest sample, so a young history
+    still produces an estimate (flagged as low confidence).
     """
-    day_ago = now - _SECONDS_PER_DAY
-    week_ago = now - 7 * _SECONDS_PER_DAY
-
-    week_candidates = [r for r in records if r["ts"] <= week_ago]
-    if week_candidates:
-        return max(week_candidates, key=lambda r: r["ts"])
-
-    day_candidates = [r for r in records if r["ts"] <= day_ago]
-    if day_candidates:
-        return max(day_candidates, key=lambda r: r["ts"])
-
-    if records:
-        return min(records, key=lambda r: r["ts"])
-
-    return None
+    cutoff = now - _WINDOW_SECONDS
+    window = [r for r in records if cutoff <= r["ts"] <= now]
+    if not window:
+        return None
+    return min(window, key=lambda r: r["ts"])
 
 
 def estimate(history, current_amount, currency, now):
@@ -105,19 +102,22 @@ def estimate(history, current_amount, currency, now):
         currency: Currency code of the current balance.
         now: Current Unix timestamp.
 
+    The comparison point is the oldest sample inside the trailing 24-hour window,
+    so the rate reflects recent behaviour and never a week-old balance.
+
     Returns:
         A dict describing the burn-rate estimate. When the estimate is not
         useful, ``estimated_days_left`` is omitted and a ``reason`` is included.
     """
     same_currency = [
         r for r in history
-        if r["currency"] == currency and r["ts"] < now
+        if r["currency"] == currency and r["ts"] <= now
     ]
 
-    if not same_currency:
+    point = _recent_point(same_currency, now)
+    if point is None or now - point["ts"] < _MIN_SPAN_SECONDS:
         return {"confidence": "none", "reason": "insufficient_history"}
 
-    point = _pick_comparison_point(same_currency, now)
     elapsed_seconds = now - point["ts"]
     elapsed_days = elapsed_seconds / _SECONDS_PER_DAY
 
@@ -129,16 +129,13 @@ def estimate(history, current_amount, currency, now):
     amount_per_day = spend / elapsed_days
     estimated_days_left = int(float(current_amount) / amount_per_day)
 
-    if elapsed_days >= 7:
-        confidence = "high"
-    elif elapsed_days >= 1 and len(same_currency) >= 3:
-        confidence = "medium"
-    else:
-        confidence = "low"
+    # A near-full day of samples is as good as this gets; more history is not used.
+    confidence = "medium" if elapsed_seconds >= 18 * 3600 else "low"
 
     return {
         "amount_per_day": amount_per_day,
-        "window_days": int(elapsed_days),
+        # Rounded so a ~23-hour window still reads as "近 1 日".
+        "window_days": int(round(elapsed_days)),
         "estimated_days_left": estimated_days_left,
         "confidence": confidence,
     }
