@@ -1,27 +1,90 @@
 import Foundation
 
-/// The provider lines in the status-bar menu.
+/// One provider's line in the status-bar panel.
+struct MenuProviderRow: Identifiable, Equatable {
+    enum Metric: Equatable {
+        /// Remaining share of each quota window, and whether the figures are cached.
+        case quota(fiveH: Int?, weekly: Int?, cached: Bool)
+        /// Balance amount plus the days-left trend, when one is known.
+        case balance(amount: String, trend: String?, daysLeft: Int?, cached: Bool)
+        /// Nothing to show: the reason, already localised.
+        case unavailable(String)
+    }
+
+    let id: AccountProviderID
+    let name: String
+    let metric: Metric
+
+    var isCached: Bool {
+        switch metric {
+        case .quota(_, _, let cached): return cached
+        case .balance(_, _, _, let cached): return cached
+        case .unavailable: return false
+        }
+    }
+
+    var isAvailable: Bool {
+        if case .unavailable = metric { return false }
+        return true
+    }
+}
+
+/// Turns the shared payload into the rows the status-bar panel shows.
 ///
-/// The order comes from the Touch Bar's own configuration (`touchbar_providers`),
-/// so both frontends list the same providers in the same sequence — the menu is
-/// a glance at exactly what the strip shows.
+/// The order is the Touch Bar's own configuration (`touchbar_providers`), so both
+/// frontends list the same providers in the same sequence.
 enum MenuSummary {
-    struct Line: Identifiable, Equatable {
-        let id: String
-        let title: String
-    }
-
-    static func lines(from payload: UsagePayload?, order: [AccountProviderID]) -> [Line] {
+    static func rows(from payload: UsagePayload?, order: [AccountProviderID]) -> [MenuProviderRow] {
         order.map { id in
-            Line(id: id.rawValue, title: title(for: id, payload: payload))
+            MenuProviderRow(
+                id: id,
+                name: id.name,
+                metric: payload.map { metric(for: id, provider: provider(for: id, in: $0)) }
+                    ?? .unavailable(waitingText)
+            )
         }
     }
 
-    static func title(for id: AccountProviderID, payload: UsagePayload?) -> String {
-        guard let payload else {
-            return "\(id.name) · \(waitingText)"
+    /// How many providers currently report usable figures.
+    static func connectedCount(from payload: UsagePayload?) -> Int {
+        guard let payload else { return 0 }
+        return AccountProviderID.allCases.filter { id in
+            let figures = provider(for: id, in: payload)
+            return figures.ok && (figures.balance != nil || figures.fiveH != nil || figures.weekly != nil)
+        }.count
+    }
+
+    static func metric(for id: AccountProviderID, provider: UsageProvider) -> MenuProviderRow.Metric {
+        if id.kind == .apiKey {
+            guard provider.ok, let balance = provider.balance else {
+                return .unavailable(ProviderPresentation.message(for: id.providerKind, provider: provider))
+            }
+            let burnRate = provider.burnRate
+            let daysLeft = burnRate?.estimatedDaysLeft
+            let trend: String? = {
+                guard !provider.isStale,
+                      let burnRate,
+                      burnRate.confidence != "none",
+                      let daysLeft,
+                      daysLeft > 0 else { return nil }
+                return ProviderPresentation.balanceTrend(burnRate)
+            }()
+            return .balance(
+                amount: ProviderPresentation.balanceAmount(balance),
+                trend: provider.isStale ? ProviderPresentation.cachedBalanceMessage() : trend,
+                daysLeft: provider.isStale ? nil : daysLeft,
+                cached: provider.isStale
+            )
         }
-        return "\(id.name) · \(detail(for: id, provider: provider(for: id, in: payload)))"
+
+        guard provider.ok, provider.fiveH != nil || provider.weekly != nil else {
+            return .unavailable(ProviderPresentation.message(for: id.providerKind, provider: provider))
+        }
+        return .quota(
+            fiveH: provider.fiveH.map(remaining),
+            weekly: provider.weekly.map(remaining),
+            cached: provider.isStale
+        )
     }
 
     static func provider(for id: AccountProviderID, in payload: UsagePayload) -> UsageProvider {
@@ -35,42 +98,7 @@ enum MenuSummary {
         }
     }
 
-    /// Remaining quota (the app reports used %, so invert it), a balance amount, or
-    /// the reason the provider has nothing to show.
-    static func detail(for id: AccountProviderID, provider: UsageProvider) -> String {
-        if id.kind == .apiKey {
-            return balanceDetail(for: id, provider: provider)
-        }
-        guard provider.ok else {
-            return ProviderPresentation.message(for: id.providerKind, provider: provider)
-        }
-        var parts: [String] = []
-        if let window = provider.fiveH { parts.append("5H 剩 \(remaining(window))%") }
-        if let window = provider.weekly { parts.append("周 剩 \(remaining(window))%") }
-        guard !parts.isEmpty else {
-            return ProviderPresentation.message(for: id.providerKind, provider: provider)
-        }
-        if provider.isStale { parts.append(ProviderPresentation.cachedMessage()) }
-        return parts.joined(separator: " · ")
-    }
-
-    private static func balanceDetail(for id: AccountProviderID, provider: UsageProvider) -> String {
-        guard provider.ok, let balance = provider.balance else {
-            return ProviderPresentation.message(for: id.providerKind, provider: provider)
-        }
-        var parts = [ProviderPresentation.balanceAmount(balance)]
-        if provider.isStale {
-            parts.append(ProviderPresentation.cachedBalanceMessage())
-        } else if let burnRate = provider.burnRate,
-                  burnRate.confidence != "none",
-                  let days = burnRate.estimatedDaysLeft,
-                  days > 0 {
-            parts.append(ProviderPresentation.balanceTrend(burnRate))
-        }
-        return parts.joined(separator: " · ")
-    }
-
-    /// Remaining share of a usage window.
+    /// Remaining share of a usage window; the contract reports used %.
     static func remaining(_ window: UsageWindow) -> Int {
         let value = 100 - window.percentage
         return max(0, min(100, Int(value.rounded())))
