@@ -63,7 +63,7 @@ enum MenuSummary {
             let usable = ProviderPresentation.isTrendUsable(burnRate)
             let trend: String? = provider.isStale
                 ? ProviderPresentation.cachedBalanceMessage()
-                : ProviderPresentation.balanceTrendOrCaveat(burnRate)
+                : ProviderPresentation.balanceTrendLine(burnRate, currency: balance.currency)
             return .balance(
                 amount: ProviderPresentation.balanceAmount(balance),
                 trend: trend,

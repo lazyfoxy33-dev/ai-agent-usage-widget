@@ -86,7 +86,7 @@ final class MenuSummaryTests: XCTestCase {
             rows.first?.metric,
             .balance(
                 amount: "¥108.00",
-                trend: ProviderPresentation.balanceTrend(burnRate),
+                trend: ProviderPresentation.balanceTrendLine(burnRate, currency: "CNY"),
                 daysLeft: 12,
                 cached: false
             )
@@ -139,7 +139,7 @@ final class MenuSummaryTests: XCTestCase {
             rows.first?.metric,
             .balance(
                 amount: "¥103.00",
-                trend: ProviderPresentation.balanceTrend(burnRate),
+                trend: ProviderPresentation.balanceTrendLine(burnRate, currency: "CNY"),
                 daysLeft: 4,
                 cached: false
             )
@@ -187,6 +187,61 @@ final class MenuSummaryTests: XCTestCase {
             ProviderPresentation.awaitsHistory(burnRate(days: nil, confidence: "none", reason: "no_recent_spend"))
         )
         XCTAssertFalse(ProviderPresentation.awaitsHistory(burnRate(days: 4, confidence: "low")))
+    }
+
+    func testDailyRateIsTheSharedUnitAcrossWindows() {
+        func burnRate(_ perDay: Double, _ window: Int) -> BurnRateInfo {
+            BurnRateInfo(
+                amountPerDay: perDay, windowDays: window, estimatedDaysLeft: 10,
+                confidence: "low", reason: nil
+            )
+        }
+
+        // 同一种格式，无论数据来自日、周还是月。
+        let cny = ProviderPresentation.balanceDailyRate(burnRate(7.46, 1), currency: "CNY")
+        let usd = ProviderPresentation.balanceDailyRate(burnRate(0.45, 30), currency: "USD")
+
+        XCTAssertEqual(cny, ProviderPresentation.balanceDailyRate(burnRate(7.46, 1), currency: "CNY"))
+        XCTAssertNotNil(cny)
+        XCTAssertNotNil(usd)
+        XCTAssertTrue(cny?.contains("7.46") == true, cny ?? "")
+        XCTAssertTrue(usd?.contains("0.45") == true, usd ?? "")
+        XCTAssertNil(
+            ProviderPresentation.balanceDailyRate(
+                BurnRateInfo(amountPerDay: nil, windowDays: nil, estimatedDaysLeft: nil,
+                             confidence: "none", reason: "insufficient_history"),
+                currency: "CNY"
+            ),
+            "样本不足时没有日均"
+        )
+    }
+
+    func testTrendLineCombinesDailyRateAndDaysLeft() {
+        let burnRate = BurnRateInfo(
+            amountPerDay: 7.46, windowDays: 1, estimatedDaysLeft: 13, confidence: "medium", reason: nil
+        )
+
+        let line = ProviderPresentation.balanceTrendLine(burnRate, currency: "CNY")
+
+        XCTAssertEqual(
+            line,
+            [
+                ProviderPresentation.balanceDailyRate(burnRate, currency: "CNY")!,
+                ProviderPresentation.balanceTrend(burnRate),
+            ].joined(separator: " · ")
+        )
+    }
+
+    func testTrendLineIsTheCaveatAloneWhenHistoryIsShort() {
+        let burnRate = BurnRateInfo(
+            amountPerDay: nil, windowDays: nil, estimatedDaysLeft: nil,
+            confidence: "none", reason: "insufficient_history"
+        )
+
+        XCTAssertEqual(
+            ProviderPresentation.balanceTrendLine(burnRate, currency: "CNY"),
+            ProviderPresentation.insufficientHistoryText
+        )
     }
 
     func testStaleBalanceShowsTheCachedMessageInsteadOfTheTrend() {

@@ -280,6 +280,37 @@ enum ProviderPresentation {
         return nil
     }
 
+    /// The one metric every balance provider can share, whatever window its data
+    /// came from: average spend per day. Daily, weekly and monthly sources all
+    /// convert to it, so it is the comparable unit across providers.
+    static func balanceDailyRate(_ burnRate: BurnRateInfo?, currency: String?) -> String? {
+        guard let burnRate,
+              burnRate.confidence != "none",
+              let perDay = burnRate.amountPerDay else {
+            return nil
+        }
+        let amount = String(format: "%.2f", perDay)
+        let english = strings.notSignedIn.hasPrefix("Not")
+        switch (currency ?? "").uppercased() {
+        case "CNY":
+            return english ? "¥\(amount)/day" : "日均 ¥\(amount)"
+        case "USD":
+            return english ? "$\(amount)/day" : "日均 $\(amount)"
+        default:
+            let code = (currency ?? "").uppercased()
+            return english ? "\(amount) \(code)/day" : "日均 \(amount) \(code)"
+        }
+    }
+
+    /// 日均 + 天数合成的一行趋势（面板/设置页的统一口径）。
+    static func balanceTrendLine(_ burnRate: BurnRateInfo?, currency: String?) -> String? {
+        let pieces = [
+            balanceDailyRate(burnRate, currency: currency),
+            balanceTrendOrCaveat(burnRate),
+        ].compactMap { $0 }
+        return pieces.isEmpty ? nil : pieces.joined(separator: " · ")
+    }
+
     static func balanceTrend(_ burnRate: BurnRateInfo?) -> String {
         guard
             let burnRate,
