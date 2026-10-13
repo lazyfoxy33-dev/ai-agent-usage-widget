@@ -185,7 +185,7 @@ cd ai-agent-usage-widget/touchbar
 bash install.sh
 ```
 
-菜单栏图标点开的是一个**面板**（不是纯文字菜单）：顶部显示连接数与刷新时间，中间按**同一顺序**逐个列出
+额度百分比统一按**还剩多少**显示（Touch Bar 与菜单栏面板一致）。菜单栏图标点开的是一个**面板**（不是纯文字菜单）：顶部显示连接数与刷新时间，中间按**同一顺序**逐个列出
 provider —— 品牌图标、每个额度窗口的细进度条、余额金额与可用天数估计、缓存标记与状态点，底部是操作按钮。点一下 Touch Bar 展开整条详情，**展开后显示哪些 provider、按什么顺序**可在设置里配置（六个都可选：
 Claude / Codex / Kimi 显示额度，DeepSeek / SiliconFlow / OpenRouter 显示余额），改动一分钟内生效；
 收起那一小格不受该设置影响，始终跟随前台的 coding 工具。详见 [touchbar/README.md](touchbar/README.md)。

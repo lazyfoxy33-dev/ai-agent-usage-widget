@@ -75,8 +75,10 @@ final class QuotaWidgetModel: ObservableObject {
             Task { @MainActor in self?.reloadMenuRows() }
         }
         timer?.invalidate()
+        // A full refresh: the API-key-only scope deliberately preserves the local
+        // agent sections, which left Codex showing a launch-time snapshot.
         let timer = Timer(timeInterval: Self.refreshInterval, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.refreshAPIKeyProviders() }
+            Task { @MainActor in self?.refreshAllProviders() }
         }
         timer.tolerance = 30
         RunLoop.main.add(timer, forMode: .common)

@@ -9,7 +9,7 @@ import AppKit
 ///     in the configured order, presented on tap.
 /// The selection and its order come from the shared config
 /// (`touchbar_providers`, written by the menu bar app) and are re-read on every
-/// refresh. Percentages are **used %**, matching the menu bar app. Data comes
+/// refresh. Percentages are what is **left**, matching the menu-bar panel. Data comes
 /// from the shared `core/fetch_usage.py` via `UsageSource`.
 final class TouchBarController: NSObject, NSTouchBarDelegate {
 
@@ -477,7 +477,11 @@ final class TouchBarController: NSObject, NSTouchBarDelegate {
         case .quota(let tag, let usedPct, let stale):
             let color = stale ? dim : accent(tag)
             s.append(seg(
-                TrayGlance.percentageLabel(tag: tag, usedPct: usedPct, hasIcon: pickedIcon != nil),
+                TrayGlance.percentageLabel(
+                    tag: tag,
+                    remainingPct: Double(ProviderGauge.remainingPercent(used: usedPct)),
+                    hasIcon: pickedIcon != nil
+                ),
                 trayFont,
                 color
             ))

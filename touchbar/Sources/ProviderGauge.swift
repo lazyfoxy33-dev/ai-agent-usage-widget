@@ -103,6 +103,12 @@ final class ProviderGauge: NSView {
     override var intrinsicContentSize: NSSize { NSSize(width: width, height: 30) }
     override var allowsVibrancy: Bool { false }
 
+    /// The share of a window still available. The strip and the menu-bar panel both
+    /// report what is left, so 0 % used reads as 100 %.
+    static func remainingPercent(used: Double) -> Int {
+        max(0, min(100, Int((100 - used).rounded())))
+    }
+
     /// `cached` dims the whole card (provider serving non-live data); per-window
     /// `stale` (window already reset) dims just that bar + figure.
     func update(ok: Bool, status: String,
@@ -204,15 +210,17 @@ final class ProviderGauge: NSView {
         track.setFill(); trackPath.fill()
 
         if let pct = win?.pct {
-            let frac = max(0, min(100, pct)) / 100
-            let fillW = max(barH, barW * CGFloat(frac))   // keep a rounded nub at low %
+            // The strip shows what is LEFT, matching the menu-bar panel: a full bar
+            // means a full allowance.
+            let frac = CGFloat(Self.remainingPercent(used: pct)) / 100
+            let fillW = max(barH, barW * frac)   // keep a rounded nub at low %
             let fillPath = NSBezierPath(
                 roundedRect: NSRect(x: barX, y: centerY - barH / 2, width: fillW, height: barH),
                 xRadius: barH / 2, yRadius: barH / 2)
             color.setFill(); fillPath.fill()
         }
 
-        let text = win.map { "\(Int($0.pct.rounded()))%" } ?? "–"
+        let text = win.map { "\(Self.remainingPercent(used: $0.pct))%" } ?? "–"
         let pctStr = NSAttributedString(string: text,
                                         attributes: [.font: pctFont, .foregroundColor: color])
         pctStr.draw(at: NSPoint(x: barX + barW + 7, y: centerY - pctStr.size().height / 2))

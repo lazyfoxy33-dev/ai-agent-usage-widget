@@ -176,6 +176,15 @@ shows** (`macwidget/App/Resources/*.png`, bundled into
 falls back to its letter badge (C / X / K / D / S / O), so a build without the assets still
 renders.
 
+## 百分比口径 / What the percentages mean
+
+额度格与收起格显示的都是**还剩多少**（与菜单栏面板一致）：条越满 = 剩余越多，数字写 `53%` 就是还剩 53%。
+内部仍按「已用」选择最紧的窗口（最该关注的那个）并据此加深颜色，只是呈现出来的都是剩余比例。
+
+The quota cells and the tray cell both report **what is left**, matching the menu-bar
+panel: a fuller bar means more allowance remaining, and `53%` means 53 % left. The
+"tightest window" choice and the colour emphasis still work off usage internally.
+
 ## 数据来源 / Data
 
 不重复实现取数：运行共享的 `core/fetch_usage.py`（构建时拷入 `QuotaBar.app/Contents/Resources/core`），

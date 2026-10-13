@@ -33,9 +33,10 @@ enum TrayGlance {
         hasIcon ? figure : tag + figure
     }
 
-    /// Convenience for a quota percentage.
-    static func percentageLabel(tag: String, usedPct: Double, hasIcon: Bool) -> String {
-        label(tag: tag, figure: "\(Int(usedPct.rounded()))%", hasIcon: hasIcon)
+    /// Convenience for a quota percentage. Takes what is LEFT, matching the strip and
+    /// the menu-bar panel.
+    static func percentageLabel(tag: String, remainingPct: Double, hasIcon: Bool) -> String {
+        label(tag: tag, figure: "\(Int(remainingPct.rounded()))%", hasIcon: hasIcon)
     }
 
     static func pick(candidates: [Candidate], foreground: String?, lastUsed: String?) -> Pick? {

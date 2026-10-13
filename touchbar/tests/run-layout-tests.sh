@@ -13,6 +13,7 @@ trap 'rm -rf "$OUT"' EXIT
 cp tests/layout_test.swift "$OUT/main.swift"
 swiftc -O -o "$OUT/layout-tests" \
     Sources/TouchBarLayout.swift Sources/TrayGlance.swift Sources/TouchBarMetrics.swift \
+    Sources/ProviderGauge.swift \
     Sources/DataSource.swift \
     Sources/FrontmostTool.swift Sources/ProviderIcon.swift Sources/BalanceTrend.swift \
     "$OUT/main.swift"
