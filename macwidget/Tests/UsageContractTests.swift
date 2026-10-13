@@ -950,6 +950,16 @@ final class UsageContractTests: XCTestCase {
         XCTAssertFalse(projectYAML.contains("../usage-widget"))
     }
 
+    func testPeriodicRefreshUpdatesLocalAgents() throws {
+        // The API-key-only scope preserves the local agent sections, which left Codex
+        // showing a snapshot from app launch; the timer must refresh everything.
+        let source = try sourceFile("App/QuotaWidgetApp.swift")
+        let panel = try sourceFile("App/MenuBarPanel.swift")
+
+        XCTAssertTrue(source.contains("self?.refreshAllProviders()"), "the timer refreshes everything")
+        XCTAssertTrue(panel.contains("model.refreshAllProviders()"), "立即刷新 refreshes everything too")
+    }
+
     func testSettingsMenuOpensControlCenter() throws {
         let source = try sourceFile("App/QuotaWidgetApp.swift")
         // The dropdown panel owns the action row since the plain menu was replaced.

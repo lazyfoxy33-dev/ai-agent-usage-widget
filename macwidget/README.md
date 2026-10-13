@@ -117,6 +117,9 @@ settings window:
   slim progress bar per quota window, the balance amount and days-left estimate, a
   缓存 badge and a status dot — and the actions in the footer. Rows follow the same
   order the Touch Bar is configured with, so both frontends read as one list.
+- The periodic refresh (and 立即刷新) is a **full** refresh: the API-key-only scope
+  deliberately preserves the local agent sections, so refreshing balances alone used
+  to leave Codex/Claude/Kimi showing the snapshot taken at app launch.
 - The app mirrors its sanitized payload to
   `~/.config/ai-agent-usage-widget/usage.json` (mode 0600) after every refresh and
   refreshes on a 5-minute timer while it runs, so the mirror the Touch Bar reads stays

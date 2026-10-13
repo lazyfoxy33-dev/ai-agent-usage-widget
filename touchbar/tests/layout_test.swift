@@ -291,6 +291,16 @@ expect(
     "no two providers share an asset"
 )
 
+// MARK: quota percentages are "what is left"
+
+print("ProviderGauge")
+
+expect(ProviderGauge.remainingPercent(used: 0) == 100, "an untouched window is full")
+expect(ProviderGauge.remainingPercent(used: 47) == 53, "used 47% leaves 53%")
+expect(ProviderGauge.remainingPercent(used: 100) == 0, "a fully used window is empty")
+expect(ProviderGauge.remainingPercent(used: 120) == 0, "usage over 100% clamps to empty")
+expect(ProviderGauge.remainingPercent(used: -5) == 100, "negative usage clamps to full")
+
 // MARK: frontmost tool mapping
 
 print("FrontmostTool")
@@ -315,8 +325,10 @@ expect(TrayGlance.label(tag: "D", figure: "¥32.6", hasIcon: true) == "¥32.6",
        "with an icon only the figure is shown")
 expect(TrayGlance.label(tag: "D", figure: "¥32.6", hasIcon: false) == "D¥32.6",
        "without an icon the tag letter stays")
-expect(TrayGlance.percentageLabel(tag: "X", usedPct: 5.4, hasIcon: true) == "5%",
-       "percentages are rounded and suffixed")
+expect(TrayGlance.percentageLabel(tag: "X", remainingPct: 94.6, hasIcon: true) == "95%",
+       "remaining percentages are rounded and suffixed")
+expect(TrayGlance.percentageLabel(tag: "X", remainingPct: 95, hasIcon: false) == "X95%",
+       "without an icon the letter returns")
 
 // MARK: icon plate keying
 

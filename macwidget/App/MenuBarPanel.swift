@@ -11,7 +11,7 @@ struct MenuBarPanelHost: View {
             rows: model.menuRows,
             status: model.status,
             connected: model.menuConnected,
-            onRefresh: { model.refreshAPIKeyProviders() },
+            onRefresh: { model.refreshAllProviders() },
             onSettings: { SettingsPresenter.app(openSettings: { openSettings() }).present() },
             onQuit: { NSApplication.shared.terminate(nil) }
         )
