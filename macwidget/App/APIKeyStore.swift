@@ -335,7 +335,7 @@ struct SiliconFlowConsoleSessionProvider: Sendable {
 
     /// The balance-history algorithm lives in the shared Python layer, so delegate to
     /// it instead of reimplementing the estimate in Swift. Recording a sample is a
-    /// side effect, which is why the Touch Bar only shows a trend once the app has
+    /// side effect, which is why a trend appears only once the app has
     /// seen the balance at least twice.
     static func recordedBurnRate(amount: Double, currency: String) -> BurnRateInfo? {
         // Never touch the real history file from a test run.

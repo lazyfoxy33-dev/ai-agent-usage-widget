@@ -862,7 +862,7 @@ final class UsageContractTests: XCTestCase {
 
         XCTAssertTrue(source.contains("本地客户端"), "should show the local-agent group")
         XCTAssertTrue(source.contains("API 余额"), "should show the API-balance group")
-        XCTAssertTrue(source.contains("Touch Bar"), "should show the Touch Bar row")
+        XCTAssertTrue(source.contains("菜单显示"), "should show the menu-display section")
 
         for name in ["Claude", "Codex", "Kimi Code", "DeepSeek", "SiliconFlow", "OpenRouter"] {
             XCTAssertTrue(model.contains("\"\(name)\""), "provider list is missing \(name)")
@@ -908,27 +908,6 @@ final class UsageContractTests: XCTestCase {
         )
     }
 
-    func testTouchBarRowExposesDisplayLayerActions() throws {
-        let source = try sourceFile("App/ControlCenterView.swift")
-
-        XCTAssertTrue(source.contains("DisplayLayerActions"))
-        XCTAssertTrue(source.contains("安装 / 更新"))
-        XCTAssertTrue(source.contains("Button(\"打开\")"))
-        XCTAssertFalse(source.contains("Open Folder"))
-        XCTAssertFalse(source.contains("Refresh Timelines"))
-        XCTAssertFalse(source.contains("Open Widget Gallery"))
-    }
-
-    func testTouchBarRowDoesNotSynchronouslyQueryStatusInBody() throws {
-        let source = try sourceFile("App/ControlCenterView.swift")
-        let rowStart = source.range(of: "struct TouchBarRow: View")!.lowerBound
-        let nextStruct = source.range(of: "struct ProviderSection")!.lowerBound
-        let rowSource = String(source[rowStart..<nextStruct])
-
-        XCTAssertFalse(rowSource.contains("displayStore.touchBarStatus()"))
-        XCTAssertTrue(rowSource.contains("@State private var status"))
-    }
-
     func testProviderLogosShipWithTheApp() {
         for id in AccountProviderID.allCases {
             XCTAssertNotNil(
@@ -936,18 +915,6 @@ final class UsageContractTests: XCTestCase {
                 "missing bundled brand icon for \(id.rawValue)"
             )
         }
-    }
-
-    func testAppBundlesTouchBarInstallSource() throws {
-        let project = try sourceFile("QuotaWidget.xcodeproj/project.pbxproj")
-        let projectYAML = try sourceFile("project.yml")
-
-        XCTAssertTrue(project.contains("Bundle Touch Bar frontend"))
-        XCTAssertTrue(project.contains("../touchbar"))
-        XCTAssertFalse(project.contains("../usage-widget"))
-        XCTAssertTrue(projectYAML.contains("Bundle Touch Bar frontend"))
-        XCTAssertTrue(projectYAML.contains("../touchbar"))
-        XCTAssertFalse(projectYAML.contains("../usage-widget"))
     }
 
     func testPeriodicRefreshUpdatesLocalAgents() throws {

@@ -160,22 +160,6 @@ window.UW = (function(){
       + glyph(p) + '<span class="sname">'+p.name+'</span><div class="wins">'+wins+'</div></div>';
   }
 
-  function touchCell(p){                                         /* Touch Bar */
-    if(isBalance(p)){
-      const copy = balanceText(p, 'zh');
-      return '<div class="tcell balance-touch" title="'+p.name+'">'
-        + glyph(p,'tico')
-        + '<div class="tmid"><span class="tname">'+p.name+'</span><span class="tval" style="color:'+(copy.missing?'rgba(255,255,255,.55)':p.accent)+'">'+copy.amount+'</span></div></div>';
-    }
-    const u = urgentWin(p.windows), c = meter(u.used, p.accent, 'dark');
-    const bars = p.windows.map(w=>{
-      return '<span class="tbar"><i style="width:'+w.used+'%;background:'+p.accent+'"></i></span>';
-    }).join('');
-    return '<div class="tcell">'+glyph(p,'tico')
-      + '<div class="tmid"><span class="tval" style="color:'+c+'">'+u.used+'%</span></div>'
-      + '<div class="tmid">'+bars+'</div></div>';
-  }
-
   /* ---------- auto-mount ---------- */
   function fillWidget(el){
     const form = el.dataset.form, theme = el.dataset.theme || 'light';
@@ -244,15 +228,11 @@ window.UW = (function(){
   function autoMount(root){
     root = root || document;
     root.querySelectorAll('.widget[data-form]').forEach(fillWidget);
-    root.querySelectorAll('.touchbar[data-auto]').forEach(el=>{
-      const list = el.dataset.providers === 'all' ? ALL : P;
-      el.innerHTML = list.map(touchCell).join('');
-    });
   }
   if(document.readyState !== 'loading') autoMount();
   else document.addEventListener('DOMContentLoaded', ()=> autoMount());
 
   return { TONE, meter, style, emph, rgba, P, BALANCE, CREDIT, ALL, fmt, soonest, urgentWin, sl, glyph,
-           ringSVG, barRow, barPanel, balancePanel, ringPanel, compactRow, touchCell, widgetPanels,
+           ringSVG, barRow, barPanel, balancePanel, ringPanel, compactRow, widgetPanels,
            I18N, locale, t9n, loginMsg, statePanel, fillWidget, autoMount };
 })();

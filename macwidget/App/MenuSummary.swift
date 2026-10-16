@@ -31,8 +31,7 @@ struct MenuProviderRow: Identifiable, Equatable {
 
 /// Turns the shared payload into the rows the status-bar panel shows.
 ///
-/// The order is the Touch Bar's own configuration (`touchbar_providers`), so both
-/// frontends list the same providers in the same sequence.
+/// The order comes from the 「菜单显示」 setting (`menu_providers`).
 enum MenuSummary {
     static func rows(from payload: UsagePayload?, order: [AccountProviderID]) -> [MenuProviderRow] {
         order.map { id in

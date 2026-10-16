@@ -265,7 +265,7 @@ final class AccountSettingsViewModel: ObservableObject {
     @Published var keyInput = ""
     @Published private(set) var isTesting = false
     @Published private(set) var saveErrorText: String?
-    @Published private(set) var touchBarProviders: [AccountProviderID] = TouchBarSelection.defaultValue
+    @Published private(set) var menuProviders: [AccountProviderID] = MenuProviderSelection.defaultValue
     @Published private(set) var saveStatusText: String?
 
     private let apiKeyStore: APIKeyStore
@@ -306,42 +306,42 @@ final class AccountSettingsViewModel: ObservableObject {
             siliconFlowConsoleConfigured: consoleSession?.isConfigured == true,
             externalCredentials: external
         )
-        touchBarProviders = TouchBarSelection.normalize(configStore.readTouchBarProviders())
+        menuProviders = MenuProviderSelection.normalize(configStore.readMenuProviders())
     }
 
-    /// Providers that are not on the Touch Bar yet.
-    var hiddenTouchBarProviders: [AccountProviderID] {
-        AccountProviderID.allCases.filter { !touchBarProviders.contains($0) }
+    /// Providers that are not shown in the menu yet.
+    var hiddenMenuProviders: [AccountProviderID] {
+        AccountProviderID.allCases.filter { !menuProviders.contains($0) }
     }
 
-    func moveTouchBarProvider(_ id: AccountProviderID, by offset: Int) {
-        guard let index = touchBarProviders.firstIndex(of: id) else { return }
+    func moveMenuProvider(_ id: AccountProviderID, by offset: Int) {
+        guard let index = menuProviders.firstIndex(of: id) else { return }
         let target = index + offset
-        guard touchBarProviders.indices.contains(target) else { return }
-        touchBarProviders.swapAt(index, target)
-        persistTouchBarProviders()
+        guard menuProviders.indices.contains(target) else { return }
+        menuProviders.swapAt(index, target)
+        persistMenuProviders()
     }
 
-    func setTouchBarProvider(_ id: AccountProviderID, enabled: Bool) {
+    func setMenuProvider(_ id: AccountProviderID, enabled: Bool) {
         if enabled {
-            guard !touchBarProviders.contains(id) else { return }
-            touchBarProviders.append(id)
+            guard !menuProviders.contains(id) else { return }
+            menuProviders.append(id)
         } else {
-            guard touchBarProviders.count > 1 else {
-                saveErrorText = "Touch Bar 至少保留一个 provider"
+            guard menuProviders.count > 1 else {
+                saveErrorText = "菜单至少保留一个 provider"
                 return
             }
-            touchBarProviders.removeAll { $0 == id }
+            menuProviders.removeAll { $0 == id }
         }
-        persistTouchBarProviders()
+        persistMenuProviders()
     }
 
-    private func persistTouchBarProviders() {
+    private func persistMenuProviders() {
         do {
-            try configStore.writeTouchBarProviders(touchBarProviders.map(\.rawValue))
+            try configStore.writeMenuProviders(menuProviders.map(\.rawValue))
             saveErrorText = nil
         } catch {
-            saveErrorText = "保存 Touch Bar 设置失败：\(Self.errorDescription(error))"
+            saveErrorText = "保存菜单显示设置失败：\(Self.errorDescription(error))"
         }
     }
 

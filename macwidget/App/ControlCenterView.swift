@@ -8,9 +8,7 @@ import WebKit
 
 struct ControlCenterView: View {
     @ObservedObject var accountViewModel: AccountSettingsViewModel
-    let displayStore: DisplayLayerStore
     let refreshNow: () -> Void
-    let displayActions: DisplayLayerActions
 
     @State private var showingSiliconFlowConsoleLogin = false
     @State private var showingOpenRouterLogin = false
@@ -72,11 +70,7 @@ struct ControlCenterView: View {
                         }
                     }
 
-                    ProviderSection(title: "Touch Bar", subtitle: "装到这台 Mac 的 Touch Bar 上") {
-                        TouchBarRow(displayStore: displayStore, actions: displayActions)
-                    }
-
-                    TouchBarSelectionSection(viewModel: accountViewModel)
+                    MenuDisplaySection(viewModel: accountViewModel)
                 }
                 .padding(20)
             }
@@ -273,99 +267,6 @@ struct ProviderRow: View {
             Button("测试") { onTest?() }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-        }
-    }
-}
-
-struct TouchBarRow: View {
-    let displayStore: DisplayLayerStore
-    let actions: DisplayLayerActions
-
-    @State private var status = DisplayLayerStatus.checking
-    @State private var busy = false
-    @State private var resultText: String?
-
-    var body: some View {
-        HStack(spacing: 12) {
-            ZStack {
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(Color.primary)
-                Text("T")
-                    .font(.system(size: 13, weight: .heavy))
-                    .foregroundColor(Color(nsColor: .windowBackgroundColor))
-            }
-            .frame(width: 30, height: 30)
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text("Touch Bar 组件")
-                    .font(.system(size: 14, weight: .bold))
-                Text(statusText)
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-            }
-
-            Spacer()
-
-            if let resultText {
-                Text(resultText)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            ProviderStatus(configured: status.installed)
-
-            HStack(spacing: 8) {
-                Button("安装 / 更新") {
-                    run("Touch Bar 组件已更新", actions.installTouchBar)
-                }
-                .buttonStyle(.borderedProminent)
-                .controlSize(.small)
-
-                Button("打开") {
-                    run("已打开 Touch Bar 组件", actions.openTouchBar)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-            }
-            .disabled(busy)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 11)
-        .frame(minHeight: 68)
-        .background(Color(nsColor: .controlBackgroundColor))
-        .onAppear(perform: refreshStatus)
-    }
-
-    private var statusText: String {
-        guard status.installed else { return "未安装" }
-        return status.running ? "已安装 · 运行中" : "已安装"
-    }
-
-    private func run(_ success: String, _ action: @escaping @Sendable () throws -> Void) {
-        busy = true
-        DispatchQueue.global(qos: .userInitiated).async {
-            let result: String
-            do {
-                try action()
-                result = success
-            } catch {
-                result = error.localizedDescription
-            }
-            DispatchQueue.main.async {
-                resultText = result
-                busy = false
-                refreshStatus()
-            }
-        }
-    }
-
-    private func refreshStatus() {
-        let store = displayStore
-        DispatchQueue.global(qos: .userInitiated).async {
-            let updated = store.touchBarStatus()
-            DispatchQueue.main.async {
-                status = updated
-            }
         }
     }
 }
@@ -825,35 +726,29 @@ struct SiliconFlowConsoleWebView: NSViewRepresentable {
 
 // MARK: - Refresh Page
 
-struct DisplayLayerActions {
-    let installTouchBar: @Sendable () throws -> Void
-    let openTouchBar: @Sendable () throws -> Void
-}
+// MARK: - Menu display
 
-// MARK: - Touch Bar selection
-
-/// Which providers the Touch Bar shows, and in which order. The agent re-reads
-/// the shared config every minute, so no restart is needed.
-struct TouchBarSelectionSection: View {
+/// Which providers the dropdown menu lists, and in which order.
+struct MenuDisplaySection: View {
     @ObservedObject var viewModel: AccountSettingsViewModel
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Text("Touch Bar 显示")
+                Text("菜单显示")
                     .font(.system(size: 13, weight: .bold))
                 Spacer()
-                Text("按此顺序显示，改动一分钟内生效")
+                Text("下拉菜单按此顺序展示")
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 2)
 
             VStack(spacing: 0) {
-                ForEach(Array(viewModel.touchBarProviders.enumerated()), id: \.element) { index, provider in
+                ForEach(Array(viewModel.menuProviders.enumerated()), id: \.element) { index, provider in
                     selectedRow(provider, index: index)
                 }
-                if !viewModel.hiddenTouchBarProviders.isEmpty {
+                if !viewModel.hiddenMenuProviders.isEmpty {
                     addRow
                 }
             }
@@ -881,18 +776,18 @@ struct TouchBarSelectionSection: View {
 
             Spacer()
 
-            Button("▲") { viewModel.moveTouchBarProvider(provider, by: -1) }
+            Button("▲") { viewModel.moveMenuProvider(provider, by: -1) }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
                 .disabled(index == 0)
-            Button("▼") { viewModel.moveTouchBarProvider(provider, by: 1) }
+            Button("▼") { viewModel.moveMenuProvider(provider, by: 1) }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(index == viewModel.touchBarProviders.count - 1)
-            Button("隐藏") { viewModel.setTouchBarProvider(provider, enabled: false) }
+                .disabled(index == viewModel.menuProviders.count - 1)
+            Button("隐藏") { viewModel.setMenuProvider(provider, enabled: false) }
                 .buttonStyle(.bordered)
                 .controlSize(.small)
-                .disabled(viewModel.touchBarProviders.count <= 1)
+                .disabled(viewModel.menuProviders.count <= 1)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 9)
@@ -909,9 +804,9 @@ struct TouchBarSelectionSection: View {
             Text("添加")
                 .font(.system(size: 12))
                 .foregroundStyle(.secondary)
-            ForEach(viewModel.hiddenTouchBarProviders) { provider in
+            ForEach(viewModel.hiddenMenuProviders) { provider in
                 Button {
-                    viewModel.setTouchBarProvider(provider, enabled: true)
+                    viewModel.setMenuProvider(provider, enabled: true)
                 } label: {
                     HStack(spacing: 5) {
                         ProviderLogo(id: provider)
@@ -938,15 +833,9 @@ struct TouchBarSelectionSection: View {
                 .appendingPathComponent(UUID().uuidString, isDirectory: true)
         )
     )
-    let displayStore = DisplayLayerStore()
     return ControlCenterView(
         accountViewModel: viewModel,
-        displayStore: displayStore,
-        refreshNow: {},
-        displayActions: DisplayLayerActions(
-            installTouchBar: {},
-            openTouchBar: {}
-        )
+        refreshNow: {}
     )
     .frame(width: 900, height: 620)
 }

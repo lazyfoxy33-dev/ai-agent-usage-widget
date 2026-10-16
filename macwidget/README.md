@@ -9,7 +9,7 @@ QuotaWidget 是 macOS 菜单栏 app：状态栏常驻图标，展示 Claude、Co
 与 DeepSeek、SiliconFlow、OpenRouter 余额。它定时运行共享 Python 数据层，并把脱敏后的
 JSON 契约写入 App Group 容器。
 
-`QuotaWidget.app` is the primary macOS entry point. Use **设置…** (Settings) to open the settings window: a single page lists the local-agent and API-balance providers with their status and actions, plus a Touch Bar row and a **Touch Bar 显示** section where you choose and reorder the providers shown on the strip. The window is in Chinese.
+`QuotaWidget.app` is the primary macOS entry point. Use **设置…** (Settings) to open the settings window: a single page lists the local-agent and API-balance providers with their status and actions, plus a **菜单显示** section where you choose and reorder the providers the dropdown lists. The window is in Chinese.
 
 ## Download / 下载
 
@@ -84,7 +84,7 @@ refresh. Failed refreshes keep the last successful snapshot.
   **Remove** 删除。
 - 共享数据层仍兼容 `DEEPSEEK_API_KEY`、`SILICONFLOW_API_KEY`、`OPENROUTER_API_KEY`
   等环境变量，但 GUI 设置是推荐路径。
-- 菜单栏 app 与 Touch Bar 前端只交换脱敏的 JSON 契约，永远不会接触原始 API key。
+- 菜单栏 app 只把脱敏的 JSON 契约写入共享容器，永远不会接触原始 API key。
 
 Click QuotaWidget in the menu bar and choose **设置…** to open the account
 settings window:
@@ -103,8 +103,8 @@ settings window:
 - The shared data layer still supports `DEEPSEEK_API_KEY`, `SILICONFLOW_API_KEY`,
   `OPENROUTER_API_KEY`, and similar environment variables, but the GUI settings
   are the recommended path.
-- The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
-  contract and never see raw API keys.
+- The app writes only the sanitized JSON contract to its shared container and
+  never sees raw API keys.
 - Burn rates are unified on **日均消耗 (per-day spend)** — the one dimension daily,
   weekly and monthly sources all convert to — and the days left is simply
   balance ÷ that rate, shown as `日均 ¥8.42 · 约可用 12 天`. The window and the
@@ -116,20 +116,12 @@ settings window:
   connection count and last refresh, one row per configured provider — brand icon, a
   slim progress bar per quota window, the balance amount and days-left estimate, a
   缓存 badge and a status dot — and the actions in the footer. Rows follow the same
-  order the Touch Bar is configured with, so both frontends read as one list.
+  order configured in 菜单显示.
 - The periodic refresh (and 立即刷新) is a **full** refresh: the API-key-only scope
   deliberately preserves the local agent sections, so refreshing balances alone used
   to leave Codex/Claude/Kimi showing the snapshot taken at app launch.
-- The app mirrors its sanitized payload to
-  `~/.config/ai-agent-usage-widget/usage.json` (mode 0600) after every refresh and
-  refreshes on a 5-minute timer while it runs, so the mirror the Touch Bar reads stays
-  fresh; the
-  Touch Bar agent reads that mirror (under 15 minutes old) so both frontends agree on
-  SiliconFlow / DeepSeek / OpenRouter, whose credentials only this app can reach.
-- **Touch Bar 显示** decides which providers appear on the strip and in which
-  order (all six are selectable: Claude / Codex / Kimi render gauges, DeepSeek /
-  SiliconFlow / OpenRouter render balances); reordering uses the inline ▲▼
-  buttons and the agent picks the change up on its next refresh.
+- **菜单显示** decides which providers the dropdown lists and in which order
+  (all six are selectable); reordering uses the inline ▲▼ buttons.
 
 ## Distribution / 分发
 

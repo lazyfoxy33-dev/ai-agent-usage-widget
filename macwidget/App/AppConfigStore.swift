@@ -30,25 +30,32 @@ struct AppConfigStore {
         try data.write(to: configURL, options: [.atomic])
     }
 
-    /// Provider raw values shown on the Touch Bar, in display order.
+    /// Provider raw values shown in the dropdown menu, in display order.
     /// `nil` when the setting was never written (callers apply their own default).
-    func readTouchBarProviders() -> [String]? {
+    ///
+    /// `touchbar_providers` is read as a fallback: the setting used to drive the
+    /// Touch Bar, which this app no longer ships.
+    func readMenuProviders() -> [String]? {
         guard let data = try? Data(contentsOf: configURL),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let providers = json["touchbar_providers"] as? [String]
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
         else {
             return nil
         }
-        return providers
+        if let providers = json["menu_providers"] as? [String] {
+            return providers
+        }
+        return json["touchbar_providers"] as? [String]
     }
 
-    func writeTouchBarProviders(_ providers: [String]) throws {
+    func writeMenuProviders(_ providers: [String]) throws {
         var payload: [String: Any] = [:]
         if let data = try? Data(contentsOf: configURL),
            let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
             payload = existing
         }
-        payload["touchbar_providers"] = providers
+        payload["menu_providers"] = providers
+        // Complete the migration so the old key cannot shadow later edits.
+        payload.removeValue(forKey: "touchbar_providers")
         let data = try JSONSerialization.data(
             withJSONObject: payload,
             options: [.sortedKeys]
@@ -58,25 +65,6 @@ struct AppConfigStore {
             withIntermediateDirectories: true
         )
         try data.write(to: configURL, options: [.atomic])
-    }
-
-    /// Where the sanitized payload is mirrored for the Touch Bar agent, which has
-    /// no App Group entitlement and therefore cannot read the shared container.
-    var usageMirrorURL: URL {
-        baseDirectory.appendingPathComponent("usage.json")
-    }
-
-    func writeUsageMirror(_ json: String) throws {
-        try FileManager.default.createDirectory(
-            at: baseDirectory,
-            withIntermediateDirectories: true
-        )
-        try json.write(to: usageMirrorURL, atomically: true, encoding: .utf8)
-        // Balances are private to this Mac; keep the mirror owner-only.
-        try? FileManager.default.setAttributes(
-            [.posixPermissions: 0o600],
-            ofItemAtPath: usageMirrorURL.path
-        )
     }
 
     func readCodexActiveRefresh() -> Bool {

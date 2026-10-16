@@ -21,7 +21,7 @@ struct MenuBarPanelHost: View {
 
 /// The status-bar dropdown: a compact panel rather than a plain menu.
 ///
-/// Rows follow the Touch Bar's order, each with its brand icon, its figures and a
+/// Rows follow the 菜单显示 order, each with its brand icon, its figures and a
 /// status dot; the header carries the connection count and the footer the actions.
 /// Data is passed in, so the panel can be rendered and inspected on its own.
 struct MenuBarPanel: View {
@@ -254,7 +254,7 @@ struct MiniBar: View {
     }
 }
 
-/// The brand colours the Touch Bar gauges use, so both frontends match.
+/// The brand colours the quota bars and the app share.
 enum BrandPalette {
     static func accent(for id: AccountProviderID) -> Color {
         switch id {
