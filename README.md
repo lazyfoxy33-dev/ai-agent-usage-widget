@@ -1,28 +1,24 @@
 # AI Agent Usage Widget / AI Agent 用量组件
 
 在 macOS 上集中显示 Claude、Codex、Kimi Code 用量与 DeepSeek、SiliconFlow、
-OpenRouter 余额：菜单栏常驻图标点开即看，另有一个常驻 Touch Bar 的小组件。
-两端共用同一套数据层（`core/`）。
+OpenRouter 余额：菜单栏常驻图标点开即看，数据来自共享数据层（`core/`）。
 
-A macOS tool that shows Claude, Codex, and Kimi Code usage plus DeepSeek,
-SiliconFlow, and OpenRouter balances from the menu bar, with an always-on Touch
-Bar companion. Both frontends share one data layer (`core/`).
+A macOS menu bar app that shows Claude, Codex, and Kimi Code usage plus DeepSeek,
+SiliconFlow, and OpenRouter balances, backed by a shared data layer (`core/`).
 
-![Touch Bar 预览 / Touch Bar preview](docs/preview-touchbar.png)
+![下拉面板预览 / Dropdown panel preview](docs/preview-panel.png)
 
 ## 项目结构 / Layout
 
 ```text
 core/          共享数据层（取数逻辑 + 测试）/ shared data layer (fetchers + tests)
-macwidget/     菜单栏 app：状态栏常驻图标 + 账户设置
-               menu bar app: status item + account settings
-touchbar/      Touch Bar 组件（Swift）/ Touch Bar frontend (Swift)
+macwidget/     菜单栏 app：状态栏常驻图标 + 下拉面板 + 账户设置
+               menu bar app: status item + dropdown panel + account settings
 ```
 
-两个前端都消费 `core/fetch_usage.py` 输出的同一份 JSON，并共享相同的新鲜度与
-凭据处理策略。
-Both frontends consume the same JSON from `core/fetch_usage.py` and share the
-same freshness and credential-handling policy.
+菜单栏 app 消费 `core/fetch_usage.py` 输出的 JSON，并遵循统一的新鲜度与凭据处理策略。
+The app consumes the JSON from `core/fetch_usage.py` and follows one freshness and
+credential-handling policy.
 
 ### macOS 菜单栏 app / macOS Menu Bar App
 
@@ -34,7 +30,6 @@ first; it is the primary entry point on macOS:
 - 配置账号与 API key / configure provider accounts and API keys
 - 手动刷新数据 / refresh usage data
 - 写入脱敏后的共享状态 / write sanitized shared state
-- 安装或更新 Touch Bar 前端 / install or update the Touch Bar frontend
 
 账户设置只把 API key 存进 macOS Keychain，不会写入仓库、缓存或日志。
 Account settings keep API keys in the macOS Keychain only; they are never written
@@ -52,8 +47,8 @@ to the repository, cache, or logs.
 - Checks data every 60 seconds and caches successful responses for five minutes
 - 跟随系统浅色 / 深色外观，并按已用量显示语义告急色（注意 / 告急）
 - Follows the system light / dark appearance with semantic usage colors
-- 菜单栏常驻图标点开展示，Touch Bar 上一格常驻小组件
-- A menu bar status item that expands on click, plus a Touch Bar companion
+- 菜单栏常驻图标点开即一个信息面板：连接状态、每个 provider 的额度条与余额趋势
+- A menu bar status item that opens an information panel: connection state, per-provider quota bars, and balance trends
 - API 余额面板会基于近期本地余额历史估算可用天数（历史不足时不显示猜测）
 - API balance panels estimate days remaining from local recent balance history
   when enough data exists, and avoid guessing when history is insufficient
@@ -104,10 +99,9 @@ times.
 - 至少配置或使用过一个受支持提供商
 - At least one supported provider configured or used once
 
-各前端的额外要求 / Frontend-specific requirements:
+额外要求 / Extra requirements:
 
-- 两个前端都需要 macOS 14+ / both frontends require macOS 14+
-- Touch Bar：带 Touch Bar 的 Mac / a Mac with Touch Bar
+- macOS 14+
 
 ```bash
 python3 --version
@@ -116,14 +110,14 @@ curl --version
 
 ## 快速安装 / Quick Start
 
-> **菜单栏 app 与 Touch Bar** 可直接从
+> **菜单栏 app** 可直接从
 > [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
-> **Developer ID 签名**的 DMG（`QuotaWidget.dmg` / `QuotaBar.dmg`），公证状态见各 Release 说明（未公证时首次打开需在 Finder 中右键 → 打开）。
+> **Developer ID 签名**的 DMG（`QuotaWidget.dmg`），公证状态见 Release 说明（未公证时首次打开需在 Finder 中右键 → 打开）。
 >
-> The **menu bar app** and the **Touch Bar** frontend ship as **Developer ID-signed** DMGs on
+> The **menu bar app** ships as a **Developer ID-signed** DMG on
 > [Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases)
-> (`QuotaWidget.dmg` / `QuotaBar.dmg`); check each release note for notarization
-> status (unnotarized builds need right-click → Open on first launch).
+> (`QuotaWidget.dmg`); check the release note for notarization status
+> (unnotarized builds need right-click → Open on first launch).
 
 ### 菜单栏 app / Menu bar app
 
@@ -148,9 +142,9 @@ curl --version
 - **API 余额**：DeepSeek、SiliconFlow、OpenRouter 点 **添加密钥** 输入 API key，密钥存入
   macOS 钥匙串（服务名 `AI Agent Usage Widget`），可随时 **测试** 或 **移除**；
   SiliconFlow 走 **登录控制台**。
-- **Touch Bar**：一行 **安装 / 更新** + **打开**。
+- **菜单显示**：勾选下拉面板里要展示哪些 provider，并用行内 ▲▼ 调整顺序。
 - 共享数据层仍支持读取对应 `*_API_KEY` 环境变量，但 app 内的设置为推荐路径。
-- 菜单栏 app 与 Touch Bar 前端只交换脱敏后的 JSON 契约，从不接触原始 key。
+- app 只把脱敏后的 JSON 契约写入自己的共享容器，从不接触原始 key。
 
 In the menu bar, click QuotaWidget and choose **设置…** for a single-page,
 Chinese settings window:
@@ -161,39 +155,34 @@ Chinese settings window:
 - **API balance**: click **添加密钥** for DeepSeek, SiliconFlow, or OpenRouter
   keys (stored in the macOS Keychain, service `AI Agent Usage Widget`) and use
   **测试** / **移除** at any time; SiliconFlow goes through **登录控制台**.
-- **Touch Bar**: a single row with **安装 / 更新** and **打开**.
+- **菜单显示**: tick the providers the dropdown lists and reorder them with the
+  inline ▲▼ buttons.
 - The shared data layer still reads the corresponding `*_API_KEY` environment
   variables, but the app's settings are the recommended path.
-- The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
-  contract and never see raw keys.
+- The app writes only the sanitized JSON contract into its own shared container
+  and never sees raw keys.
 
-### Touch Bar 组件 / Touch Bar frontend
+### 下拉面板 / Dropdown panel
 
-![Touch Bar 预览 / Touch Bar preview](docs/preview-touchbar.png)
+![下拉面板预览 / Dropdown panel preview](docs/preview-panel.png)
 
-需要带 Touch Bar 的 Mac。最简单的方式：从
-[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases) 下载
-`QuotaBar.dmg`，拖入「应用程序」并打开。或从源码编译并设为登录项：
+点菜单栏图标打开的是一个**面板**（不是纯文字菜单）：
 
-Requires a Mac with a Touch Bar. Easiest: download `QuotaBar.dmg` from
-[Releases](https://github.com/lazyfoxy33-dev/ai-agent-usage-widget/releases), drag
-it to Applications, and open it. Or build from source and register it as a login
-item:
+- **顶部**：连接状态（已连接 N/6）与最近刷新时间
+- **中间**：按设置里的顺序逐个 provider —— 品牌图标、每个额度窗口的细进度条、余额金额与日均消耗/可用天数、
+  缓存标记与状态点
+- **底部**：立即刷新 / 设置… / 退出
 
-```bash
-cd ai-agent-usage-widget/touchbar
-bash install.sh
-```
+额度百分比统一按**还剩多少**显示（条越满 = 剩余越多）。展示哪些 provider、按什么顺序，可在
+**设置… → 菜单显示** 里配置（六个都可选：Claude / Codex / Kimi 显示额度，DeepSeek / SiliconFlow /
+OpenRouter 显示余额）。
 
-额度百分比统一按**还剩多少**显示（Touch Bar 与菜单栏面板一致）。菜单栏图标点开的是一个**面板**（不是纯文字菜单）：顶部显示连接数与刷新时间，中间按**同一顺序**逐个列出
-provider —— 品牌图标、每个额度窗口的细进度条、余额金额与可用天数估计、缓存标记与状态点，底部是操作按钮。点一下 Touch Bar 展开整条详情，**展开后显示哪些 provider、按什么顺序**可在设置里配置（六个都可选：
-Claude / Codex / Kimi 显示额度，DeepSeek / SiliconFlow / OpenRouter 显示余额），改动一分钟内生效；
-收起那一小格不受该设置影响，始终跟随前台的 coding 工具。详见 [touchbar/README.md](touchbar/README.md)。
-The tray cell shows the most-used window; tap to expand the full readout. **Which
-providers appear and in what order** is configurable in settings (all six are
-selectable: Claude / Codex / Kimi render quota gauges, DeepSeek / SiliconFlow /
-OpenRouter render balances) and applies within a minute. See
-[touchbar/README.md](touchbar/README.md).
+Clicking the menu bar icon opens a **panel** rather than a plain menu: connection
+state and last refresh at the top, one row per configured provider (brand icon, a
+slim bar per quota window, the balance with its daily rate and days left, a cached
+badge and a status dot), and the actions at the bottom. Quota percentages report
+**what is left**, and **设置… → 菜单显示** decides which providers the panel lists
+and in what order.
 
 ## 首次使用 / First Use
 
@@ -214,9 +203,9 @@ OpenRouter render balances) and applies within a minute. See
 - 用量达 70% / 90% 时，数字与图形会加深为「注意 / 告急」色
 - At 70% / 90% the figure and chart deepen to an attention / urgent color
 - `¥…` / `$…`: API 账户余额 / API account balance
-- `近 … 日约可用 … 天`: 基于近期余额下降速度的估算，不足样本时显示暂无趋势
-- `≈ … days left`: estimate from recent balance decline; unavailable when
-  samples are insufficient
+- `日均 ¥… · 约可用 … 天`: 余额 ÷ 近期（24 小时窗口）日均消耗；样本不足时显示「样本不足」，不足一天显示「预计不足 1 天」
+- `日均 ¥… · 约可用 … 天`: balance ÷ the daily rate averaged over the trailing
+  24 hours; a young history says 样本不足, and under a day reads 预计不足 1 天
 
 ## 提供商设置 / Provider Setup
 
@@ -370,9 +359,9 @@ Balance trend history stores only timestamp, amount, and currency at
   QuotaWidget 的存储，也不会写入日志或命令行参数。
 - When dsh reuse is active, `~/.dsh/.credentials.yaml` is only read; its values are
   never copied into QuotaWidget storage, logged, or passed on a command line.
-- 菜单栏 app 与 Touch Bar 前端只交换已脱敏的 JSON 契约，永远不接触原始 key。
-- The menu bar app and the Touch Bar frontend exchange only the sanitized JSON
-  contract and never see raw keys.
+- app 只把已脱敏的 JSON 契约写入自己的共享容器，永远不接触原始 key。
+- The app writes only the sanitized JSON contract into its own shared container
+  and never sees raw keys.
 - Claude 用量只发送到 Anthropic；Kimi 用量只发送到 Kimi 官方 API。
 - Claude usage goes only to Anthropic; Kimi usage goes only to Kimi's API.
 - DeepSeek、SiliconFlow、OpenRouter 余额请求只发送到各自官方 API。
@@ -426,12 +415,11 @@ posting publicly.
 
 ### 刷新 / Refresh
 
-菜单栏面板提供 **Refresh** 按钮；此外每 60 秒自动刷新一次。Touch Bar 前端读取
-同一份数据，无需单独操作。
+菜单栏面板提供 **立即刷新** 按钮；此外每 5 分钟自动完整刷新一次（含 Claude / Codex / Kimi
+这类本地客户端，以及各 API 余额）。
 
-The menu bar panel has a **Refresh** button, and data refreshes automatically
-every 60 seconds. The Touch Bar frontend reads the same data and needs no
-separate action.
+The panel has a **立即刷新** button, and data refreshes fully every five minutes —
+including the local clients (Claude / Codex / Kimi) and the API balances.
 
 ### 更新 / Update
 
@@ -448,22 +436,21 @@ replace the app. For source builds, `git pull` first and rebuild following
 
 ```bash
 rm -rf "$HOME/.cache/usage-widget"
-rm -rf /Applications/QuotaWidget.app /Applications/QuotaBar.app
+rm -rf /Applications/QuotaWidget.app
 ```
 
 ## 开发 / Development
 
 ```bash
 cd core && python3 -m unittest discover -v          # 数据层 / data layer
-cd touchbar && python3 -m unittest discover -v && ./build.sh   # Touch Bar
 cd macwidget && xcodebuild test -project QuotaWidget.xcodeproj -scheme QuotaWidget \
   -destination 'platform=macOS' CODE_SIGNING_ALLOWED=NO        # 菜单栏 app / menu bar app
 ```
 
 提交前本地无法跑完整套件时，可直接依赖 CI：`main` 的 push 与所有 PR 都会跑
-`.github/workflows/ci.yml` 中的三个 job。
+`.github/workflows/ci.yml` 中的四个 job（数据层 3.11/3.12、设计系统、密钥扫描、macOS 构建与测试）。
 When you cannot run the full suite locally, rely on CI: pushes to `main` and every
-PR run the three jobs in `.github/workflows/ci.yml`.
+PR run the four jobs in `.github/workflows/ci.yml`.
 
 贡献说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
 
@@ -483,9 +470,9 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidance.
 - 余额可用时长是基于历史余额下降速度的估算，不是服务商保证。
 - Balance days remaining is an estimate from historical balance decline, not a
   provider guarantee.
-- 原生前端只覆盖 macOS（菜单栏 app 与 Touch Bar）；其他平台只有数据层。
-- Native frontends cover macOS only (menu bar app and Touch Bar); other platforms
-  have the data layer but no native frontend.
+- 原生前端只覆盖 macOS（菜单栏 app）；其他平台只有数据层。
+- The native frontend covers macOS only (menu bar app); other platforms have the
+  data layer but no native frontend.
 
 ## 品牌与许可 / Trademarks And License
 

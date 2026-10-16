@@ -1,6 +1,6 @@
 /* Usage Widget — shared component styles (single source of truth) */
 
-.widget, .touchbar, .striprow{
+.widget, .striprow{
   font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","SF Pro Display",sans-serif;
   font-feature-settings:"tnum";
 }
@@ -68,15 +68,3 @@
 .balance-amt{width:auto;min-width:54px;font-size:12px;text-align:right;white-space:nowrap}
 .mtrend{font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:128px}
 
-/* ---- touch bar ---- */
-.touchbar{display:flex;align-items:stretch;height:46px;width:auto;background:#000;border-radius:9px;overflow:hidden}
-.tcell{display:flex;align-items:center;gap:9px;padding:0 18px}
-.tcell + .tcell{border-left:1px solid rgba(255,255,255,.1)}
-.tico{width:20px;height:20px;border-radius:5px;object-fit:contain;flex:none}
-.tico.gl{display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:700}
-.tmid{display:flex;flex-direction:column;gap:3px;justify-content:center}
-.tval{font-size:13px;font-weight:700;letter-spacing:-.2px;font-variant-numeric:tabular-nums;line-height:1;color:#fff}
-.tname{font-size:8px;font-weight:600;color:rgba(255,255,255,.52);line-height:1}
-.tbar{width:42px;height:3px;border-radius:2px;background:rgba(255,255,255,.18);overflow:hidden;position:relative}
-.tbar i{position:absolute;left:0;top:0;height:100%;border-radius:2px}
-.balance-touch{min-width:116px}

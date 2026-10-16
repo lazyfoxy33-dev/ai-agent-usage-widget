@@ -15,5 +15,6 @@ render() { # <html> <w> <h> <out>
   echo "Rendered: docs/$4"
 }
 
-render touchbar.html 660  96 preview-touchbar.png
 render settings.html 1040 700 preview-settings.png
+# preview-panel.png（下拉面板）由 app 的离屏渲染生成，见 macwidget/Tests 里的快照测试方式；
+# 这里不重复实现，因为它画的是真实的 AppKit 渲染结果。

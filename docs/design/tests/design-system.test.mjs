@@ -79,12 +79,11 @@ test("bar-primary widget includes quota and balance providers", () => {
   assert.match(html, /未配置 API 密钥/);
 });
 
-test("compact and touch bar have balance-specific renderers", () => {
+test("compact rows have a balance-specific renderer", () => {
   const UW = loadUW();
 
   assert.match(UW.compactRow(UW.BALANCE[0], "light"), /balance-mini/);
-  assert.match(UW.touchCell(UW.BALANCE[2]), /OpenRouter/);
-  assert.match(UW.touchCell(UW.BALANCE[2]), /\$75\.42/);
+  assert.match(UW.compactRow(UW.BALANCE[2], "dark"), /OpenRouter/);
 });
 
 test("states include balance cache and missing key", () => {

@@ -13,51 +13,18 @@ final class QuotaWidgetModel: ObservableObject {
     /// Providers reporting usable figures, for the panel's status pill.
     @Published private(set) var menuConnected = 0
     private var timer: Timer?
-    private var lastUsed: String?
     private var hasStarted = false
-
-    init() {
-        self.lastUsed = UserDefaults.standard.string(forKey: "lastUsedProvider")
-        startForegroundTracking()
-    }
-
-    func startForegroundTracking() {
-        updateActive(NSWorkspace.shared.frontmostApplication)
-        NSWorkspace.shared.notificationCenter.addObserver(
-            self, selector: #selector(activeAppChanged),
-            name: NSWorkspace.didActivateApplicationNotification, object: nil)
-    }
-
-    @objc private func activeAppChanged() {
-        updateActive(NSWorkspace.shared.frontmostApplication)
-    }
-
-    private func updateActive(_ app: NSRunningApplication?) {
-        let tag = providerTag(app)
-        if let tag { lastUsed = tag; UserDefaults.standard.set(tag, forKey: "lastUsedProvider") }
-        let active = tag ?? lastUsed ?? "claude"
-        try? UsageStore().writeActive(active)
-    }
-
-    private func providerTag(_ app: NSRunningApplication?) -> String? {
-        guard let app else { return nil }
-        let s = ((app.bundleIdentifier ?? "") + " " + (app.localizedName ?? "")).lowercased()
-        if s.contains("claude") { return "claude" }
-        if s.contains("kimi") || s.contains("moonshot") { return "kimi" }
-        if s.contains("codex") || s.contains("openai") || s.contains("chatgpt") { return "codex" }
-        return nil
-    }
 
     /// How often the payload is refreshed while the app runs. The Touch Bar agent
     /// reads this app's mirror, so a stale mirror would show placeholder balances —
     /// keep this well under the agent's freshness window.
     static let refreshInterval: TimeInterval = 300
 
-    /// Rebuilds the panel rows from the shared payload and the Touch Bar order.
+    /// Rebuilds the panel rows from the shared payload and the configured order.
     func reloadMenuRows() {
         let payload = (try? UsageStore().read())
             .flatMap { try? UsagePayload.decode(Data($0.utf8)) }
-        let order = TouchBarSelection.normalize(AppConfigStore().readTouchBarProviders())
+        let order = MenuProviderSelection.normalize(AppConfigStore().readMenuProviders())
         menuRows = MenuSummary.rows(from: payload, order: order)
         menuConnected = MenuSummary.connectedCount(from: payload)
     }
@@ -143,9 +110,6 @@ final class QuotaWidgetModel: ObservableObject {
             json = UsageFetcher.preservingLocalAgentProviders(existing: existing, in: json)
         }
         try usageStore.write(json)
-        // Mirror the same sanitized payload outside the App Group container so the
-        // Touch Bar agent can show the real SiliconFlow/DeepSeek/OpenRouter state.
-        try? AppConfigStore().writeUsageMirror(json)
     }
 
     func refresh(providerScope: UsageFetcher.ProviderScope = .apiKeyOnly) {
@@ -246,15 +210,9 @@ struct QuotaWidgetApp: App {
         }
 
         Settings {
-            let displayStore = DisplayLayerStore()
             ControlCenterView(
                 accountViewModel: settingsModel,
-                displayStore: displayStore,
-                refreshNow: { model.refreshAllProviders() },
-                displayActions: DisplayLayerActions(
-                    installTouchBar: { try displayStore.installTouchBar() },
-                    openTouchBar: { try displayStore.openTouchBarApp() }
-                )
+                refreshNow: { model.refreshAllProviders() }
             )
         }
     }

@@ -1,11 +1,11 @@
 # Usage Widget — Design System
 
-AI Agent 用量小组件的设计规范,用于菜单栏 app 与 Touch Bar 两端。
+AI Agent 用量小组件的设计规范,用于菜单栏 app（状态栏图标 + 下拉面板）。
 每个 `.html` 是自包含预览卡片,首行带 `<!-- @dsCard group="…" name="…" -->` 注释供索引。
 
 ## 核心决策
 - **调和品牌底色**:品牌色收敛为强调色(环/条填充、圆点),底色统一明/暗材质 + 极淡品牌色调。
-- **条形为主、同心环为备**:条对「有多满」最直观且可缩到 Touch Bar。
+- **条形为主、同心环为备**:条对「有多满」最直观,也能缩进紧凑横排。
 - **两类 provider 同屏**:订阅额度 provider 显示窗口用量;按量计费 provider 显示账户余额、可用性趋势与密钥状态。
 - **语义告急色**:按已用 % 取色 — `<70` 品牌 / `70–90` 注意 / `≥90` 告急,覆盖品牌色。
 - **百分比 = 已用量**;倒计时只显示 5H/Wk 中**更早重置**者。
@@ -22,7 +22,7 @@ components/
   widget-full.html     六家全卡 · 条形/余额 · 亮+暗
   panels.html          单家面板 · 订阅额度 + 按量余额 · 亮+暗
   meter.html           条形 / 同心环 / 语义色
-  compact.html         紧凑横排 + Touch Bar
+  compact.html         紧凑横排
   states.html          需登录 / 缓存等待刷新 (仅两态·正常无提示·中英双语)
 assets/                provider 图标 PNG
 ```
@@ -32,7 +32,6 @@ assets/                provider 图标 PNG
 ```html
 <div class="widget" data-form="bar" data-theme="dark"></div>
 <div class="widget compact" data-form="compact" data-theme="light"></div>
-<div class="touchbar" data-auto></div>
 ```
 `data-form`: `bar`(主) · `ring`(备) · `compact`。`data-providers`: 省略=三家订阅 · `balance`=三家按量计费 · `all`=六家 · `credit`/`all+credit`=旧充值样例兼容。
 也可直接调用 `UW.barPanel(provider, theme)` 等渲染单块。
